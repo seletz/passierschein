@@ -22,7 +22,7 @@ Ein Bündel kann viele Zugangsdaten in einer Freigabeanfrage zeigen. Der Mensch 
 Offene Fragen:
 
 - Ab wie vielen Zugangsdaten liest der Mensch die Liste nicht mehr?
-- Braucht ein Bündel eine Obergrenze, oder teilt der Daemon ein großes Bündel in mehrere Freigabeanfragen?
+- Ist die Obergrenze von zehn Einträgen aus {{ ref("D29") }} richtig, oder teilt der Daemon ein großes Bündel besser in mehrere Freigabeanfragen?
 - Fördert die Schaltfläche „Select all“ je Vault das Bestätigen ohne Lesen?
 
 **Quelle:** Spike zur Freigabe-UI, Risiko „Lange Bündel“; Rückmeldung von Stefan zum Design.
