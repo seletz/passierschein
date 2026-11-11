@@ -3,12 +3,12 @@ render_macros: true
 id: 'T9'
 titel: 'Der Daemon startet mit einem echten Backend nicht mit einer gefälschten Freigabe'
 bereich: 'Freigabe'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 3
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [D40]
 ---
 # T9 — Der Daemon startet mit einem echten Backend nicht mit einer gefälschten Freigabe

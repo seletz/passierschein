@@ -3,12 +3,12 @@ render_macros: true
 id: 'T24'
 titel: 'Die Freigabeanfrage zeigt die Namen des Backends und nicht den Text des Agents'
 bereich: 'Anfrage und Bündelung'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 5
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [D27, F9]
 ---
 # T24 — Die Freigabeanfrage zeigt die Namen des Backends und nicht den Text des Agents

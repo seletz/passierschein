@@ -3,12 +3,12 @@ render_macros: true
 id: 'T8'
 titel: 'Ein Secret-Wert erscheint nie in Log, Audit-Log, Fehlermeldung oder Freigabeanfrage'
 bereich: 'Grants und Auslieferung'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 3
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [D34, D6]
 ---
 # T8 — Ein Secret-Wert erscheint nie in Log, Audit-Log, Fehlermeldung oder Freigabeanfrage

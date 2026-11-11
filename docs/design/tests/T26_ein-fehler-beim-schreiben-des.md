@@ -3,12 +3,12 @@ render_macros: true
 id: 'T26'
 titel: 'Ein Fehler beim Schreiben des Audit-Logs verhindert die Auslieferung und meldet sich dem Menschen'
 bereich: 'Audit'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 2
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [D36, D35, F7]
 ---
 # T26 — Ein Fehler beim Schreiben des Audit-Logs verhindert die Auslieferung und meldet sich dem Menschen

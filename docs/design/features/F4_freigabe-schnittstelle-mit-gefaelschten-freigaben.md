@@ -3,13 +3,13 @@ render_macros: true
 id: 'F4'
 titel: 'Freigabe-Schnittstelle mit gefälschten Freigaben für Tests'
 bereich: 'Freigabe'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 1
 headless: true
 status: aktiv
 stufe: 1
-umsetzung: zu-bauen
+umsetzung: vorhanden
 implementiert: [D30, D35, D40]
 use_cases: [UC4, UC10]
 ---

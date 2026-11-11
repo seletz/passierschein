@@ -3,13 +3,13 @@ render_macros: true
 id: 'F20'
 titel: 'a38 doctor hilft bei der Fehlersuche'
 bereich: 'Betrieb und Release'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 3
 headless: true
 status: aktiv
 stufe: 1
-umsetzung: zu-bauen
+umsetzung: vorhanden
 implementiert: [D36, D28, D35]
 use_cases: [UC14]
 ---

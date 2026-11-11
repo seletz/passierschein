@@ -3,12 +3,12 @@ render_macros: true
 id: 'T6'
 titel: 'Ablehnung und Zeitüberschreitung liefern keinen Wert und einen stabilen Code'
 bereich: 'Freigabe'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 2
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F4, F10]
 ---
 # T6 — Ablehnung und Zeitüberschreitung liefern keinen Wert und einen stabilen Code
