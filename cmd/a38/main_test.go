@@ -27,8 +27,11 @@ func TestRun(t *testing.T) {
 		{"serve without configuration", []string{"serve", "--config", "/tmp/a38-missing/config.yaml", "--backend", "fake", "--fake-file", "/tmp/a38-missing/fake.yaml", "--ui", "auto-approve"}, 1, "", "cannot read the configuration file"},
 		{"mcp without configuration", []string{"mcp", "--config", "/tmp/a38-missing/config.yaml"}, 1, "", "cannot read the configuration file"},
 		{"audit without subcommand", []string{"audit"}, 2, "", "a38 audit list"},
-		{"grants", []string{"grants", "list"}, 1, "", "a38 grants: not implemented"},
-		{"doctor", []string{"doctor"}, 1, "", "a38 doctor: not implemented"},
+		{"grants without subcommand", []string{"grants"}, 2, "", "a38 grants list"},
+		{"grants without configuration", []string{"grants", "list", "--config", "/tmp/a38-missing/config.yaml"}, 1, "", "cannot read the configuration file"},
+		{"fault without subcommand", []string{"fault"}, 2, "", "a38 fault status"},
+		{"fault without configuration", []string{"fault", "status", "--config", "/tmp/a38-missing/config.yaml"}, 1, "", "cannot read the configuration file"},
+		{"doctor without configuration", []string{"doctor", "--config", "/tmp/a38-missing/config.yaml"}, 1, "FINDING", ""},
 		{"llm without flag", []string{"llm"}, 2, "", "usage: a38 llm --skill"},
 		{"llm with unknown flag", []string{"llm", "--other"}, 2, "", "usage: a38 llm --skill"},
 	}
@@ -54,7 +57,7 @@ func TestRun(t *testing.T) {
 func TestUsageListsEachCommand(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	run([]string{"--help"}, &stdout, &stderr)
-	for _, name := range []string{"serve", "mcp", "audit", "grants", "doctor", "llm", "version"} {
+	for _, name := range []string{"serve", "mcp", "audit", "grants", "fault", "doctor", "llm", "version"} {
 		if !strings.Contains(stdout.String(), "\n  "+name+" ") {
 			t.Errorf("the usage text does not list the command %q", name)
 		}

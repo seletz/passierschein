@@ -22,7 +22,7 @@ Drei Arten von Prozessen entstehen daraus.
 |---|---|---|
 | `a38 serve` | Daemon | Der Prozess stellt den Agent-Socket und den Admin-Socket bereit. Er prüft die Policy, bündelt, fragt die Freigabe an, vergibt Grants, schreibt das Audit-Log und liefert aus. Nur dieser Prozess spricht mit dem Backend ({{ ref("D1") }}). |
 | `a38 mcp` | Agent | Der Prozess ist ein MCP-Server über stdio (MCP: Model Context Protocol). Das Agent-Werkzeug startet ihn je Sitzung. Er übersetzt die zwei MCP-Werkzeuge in Nachrichten für den Agent-Socket ({{ ref("D41") }}). Er verbindet sich erst beim ersten Aufruf eines Werkzeugs mit dem Daemon und sendet dann den Namen der Sitzung und den Namen des MCP-Clients in `hello`. Ist der Daemon nicht erreichbar, antwortet er mit `daemon_unavailable` und versucht es beim nächsten Aufruf erneut. Er enthält keinen Code für ein Backend. |
-| Admin-Befehle | Mensch | `a38 grants` und `a38 doctor` sprechen mit dem Daemon über den Admin-Socket ({{ ref("D44") }}). `a38 audit` liest die Audit-Datei direkt. `a38 llm` und `a38 version` brauchen keinen Daemon. |
+| Admin-Befehle | Mensch | `a38 grants`, `a38 fault` und `a38 doctor` sprechen mit dem Daemon über den Admin-Socket ({{ ref("D44") }}). `a38 audit` liest die Audit-Datei direkt. `a38 llm` und `a38 version` brauchen keinen Daemon. |
 
 Die Freigabe-UI ist in Stufe 1 kein eigener Prozess der Auslieferung.
 Die Varianten `auto-approve` und `auto-deny` laufen im Daemon.
@@ -66,14 +66,14 @@ Die Abhängigkeitsregel gilt in jedem Fall.
 | `internal/approval/fakeui` | `UI` für `auto-approve`, `auto-deny` und `script` | 19 |
 | `internal/approval/queue` | Warteschlange und Wartezeit: höchstens eine Freigabeanfrage zur gleichen Zeit | 19 |
 | `internal/daemon` | Sockets, Rechte, Peer-Daten, Sitzungen, Namenskonflikt, Start und Ende; `cmd/a38/serve.go` | 20 |
-| `internal/client` | Verbindung zu einem Socket des Daemons: `hello`, Anfrage senden, Antwort über die Kennung zuordnen. `internal/mcp` und `internal/admin` nutzen das Paket. | 20 |
+| `internal/client` | Verbindung zu einem Socket des Daemons: `hello`, Anfrage senden, Antwort über die Kennung zuordnen. `internal/mcp` und die Admin-Befehle nutzen das Paket. | 20 |
 | `internal/policy` | Prüfung einer Anfrage gegen die Konfiguration | 21 |
 | `internal/bundle` | Bündelfenster und Obergrenze je Sitzung | 21 |
 | `internal/grant` | Grants im Arbeitsspeicher: Vergabe, Prüfung, Ablauf, Widerruf | 22 |
 | `internal/broker` | Ablauf einer Anfrage von der Policy bis zur Auslieferung; setzt `AgentHandler` und `AdminHandler` um | 22 |
 | `internal/fault` | globale Sperre bei einer Störung, Meldung an den Menschen, Aufheben; die Schnittstellen `Gate` und `Lock` entstehen mit Issue 21 und 22 | 23 |
 | `internal/mcp` | MCP-Server und Client für den Agent-Socket; `cmd/a38/mcp.go` | 24 |
-| `internal/admin` | Client für den Admin-Socket; `cmd/a38/grants.go` | 25 |
+| Admin-Befehle | `cmd/a38/admin.go`, `grants.go` und `fault.go` nutzen `internal/client` auf dem Admin-Socket; es gibt kein Paket `internal/admin` | 25 |
 | `internal/doctor` | Prüfungen von `a38 doctor`; `cmd/a38/doctor.go` | 25 |
 | `internal/skill` | eingebettete Anleitung für Agents; `cmd/a38/llm.go` | 26 |
 
@@ -132,8 +132,8 @@ Die Standardbibliothek ist immer erlaubt.
 | `broker` | alle Pakete oberhalb dieser Zeile, aber nur die Schnittstellenpakete und keine Umsetzung |
 | `daemon` | alle Pakete oberhalb dieser Zeile; nur `daemon` wählt die Umsetzungen aus |
 | `client` | `protocol` |
-| `mcp`, `admin` | `protocol`, `config`, `version`, `client` |
-| `doctor` | `protocol`, `config`, `admin`, `audit` |
+| `mcp` | `protocol`, `config`, `version`, `client` |
+| `doctor` | `protocol`, `config`, `client`, `audit`, `audit/sqlite` (nur lesend) |
 | `skill` | `protocol` |
 | `cmd/a38` | jedes Paket |
 
@@ -475,7 +475,7 @@ Das MCP-SDK gehört nur in `internal/mcp`.
 ## Was diese Seite nicht entscheidet
 
 - Die Form des Startwerts für den Namen der Sitzung ist in Issue 24 gewählt: das Argument `--session-name` und die Umgebungsvariable `A38_SESSION_NAME` von `a38 mcp`, das Argument hat Vorrang ({{ ref("G19") }}). Wer den Wert je Sitzung setzt, bleibt offen.
-- Der Name des Admin-Befehls zum Aufheben der Sperre ist offen ({{ ref("G20") }}). Das Protokoll nennt die Nachricht `fault_clear`. Issue 25 wählt den Namen auf der Kommandozeile.
+- Der Name des Admin-Befehls zum Aufheben der Sperre ist offen ({{ ref("G20") }}). Das Protokoll nennt die Nachricht `fault_clear`. Issue 25 wählt auf der Kommandozeile `a38 fault clear` und `a38 fault status`; Stefan bestätigt den Namen.
 - Ob die Freigabe-App die Meldung zeigt, ist offen ({{ ref("G20") }}). In Stufe 1 erhält das Skript der Oberfläche die Meldung.
 - Ob ein Agent die Namen der Items über ein Werkzeug findet, ist offen ({{ ref("G6") }}). Das Protokoll hat dafür keine Nachricht. `Backend.Vaults` listet nur Vaults.
 - Ob eine Verbindung je Agent die richtige Sitzung ist, ist offen ({{ ref("G2") }}). Der Code setzt {{ ref("D25") }} um.

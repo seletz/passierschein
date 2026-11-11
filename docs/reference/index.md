@@ -1,6 +1,6 @@
 ---
 title: Referenz
-description: "Fakten zum Nachschlagen: Tasks, Release, Konventionen, Fake-Backend."
+description: "Fakten zum Nachschlagen: Tasks, Release, Konventionen, Fake-Backend, Befehle."
 icon: lucide/book-open
 weight: 30
 ---
@@ -12,3 +12,4 @@ Die Referenz beschreibt Fakten zum Nachschlagen.
 - [Release](50-release.md)
 - [Konventionen](60-konventionen.md)
 - [Fake-Backend](70-fake-backend.md)
+- [Befehle für den Menschen](80-befehle-fuer-den-menschen.md)
