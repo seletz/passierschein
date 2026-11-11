@@ -23,7 +23,8 @@ func TestGrantCoversUntilLifetimeEnds(t *testing.T) {
 		reply    fakeui.Reply
 		want     time.Duration
 	}{
-		{"default four hours", "4h", fakeui.ReplyApproveAll(), 4 * time.Hour},
+		{"no value in the configuration", "", fakeui.ReplyApproveAll(), 4 * time.Hour},
+		{"four hours", "4h", fakeui.ReplyApproveAll(), 4 * time.Hour},
 		{"thirty minutes", "30m", fakeui.ReplyApproveAll(), 30 * time.Minute},
 		{"twelve hours, no fixed maximum", "12h", fakeui.ReplyApproveAll(), 12 * time.Hour},
 		{"human selects fifteen minutes", "4h", fakeui.ReplyApprove(900, "c1"), 15 * time.Minute},
@@ -195,7 +196,8 @@ func TestPartialSelection(t *testing.T) {
 		t.Fatalf("later request: %v", r.err)
 	}
 	req := h.rec.Requests()[1]
-	if len(req.Credentials) != 1 || req.Credentials[0].Field != "password" || req.ExistingGrant == nil {
+	if len(req.Credentials) != 1 || req.Credentials[0].Field != "password" || req.ExistingGrant == nil ||
+		req.Credentials[0].Deviation != approval.DeviationNewItem {
 		t.Errorf("later approval request = %+v", req)
 	}
 }
@@ -234,7 +236,17 @@ func TestGrantEnds(t *testing.T) {
 			if g := h.grants(); len(g) != 0 {
 				t.Fatalf("grants after the end = %+v", g)
 			}
-			if r := h.approveFlow(s, refPass); r.err != nil {
+			next := s
+			if tt.event == audit.EventExpiry {
+				// An ended session never comes back. Its request ends at
+				// once; the same request of the next session of the agent
+				// needs a new approval.
+				if r := h.do(s, refPass); r.code() != protocol.CodeDenied {
+					t.Fatalf("request of the ended session: %v", r.err)
+				}
+				next = sess("s-2", "beispielprojekt")
+			}
+			if r := h.approveFlow(next, refPass); r.err != nil {
 				t.Fatalf("after the end: %v", r.err)
 			}
 			if n := len(h.rec.Requests()); n != 2 {
@@ -244,7 +256,7 @@ func TestGrantEnds(t *testing.T) {
 				return
 			}
 			ev := h.eventsOf(tt.event)
-			if len(ev) != 1 || ev[0].Result.GrantID != id || ev[0].Result.Detail != tt.detail {
+			if len(ev) < 1 || ev[0].Result.GrantID != id || ev[0].Result.Detail != tt.detail {
 				t.Errorf("end events = %+v", ev)
 			}
 		})
@@ -351,4 +363,48 @@ func TestRunWritesExpiry(t *testing.T) {
 	h.waitFor("the expiry event", func() bool { return len(h.eventsOf(audit.EventExpiry)) == 1 })
 	cancel()
 	<-done
+}
+
+// D7, D40: the broker requires the authentication of the human for the
+// approval app. A faked UI may give a decision without authentication.
+func TestAuthenticationRule(t *testing.T) {
+	withAuth := func(a *approval.AuthResult) fakeui.Reply {
+		return func(ctx context.Context, req approval.Request) (approval.Decision, error) {
+			d, err := fakeui.AutoApprove{}.Approve(ctx, req)
+			d.Auth = a
+			return d, err
+		}
+	}
+	tests := []struct {
+		name string
+		mode approval.Mode // empty: no WithUIMode
+		auth *approval.AuthResult
+		want protocol.Code
+	}{
+		{"app, passed", approval.ModeApp, &approval.AuthResult{Policy: "biometrics", OK: true}, ""},
+		{"app, missing", approval.ModeApp, nil, protocol.CodeUIFailed},
+		{"app, failed", approval.ModeApp, &approval.AuthResult{Policy: "biometrics"}, protocol.CodeUIFailed},
+		{"app, skipped", approval.ModeApp, &approval.AuthResult{Policy: "skipped", OK: true}, protocol.CodeUIFailed},
+		{"no mode, missing", "", nil, protocol.CodeUIFailed},
+		{"script, missing", approval.ModeScript, nil, ""},
+		{"auto-approve, skipped", approval.ModeAutoApprove, &approval.AuthResult{Policy: "skipped", OK: true}, ""},
+		{"unknown mode, missing", "popup", nil, protocol.CodeUIFailed},
+		{"script, failed", approval.ModeScript, &approval.AuthResult{Policy: "skipped"}, protocol.CodeUIFailed},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newHarness(t, withMode(tt.mode))
+			if tt.mode == "" {
+				h.b = New(h.cfg, h.be, h.b.ui, h.store, h.clk, nil)
+			}
+			h.rec.Enqueue(withAuth(tt.auth))
+			r := h.approveFlow(sess("s-1", "beispielprojekt"), refPass)
+			if r.code() != tt.want {
+				t.Fatalf("result = %v, want %q", r.err, tt.want)
+			}
+			if tt.want != "" && (h.be.Reads() != 0 || len(h.grants()) != 0) {
+				t.Errorf("read or grant without authentication")
+			}
+		})
+	}
 }

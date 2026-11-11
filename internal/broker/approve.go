@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -67,11 +68,35 @@ func (b *Broker) runBundle(st *sessionState, pb *pendingBundle, timer clock.Time
 	b.mu.Unlock()
 
 	pb.claims = joinClaims(pb.session, requests)
-	res := b.decide(st, pb, refs)
+	res := b.decideSafe(st, pb, refs)
 	for _, r := range requests {
 		r.result = res
 		close(r.done)
 	}
+}
+
+// decideSafe runs decide. A panic in the UI, the audit store or the broker
+// is an internal fault of the daemon (G21): the broker raises the fault,
+// and each request of the bundle ends with daemon_faulted. Nothing is
+// delivered.
+func (b *Broker) decideSafe(st *sessionState, pb *pendingBundle, refs []protocol.Reference) (res bundleResult) {
+	defer func() {
+		if r := recover(); r != nil {
+			b.log.Error("internal fault while the broker decided a bundle", "request_id", pb.requestID, "panic", fmt.Sprint(r))
+			b.faults.Raise(protocol.CodeDaemonFaulted, "The broker found an internal fault.")
+			b.recordSafe(pb.event(audit.EventError, refs, audit.Result{
+				Code: protocol.CodeDaemonFaulted, RequestID: pb.requestID, Detail: "internal fault of the broker",
+			}))
+			res = bundleResult{err: protocol.Errorf(protocol.CodeDaemonFaulted, "the daemon found an internal fault; nothing is delivered")}
+		}
+	}()
+	return b.decide(st, pb, refs)
+}
+
+// recordSafe writes an event after a panic. A second panic is dropped.
+func (b *Broker) recordSafe(ev audit.Event) {
+	defer func() { _ = recover() }()
+	_ = b.record(ev)
 }
 
 // decide writes the event "bundle", asks the human for the entries that no
@@ -83,13 +108,21 @@ func (b *Broker) decide(st *sessionState, pb *pendingBundle, refs []protocol.Ref
 	if e := b.record(pb.event(audit.EventBundle, refs, audit.Result{RequestID: pb.requestID})); e != nil {
 		return bundleResult{err: e}
 	}
+	// Wait for the turn at the UI first. Only then build the request, so
+	// that the entries, the deviation and the existing grant show the
+	// grants at the time of the display (D8).
+	release, err := b.acquireSlot(st.ctx)
+	if err != nil {
+		return b.sessionEnded(pb, refs)
+	}
+	defer release()
 	open, existing := b.uncovered(pb, refs)
 	if len(open) == 0 {
 		// A grant of an earlier bundle covers each entry now.
 		return bundleResult{}
 	}
 	req := b.approvalRequest(pb, open, existing)
-	d, err := b.approve(st.ctx, req)
+	d, err := b.ui.Approve(st.ctx, req)
 	if st.ctx.Err() != nil {
 		// The session ended while the approval request was open: no
 		// grant and no delivery, whatever the UI answered.
@@ -118,20 +151,20 @@ func (b *Broker) uncovered(pb *pendingBundle, refs []protocol.Reference) ([]prot
 	return open, b.grants.Live(sid, now)
 }
 
-// approve shows the request to the UI. Only one request is open at a time.
-func (b *Broker) approve(ctx context.Context, req approval.Request) (approval.Decision, error) {
+// acquireSlot waits for the turn at the UI: only one approval request is
+// open at a time (D30). The caller calls release when the UI answered.
+func (b *Broker) acquireSlot(ctx context.Context) (release func(), err error) {
 	select {
 	case b.slot <- struct{}{}:
+		return func() { <-b.slot }, nil
 	case <-ctx.Done():
-		return approval.Decision{}, ctx.Err()
+		return nil, ctx.Err()
 	}
-	defer func() { <-b.slot }()
-	return b.ui.Approve(ctx, req)
 }
 
 // apply validates the decision and acts on it.
 func (b *Broker) apply(st *sessionState, pb *pendingBundle, req approval.Request, open []protocol.Reference, d approval.Decision) bundleResult {
-	v := checkDecision(req, d)
+	v := checkDecision(req, d, b.authRequired)
 	switch v.outcome {
 	case approval.OutcomeDenied:
 		return b.fail(pb, open, audit.EventDenial, protocol.CodeDenied, "the human denied the request")

@@ -37,6 +37,7 @@ func (b *Broker) SessionEnded(s session.Session) {
 	defer b.mu.Unlock()
 	b.expireLocked()
 	sid := s.Facts.SessionID
+	b.ended[sid] = b.clock.Now()
 	if st, ok := b.sessions[sid]; ok {
 		st.ended = true
 		st.cancel()

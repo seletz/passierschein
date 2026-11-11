@@ -81,6 +81,10 @@ func (b *Broker) resolve(ctx context.Context, c *call) *protocol.Error {
 		}
 		names, err := b.be.Resolve(ctx, ref)
 		if err != nil {
+			if ctx.Err() != nil {
+				// The connection ended, not the backend.
+				return b.requestEnded(c, c.req.References)
+			}
 			return b.backendFailed(c, err)
 		}
 		canon := protocol.Reference{Vault: names.Vault, Item: names.Item, Field: names.Field}
@@ -121,7 +125,10 @@ type plan struct {
 // dispatch sorts the references into covered, bundled and rejected, waits
 // for the bundle and delivers.
 func (b *Broker) dispatch(ctx context.Context, c *call) (*protocol.Credentials, *protocol.Error) {
-	p := b.place(c)
+	p, ok := b.place(ctx, c)
+	if !ok {
+		return nil, b.requestEnded(c, c.req.References)
+	}
 	if len(p.tooLarge) > 0 {
 		if e := b.record(b.event(c, audit.EventDenial, p.tooLarge,
 			audit.Result{Code: protocol.CodeBundleTooLarge})); e != nil {
@@ -150,10 +157,20 @@ func (b *Broker) dispatch(ctx context.Context, c *call) (*protocol.Credentials, 
 
 // place puts each reference that no live grant covers into the open
 // bundle of the session, or opens a bundle. A request that a grant covers
-// in full opens no window (D29).
-func (b *Broker) place(c *call) plan {
+// in full opens no window (D29). It returns false if the session ended:
+// a request that was in flight at the end of its session never opens a
+// bundle and never reaches the human (D33).
+func (b *Broker) place(ctx context.Context, c *call) (plan, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if b.endedLocked(ctx, c.s.Facts.SessionID) {
+		return plan{}, false
+	}
+	return b.placeLocked(c), true
+}
+
+// placeLocked is place for a live session. The caller holds mu.
+func (b *Broker) placeLocked(c *call) plan {
 	now := b.clock.Now()
 	var uncovered []protocol.Reference
 	seen := map[protocol.Reference]bool{}
@@ -173,6 +190,8 @@ func (b *Broker) place(c *call) plan {
 	}
 	st := b.stateLocked(c.s)
 	pb := st.open
+	// A bundle whose window ended but whose runner did not close it yet
+	// takes no further request: the request opens a new bundle.
 	if pb == nil || !pb.b.Accepts(now) {
 		pb = b.openBundleLocked(st, c.s, now)
 	}
@@ -207,6 +226,14 @@ func (b *Broker) openBundleLocked(st *sessionState, s session.Session, now time.
 	timer := b.clock.NewTimer(b.cfg.Bundle.Window)
 	go b.runBundle(st, pb, timer)
 	return pb
+}
+
+// requestEnded ends a request whose session ended while the request was
+// in flight. It writes the expiry with session_ended, not a fault of the
+// backend.
+func (b *Broker) requestEnded(c *call, refs []protocol.Reference) *protocol.Error {
+	_ = b.record(b.event(c, audit.EventExpiry, refs, audit.Result{Detail: audit.DetailSessionEnded}))
+	return sessionEndedError()
 }
 
 // reject writes one event for a request that ends as a whole and returns

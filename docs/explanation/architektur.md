@@ -218,6 +218,13 @@ Drei Regeln gelten auf jedem Weg:
 - Ein Grant existiert erst, wenn sein Ereignis im Audit-Log steht.
 - Ein Fehler der ganzen Anfrage liefert keinen Wert, auch nicht für eine Referenz unter einem Grant.
 
+Eine beendete Sitzung kommt nie zurück.
+Der Broker merkt sich ihre Kennung eine Stunde lang.
+Eine Anfrage, die beim Ende der Sitzung noch läuft, öffnet kein Bündel, erreicht den Menschen nicht und schreibt kein Ereignis „Auslieferung“ ({{ ref("D33") }}).
+Der Broker baut eine Freigabeanfrage erst, wenn sie an der Reihe ist.
+Einträge, Abweichung und bestehender Grant zeigen so den Stand zur Zeit der Anzeige.
+Ein Absturz (Panic) beim Entscheiden eines Bündels ist eine Störung des Daemons: Der Broker meldet sie an die Sperre, und jede Anfrage des Bündels endet mit `daemon_faulted` ({{ ref("G21") }}).
+
 Der Broker schreibt ein Ereignis, das Grants ändert oder nutzt, unter seiner Sperre.
 Die Reihenfolge im Audit-Log ist so die Reihenfolge der Änderungen.
 Ein Widerruf steht vor einer Auslieferung, oder die Auslieferung steht vor dem Widerruf.
@@ -237,6 +244,8 @@ Ein Widerruf steht vor einer Auslieferung, oder die Auslieferung steht vor dem W
 | Fehler der Freigabe | Anfrage, Bündel, Fehler | `ui_failed` |
 | Fehler des Backends | Anfrage, Fehler | `backend_locked`, `backend_unavailable` |
 | Sitzung endet während der Freigabe | Ablauf mit `session_ended` | – |
+| Verbindung endet während eines Aufrufs des Backends | Ablauf mit `session_ended`, kein Fehler des Backends | – |
+| Interne Störung beim Entscheiden | Fehler | `daemon_faulted` |
 | Ende eines Grants | Ablauf mit `lifetime_ended` oder `session_ended`, Widerruf | – |
 
 ### Was der Daemon verdrahtet
@@ -245,6 +254,7 @@ Ein Widerruf steht vor einer Auslieferung, oder die Auslieferung steht vor dem W
 - Die UI ist eine `approval/queue.Queue`. Sie setzt die Wartezeit von {{ ref("D30") }} durch. Der Broker lässt zusätzlich nur eine Freigabeanfrage zur gleichen Zeit zu.
 - `Broker.Run(ctx)` entfernt abgelaufene Grants alle 30 Sekunden und schreibt ihr Ereignis. Ohne `Run` gilt ein Grant trotzdem nie über seine Laufzeit hinaus; das Ereignis entsteht dann bei der nächsten Anfrage.
 - `a38 serve` verdrahtet den Broker. `--fake-file` nennt die YAML-Datei des Fake-Backends. `--ui-script` nennt das Programm der Variante `script` mit seinen Argumenten, getrennt durch Leerzeichen. Ohne Audit-Datei, Backend oder Freigabe startet der Daemon nicht und legt keinen Socket an.
+- `broker.WithUIMode` nennt die Variante der Freigabe. Bei `auto-approve`, `auto-deny` und `script` darf eine Entscheidung ohne `auth` sein. Bei `app`, bei einer unbekannten Variante und ohne die Option verlangt der Broker eine bestandene Authentifizierung des Menschen; fehlt `auth`, ist sie gescheitert oder steht dort `skipped`, endet die Freigabe mit `ui_failed` ({{ ref("D7") }}).
 - `broker.WithLock` setzt die globale Sperre. Bis Issue 23 ist es `fault.NoLock`. Der Broker ruft `Lock.Raise` bei jedem Fehler des Audit-Logs auf.
 
 ## Protokoll auf den Sockets

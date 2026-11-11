@@ -4,6 +4,9 @@ import (
 	"github.com/seletz/passierschein/internal/approval"
 )
 
+// authSkipped is the policy that a faked UI reports.
+const authSkipped = "skipped"
+
 // verdict is the result of the check of a decision.
 type verdict struct {
 	// outcome is approved, denied or timeout. It is empty for an invalid
@@ -20,14 +23,15 @@ type verdict struct {
 //
 // An approval is valid only if:
 //   - the version, the type and the request ID fit the request,
-//   - the authentication did not fail,
+//   - the authentication did not fail; if authRequired is set, the
+//     authentication is present, passed and not "skipped",
 //   - each approved ID is an entry of the request, and no ID repeats,
 //   - the lifetime is more than zero and not more than the proposed
 //     lifetime of the configuration.
 //
 // An approval with no approved ID is a denial. The outcome error and each
 // unknown outcome are invalid. An invalid decision creates no grant.
-func checkDecision(req approval.Request, d approval.Decision) verdict {
+func checkDecision(req approval.Request, d approval.Decision, authRequired bool) verdict {
 	switch {
 	case d.Version != approval.Version:
 		return invalidDecision("the decision has an unsupported version")
@@ -40,7 +44,7 @@ func checkDecision(req approval.Request, d approval.Decision) verdict {
 	case approval.OutcomeDenied, approval.OutcomeTimeout:
 		return verdict{outcome: d.Outcome}
 	case approval.OutcomeApproved:
-		return checkApproval(req, d)
+		return checkApproval(req, d, authRequired)
 	case approval.OutcomeError:
 		return invalidDecision("the UI reported an error")
 	default:
@@ -49,9 +53,12 @@ func checkDecision(req approval.Request, d approval.Decision) verdict {
 }
 
 // checkApproval checks a decision with the outcome approved.
-func checkApproval(req approval.Request, d approval.Decision) verdict {
+func checkApproval(req approval.Request, d approval.Decision, authRequired bool) verdict {
 	if d.Auth != nil && !d.Auth.OK {
 		return invalidDecision("the authentication of the human failed")
+	}
+	if authRequired && (d.Auth == nil || d.Auth.Policy == authSkipped) {
+		return invalidDecision("the decision has no authentication of the human")
 	}
 	if len(d.ApprovedCredentialIDs) == 0 {
 		return verdict{outcome: approval.OutcomeDenied}

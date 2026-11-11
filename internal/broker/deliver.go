@@ -12,7 +12,7 @@ import (
 // rejected. rejected maps a reference with the names of the backend to its
 // code; deliver adds the references that no live grant covers any more.
 func (b *Broker) deliver(ctx context.Context, c *call, rejected map[protocol.Reference]protocol.Code) (*protocol.Credentials, *protocol.Error) {
-	refs, e := b.authorize(c, rejected)
+	refs, e := b.authorize(ctx, c, rejected)
 	if e != nil {
 		return nil, e
 	}
@@ -28,10 +28,14 @@ func (b *Broker) deliver(ctx context.Context, c *call, rejected map[protocol.Ref
 // lock of the broker: a revocation or the end of the session comes either
 // before the check, and nothing is delivered, or after the event. This is
 // the last gate before a value is read.
-func (b *Broker) authorize(c *call, rejected map[protocol.Reference]protocol.Code) ([]protocol.Reference, *protocol.Error) {
+func (b *Broker) authorize(ctx context.Context, c *call, rejected map[protocol.Reference]protocol.Code) ([]protocol.Reference, *protocol.Error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.expireLocked()
+	// A request of an ended session writes no delivery event (D33).
+	if b.endedLocked(ctx, c.s.Facts.SessionID) {
+		return nil, b.requestEnded(c, c.req.References)
+	}
 	// Gate of the delivery path (D48).
 	if e := b.faults.Check(); e != nil {
 		return nil, e
@@ -85,6 +89,10 @@ func (b *Broker) read(ctx context.Context, c *call, refs []protocol.Reference) (
 	values := make(map[protocol.Reference]protocol.Secret, len(refs))
 	for _, ref := range refs {
 		v, err := b.be.Read(ctx, ref)
+		if err != nil && ctx.Err() != nil {
+			// The connection ended, not the backend.
+			return nil, b.requestEnded(c, refs)
+		}
 		if err != nil {
 			code := backend.Code(err)
 			b.log.Warn("the backend failed to read a value", "code", string(code))

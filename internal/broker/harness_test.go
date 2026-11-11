@@ -125,8 +125,7 @@ projects:
   - name: kaputtprojekt
     paths: [/tmp/a38-test/kaputtprojekt]
     vaults: [beispiel.app.k8s-dev, fehlt.k8s-dev]
-grant:
-  lifetime: ` + lifetime + `
+` + grantSection(lifetime) + `
 bundle:
   window: 3s
   max_entries: ` + maxEntries + `
@@ -134,6 +133,15 @@ paths:
   socket_dir: /tmp/a38-test/run
   audit_file: /tmp/a38-test/audit.db
 `
+}
+
+// grantSection returns the grant section of the configuration. An empty
+// lifetime leaves the key out: the default applies.
+func grantSection(lifetime string) string {
+	if lifetime == "" {
+		return ""
+	}
+	return "grant:\n  lifetime: " + lifetime
 }
 
 // Neutral references of the tests.
@@ -184,6 +192,7 @@ type hopt struct {
 	maxEntries string
 	ui         func(*fakeui.Recorder, *clock.Fake) approval.UI
 	lock       fault.Lock
+	mode       approval.Mode
 }
 
 type harnessOption func(*hopt)
@@ -193,13 +202,14 @@ func withMaxEntries(n string) harnessOption { return func(o *hopt) { o.maxEntrie
 func withLockOpt(l fault.Lock) harnessOption {
 	return func(o *hopt) { o.lock = l }
 }
+func withMode(m approval.Mode) harnessOption { return func(o *hopt) { o.mode = m } }
 func withUI(f func(*fakeui.Recorder, *clock.Fake) approval.UI) harnessOption {
 	return func(o *hopt) { o.ui = f }
 }
 
 func newHarness(t *testing.T, opts ...harnessOption) *harness {
 	t.Helper()
-	o := hopt{lifetime: "4h", maxEntries: "10"}
+	o := hopt{lifetime: "4h", maxEntries: "10", mode: approval.ModeScript}
 	for _, f := range opts {
 		f(&o)
 	}
@@ -230,7 +240,7 @@ func newHarness(t *testing.T, opts ...harnessOption) *harness {
 	if o.ui != nil {
 		ui = o.ui(h.rec, h.clk)
 	}
-	var bopts []Option
+	bopts := []Option{WithUIMode(o.mode)}
 	if o.lock != nil {
 		bopts = append(bopts, WithLock(o.lock))
 	}
@@ -243,7 +253,7 @@ func newHarness(t *testing.T, opts ...harnessOption) *harness {
 // restart of the daemon.
 func (h *harness) restart() {
 	logger := slog.New(slog.NewTextHandler(h.logs, nil))
-	h.b = New(h.cfg, h.be, queue.New(h.rec, h.clk, 0), h.store, h.clk, logger)
+	h.b = New(h.cfg, h.be, queue.New(h.rec, h.clk, 0), h.store, h.clk, logger, WithUIMode(approval.ModeScript))
 }
 
 // sess returns a session of the project with verified facts.

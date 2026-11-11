@@ -183,15 +183,16 @@ func TestDenialTimeoutAndUIFailure(t *testing.T) {
 func TestScriptUIFailures(t *testing.T) {
 	bin := buildFakeScript(t)
 	tests := []struct {
-		name string
-		args []string
-		want protocol.Code
+		name  string
+		args  []string
+		want  protocol.Code
+		event audit.EventType
 	}{
-		{"auto-deny by script", []string{"-tick", "none"}, protocol.CodeDenied},
-		{"exit code 1", []string{"-exit", "1"}, protocol.CodeUIFailed},
-		{"no JSON", []string{"-raw", "kein json"}, protocol.CodeUIFailed},
-		{"approved with exit code 1", []string{"-tick", "all", "-exit", "1"}, protocol.CodeUIFailed},
-		{"approved", []string{"-tick", "all"}, ""},
+		{"auto-deny by script", []string{"-tick", "none"}, protocol.CodeDenied, audit.EventDenial},
+		{"exit code 1", []string{"-exit", "1"}, protocol.CodeUIFailed, audit.EventError},
+		{"no JSON", []string{"-raw", "kein json"}, protocol.CodeUIFailed, audit.EventError},
+		{"approved with exit code 1", []string{"-tick", "all", "-exit", "1"}, protocol.CodeUIFailed, audit.EventError},
+		{"approved", []string{"-tick", "all"}, "", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -206,8 +207,19 @@ func TestScriptUIFailures(t *testing.T) {
 			if r.code() != tt.want {
 				t.Fatalf("result = %v, want %q", r.err, tt.want)
 			}
-			if tt.want != "" && h.be.Reads() != 0 {
-				t.Errorf("reads = %d", h.be.Reads())
+			if tt.want == "" {
+				return
+			}
+			if h.be.Reads() != 0 || len(h.grants()) != 0 || len(h.eventsOf(audit.EventGrant)) != 0 {
+				t.Errorf("reads = %d, grants = %d", h.be.Reads(), len(h.grants()))
+			}
+			// One entry with the event type and the code.
+			want := []audit.EventType{audit.EventRequest, audit.EventBundle, tt.event}
+			if got := h.types(); !slices.Equal(got, want) {
+				t.Fatalf("audit = %v, want %v", got, want)
+			}
+			if c := h.events()[2].Result.Code; c != tt.want {
+				t.Errorf("code = %q, want %q", c, tt.want)
 			}
 		})
 	}
