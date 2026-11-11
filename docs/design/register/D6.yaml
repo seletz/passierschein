@@ -1,0 +1,9 @@
+id: D6
+zustand: eingeloest
+titel: Die Freigabe-UI ist eine eigene Swift-App ohne Zugriff auf Secrets
+bezug: '#2'
+schluessel: '#2/freigabe-app'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

@@ -1,0 +1,9 @@
+id: D29
+zustand: eingeloest
+titel: Das Bündelfenster dauert drei Sekunden, und ein Bündel hat höchstens zehn Einträge
+bezug: '#2'
+schluessel: '#2/buendelfenster'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

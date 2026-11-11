@@ -1,0 +1,9 @@
+id: RI5
+zustand: eingeloest
+titel: In den Stufen 1 bis 4 kann ein Agent a38 umgehen und angreifen
+bezug: '#2'
+schluessel: '#2/lokal-keine-isolation'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

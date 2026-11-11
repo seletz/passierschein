@@ -1,0 +1,9 @@
+id: T25
+zustand: eingeloest
+titel: grant_status zeigt nur die Grants der eigenen Sitzung und nie einen Wert
+bezug: '#2'
+schluessel: '#2/grant-status'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

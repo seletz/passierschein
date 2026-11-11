@@ -1,0 +1,29 @@
+---
+render_macros: true
+id: 'D3'
+titel: 'Der Transport ist ein Unix-Socket; der Weg in die VM ist offen'
+bereich: 'Grenzen und Identität'
+lauf: '1.0'
+stand: '2026-11-11'
+order: 3
+headless: true
+status: gueltig
+use_cases: [UC1, UC13]
+beleg:
+  wer: Stefan
+  datum: '2026-11-11'
+  notiz: Projektnotiz vom 2026-11-11
+---
+# D3 — Der Transport ist ein Unix-Socket; der Weg in die VM ist offen
+
+{{ design_kopf(page) }}
+
+**Entscheidung:** Der Daemon stellt einen Unix-Socket bereit. Ein lokaler Agent nutzt den Socket direkt. Der Weg in die VM ist offen.
+
+**Begründung:** Lokal braucht der Daemon keinen Netzwerk-Port und kein gemeinsames Geheimnis. Die VM ist nur eine Frage des Transports.
+
+**Erste Fassung:** Für die VM leitet SSH denselben Socket mit `RemoteForward` weiter (Projektnotiz).
+
+**Offen:** Der Transport in die VM ist nicht mehr festgelegt. Stefan hat am 2026-11-11 gesagt, dass SSH nicht zwingend ist. Die Optionen stehen in {{ ref("G1") }}. Der Unix-Socket für den lokalen Agent bleibt.
+
+**Quelle:** Projektnotiz, Design v0 und Stufenplan.

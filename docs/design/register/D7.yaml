@@ -1,0 +1,9 @@
+id: D7
+zustand: eingeloest
+titel: Ein Bündel braucht genau eine Bestätigung mit Touch ID, mit einem Häkchen je Zugangsdatum
+bezug: '#2'
+schluessel: '#2/eine-freigabe'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

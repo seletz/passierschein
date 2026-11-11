@@ -1,0 +1,9 @@
+id: D19
+zustand: eingeloest
+titel: Die Doku ist deutsch nach DIN 8579, der Code englisch nach ASD-STE100
+bezug: '#2'
+schluessel: '#2/sprache'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

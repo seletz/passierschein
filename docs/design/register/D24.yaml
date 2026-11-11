@@ -1,0 +1,9 @@
+id: D24
+zustand: eingeloest
+titel: Im MVP liefert a38 nur aus dev-Vaults aus
+bezug: '#2'
+schluessel: '#2/mvp-nur-dev'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

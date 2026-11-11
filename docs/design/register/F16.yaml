@@ -1,0 +1,9 @@
+id: F16
+zustand: eingeloest
+titel: Hook gegen den direkten Aufruf von op
+bezug: '#2'
+schluessel: '#2/op-hook'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

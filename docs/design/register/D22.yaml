@@ -1,0 +1,9 @@
+id: D22
+zustand: eingeloest
+titel: Die Anleitung für Agents liegt im Binary
+bezug: '#2'
+schluessel: '#2/doku-im-binary'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

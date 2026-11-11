@@ -1,0 +1,9 @@
+id: T18
+zustand: eingeloest
+titel: Ein Release hat je Archiv eine SBOM, eine vollständige Prüfsummendatei und signierte darwin-Binaries
+bezug: '#2'
+schluessel: '#2/release'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'
