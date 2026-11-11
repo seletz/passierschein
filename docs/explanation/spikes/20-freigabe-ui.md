@@ -74,32 +74,7 @@ Das Banner ist blau.
 Die Liste zeigt alle Zugangsdaten vollständig. Die Liste rollt nicht.
 Eine Schaltfläche „Select all“ gibt es nicht.
 
-```text
-+------------------------------------------------------------+
-| [Schlüssel] Credential request                         a38 |   blau
-|             First request of this session.                 |
-+------------------------------------------------------------+
-  [Schild] Verified by the daemon                               grün
-  Project    beispielprojekt
-  Origin     Local process
-  Process    agent-cli (PID 4242)
-  Directory  /Users/beispiel/develop/beispielprojekt
-+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -+
-| [?] Claims of the agent. NOT verified.                     |   grau, kursiv
-| Agent:  coding-agent                                       |
-| Task:   Run the database migration tests                   |
-| Reason: The tests need the login for the dev database.     |
-+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -+
-  Credentials                                  0 of 2 selected
-  [Vault] beispiel.app.k8s-dev  2
-      [ ] datenbank-dev
-      [ ] objektspeicher-dev
-  The grant is valid for 4 h. Scope: project beispielprojekt,
-  vaults beispiel.app.k8s-dev.
---------------------------------------------------------------
-  [Deny (Esc)]  Closes in 118 s. No decision   [Select credentials]
-                means no approval.              (gesperrt)
-```
+![Popup für die erste Anfrage einer Sitzung mit zwei Zugangsdaten](../../assets/spikes/20-freigabe-ui-a-erste-anfrage.png)
 
 ### Fall b: Bündel mit vielen Zugangsdaten
 
