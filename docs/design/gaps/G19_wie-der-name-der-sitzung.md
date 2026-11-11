@@ -21,7 +21,7 @@ register:
 
 Offene Fragen:
 
-- Woher liest `a38 mcp` den Namen: aus einer Umgebungsvariable, aus einer Datei des Agent-Werkzeugs oder aus einem Argument beim Start?
+- Festgelegt (Stefan, 2026-11-11): Die Anmeldung des MCP-Servers legt den Namen je Sitzung fest. Offen ist die Form: Argument oder Umgebungsvariable von `a38 mcp`. Offen ist auch, wer den Wert bei jeder neuen Sitzung setzt, ohne dass der Mensch ihn von Hand einträgt.
 - Was zeigt die Freigabeanfrage, wenn die Sitzung keinen Namen hat oder der Mensch sie später umbenennt?
 - Kann der Daemon den Namen prüfen, zum Beispiel über die Sitzungsdaten des Agent-Werkzeugs zur Prozess-ID? Ohne Prüfung steht der Name bei den Angaben des Agents ({{ ref("D4") }}).
 - Wie heißt das Gegenstück bei anderen Agent-Werkzeugen?

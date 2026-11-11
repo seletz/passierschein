@@ -22,7 +22,7 @@ beleg:
 
 **Begründung:** Ein Grant braucht einen Träger, den der Agent nicht wählen kann. Eine Verbindung endet mit dem Prozess.
 
-**Name der Sitzung:** Der Mensch braucht zur Zuordnung den Namen der Sitzung aus seinem Agent-Werkzeug, zum Beispiel `beispiel-koordinator`. Diesen Namen findet er in allen Werkzeugen wieder, mit denen er mit den Agents arbeitet. `a38 mcp` übergibt den Namen beim Aufbau der Verbindung. Die Freigabeanfrage, das Audit-Log und die TUI zeigen ihn. Der Name ist eine Angabe aus der Zone des Agents und gilt als unbestätigt ({{ ref("D4") }}). Die Kennung des Daemons bleibt der Träger des Grants. Stefan hat das am 2026-11-11 im Review festgelegt.
+**Name der Sitzung:** Der Mensch braucht zur Zuordnung den Namen der Sitzung aus seinem Agent-Werkzeug, zum Beispiel `beispiel-koordinator`. Diesen Namen findet er in allen Werkzeugen wieder, mit denen er mit den Agents arbeitet. Der Name ist ein Startwert von `a38 mcp`. Die Anmeldung des MCP-Servers legt ihn je Sitzung fest. Das Agent-Werkzeug startet `a38 mcp` außerhalb der Sitzung des Agents; der Agent wählt den Namen deshalb nicht selbst. `a38 mcp` übergibt den Namen beim Aufbau der Verbindung. Das ist kein dichter Schutz: Ein Agent mit weiten Rechten, zum Beispiel in der VM, kann die Anmeldung ändern. Die Freigabeanfrage, das Audit-Log und die TUI zeigen ihn. Der Name ist eine Angabe aus der Zone des Agents und gilt als unbestätigt ({{ ref("D4") }}). Die Kennung des Daemons bleibt der Träger des Grants. Stefan hat das am 2026-11-11 im Review festgelegt.
 
 **Grenze:** Lokal sind die Peer-Daten ein Hinweis und kein Beweis ({{ ref("RI5") }}). Offene Fragen: {{ ref("G1") }}, {{ ref("G2") }}, {{ ref("G19") }}.
 
