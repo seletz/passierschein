@@ -22,7 +22,7 @@ beleg:
 
 **Zeitpunkt:** Der Daemon schreibt jedes Ereignis, sobald es eintritt. Das gilt auch für jeden Fehlschlag: Ablehnung, Ablauf und Fehler. Der Daemon liefert einen Wert erst aus, nachdem der Eintrag für die Auslieferung geschrieben ist.
 
-**Fehler beim Schreiben:** Schlägt das Schreiben in das Audit-Log fehl, liefert der Daemon nichts aus und vergibt keinen Grant. Der Agent erhält den Code `audit_failed`. Der Daemon zeigt dem Menschen sofort ein Popup mit der Meldung, damit der Mensch handeln kann. Der Daemon schreibt den Fehler zusätzlich in sein Log. Stefan hat das am 2026-11-11 festgelegt; die Regel „keine Auslieferung“ gilt zunächst.
+**Fehler beim Schreiben:** Schlägt das Schreiben in das Audit-Log fehl, liefert der Daemon nichts aus und vergibt keinen Grant. Der Agent erhält den Code `audit_failed`. Der Daemon zeigt dem Menschen sofort ein Popup mit der Meldung. Das Popup informiert nur. Der Mensch beseitigt die Ursache selbst, zum Beispiel Platz schaffen oder den Daemon neu starten. `a38 doctor` hilft bei der Fehlersuche. Der Daemon schreibt den Fehler zusätzlich in sein Log. Stefan hat das am 2026-11-11 festgelegt; die Regel „keine Auslieferung“ gilt zunächst.
 
 **Begründung:** Die Auswertung nach Projekt, Agent, Zugangsdatum, Zeit und Ergebnis braucht diese Felder. Eine Auslieferung ohne Eintrag wäre nicht nachvollziehbar.
 

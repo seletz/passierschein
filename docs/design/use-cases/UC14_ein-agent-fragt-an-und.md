@@ -24,5 +24,6 @@ stufe: 1
 2. Der Agent erhält einen Fehler mit einem stabilen Code: `daemon_unavailable`, `backend_locked`, `backend_unavailable`, `ui_failed` oder `audit_failed` ({{ ref("D35") }}).
 3. Der Daemon schreibt den Fehler in das Audit-Log, wenn er läuft.
 4. Schlägt das Schreiben in das Audit-Log fehl, zeigt der Daemon dem Menschen sofort ein Popup mit der Meldung ({{ ref("D36") }}).
+5. Der Mensch sucht die Ursache mit `a38 doctor` und beseitigt sie.
 
 **Ergebnis:** Der Daemon liefert nichts aus. Es gibt keinen Ersatzweg. Die Fehlermeldung enthält keinen Secret-Wert.

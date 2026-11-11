@@ -18,6 +18,6 @@ beleg:
 
 {{ design_kopf(page) }}
 
-**Entscheidung:** `a38` ist ein Binary mit den Unterbefehlen `serve`, `mcp`, `tui`, `llm`, `audit`, `grants` und `service`. Das 1Password-Backend liegt hinter einem Build-Tag. Der linux-Build enthält das Backend und das SDK nicht.
+**Entscheidung:** `a38` ist ein Binary mit den Unterbefehlen `serve`, `mcp`, `tui`, `llm`, `audit`, `grants`, `service` und `doctor`. Das 1Password-Backend liegt hinter einem Build-Tag. Der linux-Build enthält das Backend und das SDK nicht.
 
 **Begründung:** Ein Binary ist einfach zu verteilen. Die VM bekommt trotzdem keinen Code für 1Password ({{ ref("D2") }}).
