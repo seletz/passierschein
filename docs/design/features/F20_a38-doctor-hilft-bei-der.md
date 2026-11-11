@@ -17,7 +17,7 @@ use_cases: [UC14]
 
 {{ design_kopf(page) }}
 
-`a38 doctor` prüft den Zustand von `a38` und nennt zu jedem Befund die Ursache und den nächsten Schritt. Der Befehl prüft: Läuft der Daemon? Stimmen die Rechte der Sockets? Ist die Audit-Datei schreibbar, und ist Platz frei? Ist die Kette des Audit-Logs unversehrt? Ist die Konfiguration gültig, je Projekt? Ist das Backend erreichbar und entsperrt? Startet die Freigabe-App? Der Befehl gibt keinen Secret-Wert aus. Der Exit-Code ist 0 ohne Befund.
+`a38 doctor` prüft den Zustand von `a38` und nennt zu jedem Befund die Ursache und den nächsten Schritt. Der Befehl prüft: Läuft der Daemon? Stimmen die Rechte der Sockets? Ist die Audit-Datei schreibbar, und ist Platz frei? Ist die Kette des Audit-Logs unversehrt? Ist die Konfiguration gültig, je Projekt? Ist das Backend erreichbar und entsperrt? Startet die Freigabe-App? Ist die Auslieferung wegen einer Störung gesperrt ({{ ref("D48") }})? Der Befehl gibt keinen Secret-Wert aus. Der Exit-Code ist 0 ohne Befund.
 
 
 Setzt um: {{ ref("D36") }}, {{ ref("D28") }}, {{ ref("D35") }}.

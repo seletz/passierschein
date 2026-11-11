@@ -18,6 +18,6 @@ beleg:
 
 {{ design_kopf(page) }}
 
-**Entscheidung:** Bei jedem Fehler liefert der Daemon nichts aus. Der Agent erhält einen Fehler mit einem stabilen Code: `denied`, `timeout`, `not_allowed`, `bundle_too_large`, `daemon_unavailable`, `backend_locked`, `backend_unavailable`, `ui_failed`, `audit_failed`, `config_invalid`, `session_name_conflict`, `not_found`, `invalid_request`. Es gibt keinen Ersatzweg.
+**Entscheidung:** Bei jedem Fehler liefert der Daemon nichts aus. Der Agent erhält einen Fehler mit einem stabilen Code: `denied`, `timeout`, `not_allowed`, `bundle_too_large`, `daemon_unavailable`, `backend_locked`, `backend_unavailable`, `ui_failed`, `audit_failed`, `daemon_faulted`, `config_invalid`, `session_name_conflict`, `not_found`, `invalid_request`. Es gibt keinen Ersatzweg.
 
 **Begründung:** Ein Agent mit einer unklaren Meldung sucht einen Umweg ({{ ref("RI8") }}). Ein stabiler Code erlaubt eine klare Regel im Skill.

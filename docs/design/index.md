@@ -31,9 +31,9 @@ Review ([Issue 2](https://github.com/seletz/passierschein/issues/2)).
 | Familie | Bereich |
 |---|---|
 | UC | {{ ref("UC1") }}–{{ ref("UC14") }} |
-| D | {{ ref("D1") }}–{{ ref("D47") }} |
+| D | {{ ref("D1") }}–{{ ref("D48") }} |
 | F | {{ ref("F1") }}–{{ ref("F20") }} |
-| T | {{ ref("T1") }}–{{ ref("T27") }} |
+| T | {{ ref("T1") }}–{{ ref("T28") }} |
 | G | {{ ref("G1") }}–{{ ref("G20") }} |
 | RI | {{ ref("RI1") }}–{{ ref("RI12") }} |
 
@@ -48,6 +48,8 @@ Eine Entscheidung hat eine von zwei Herkünften:
   mit den Ausnahmen der nächsten Zeile.
 - **Annahme:** Die Seite zeigt eine Annahme mit dem Zusatz „(Annahme)“.
   Offen ist {{ ref("D29") }} (bleibt Annahme bis zum Praxistest).
+- **Im Review neu entstanden:** {{ ref("D48") }} (eine Störung des Daemons
+  sperrt die Auslieferung global).
 - **Im Review neu gefasst:** {{ ref("D12") }} und {{ ref("D47") }}. Die
   Konfiguration nennt die Vaults und ihre Umgebung ausdrücklich. Der Daemon
   vergleicht keine Namensmuster.
