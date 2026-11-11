@@ -164,7 +164,7 @@ func newBroker(f serveFlags, cfg *config.Config, log *slog.Logger) (*broker.Brok
 	}
 	// The queue shows one approval request at a time and ends it after
 	// the wait time (D30).
-	b := broker.New(cfg, be, queue.New(ui, clk, 0), store, clk, log)
+	b := broker.New(cfg, be, queue.New(ui, clk, 0), store, clk, log, broker.WithUIMode(mode))
 	return b, closeAll, nil
 }
 

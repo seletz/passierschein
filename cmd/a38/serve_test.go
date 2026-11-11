@@ -39,6 +39,8 @@ const fakeBackend = `vaults:
     items:
       - name: datenbank-dev
         fields:
+          - name: username
+            value: beispiel-wert-user
           - name: password
             value: beispiel-wert-serve
 `
