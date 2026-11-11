@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/seletz/passierschein/internal/config"
+	"github.com/seletz/passierschein/internal/protocol"
 )
 
 // shortDir returns a short directory under /tmp.
@@ -109,5 +110,46 @@ func TestAuditChecksWithRealFiles(t *testing.T) {
 	}
 	if res := (auditSpaceCheck{env}).Run(ctx, st); len(res) != 1 || res[0].Check != "audit space" {
 		t.Errorf("space: %+v", res)
+	}
+}
+
+func TestSystemEnvComponents(t *testing.T) {
+	// T27 (part), D48: the doctor reads the backend state and the approval
+	// UI from the status of the daemon. A missing field is unknown.
+	tests := []struct {
+		name        string
+		st          *protocol.StatusResult
+		wantBackend ComponentState
+		wantUI      ComponentState
+	}{
+		{"old daemon", &protocol.StatusResult{}, StateUnknown, StateUnknown},
+		{"all ok", &protocol.StatusResult{
+			Backend: &protocol.BackendStatus{State: protocol.BackendOK},
+			UI:      &protocol.UIStatus{Mode: "script", Usable: true},
+		}, StateOK, StateOK},
+		{"backend locked", &protocol.StatusResult{
+			Backend: &protocol.BackendStatus{State: protocol.BackendLocked, Reason: "The backend is locked. Unlock it."},
+			UI:      &protocol.UIStatus{Mode: "app", Reason: "The daemon has no approval UI."},
+		}, StateLocked, StateUnreachable},
+		{"backend unreachable", &protocol.StatusResult{
+			Backend: &protocol.BackendStatus{State: protocol.BackendUnreachable, Reason: "The backend does not answer."},
+		}, StateUnreachable, StateUnknown},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := SystemEnv{}
+			if got := env.Backend(tt.st); got.State != tt.wantBackend {
+				t.Errorf("Backend = %+v, want %s", got, tt.wantBackend)
+			}
+			if got := env.UI(tt.st); got.State != tt.wantUI {
+				t.Errorf("UI = %+v, want %s", got, tt.wantUI)
+			}
+		})
+	}
+	// The backend check names the finding and the next step.
+	st := &State{Status: &protocol.StatusResult{Backend: &protocol.BackendStatus{State: protocol.BackendLocked, Reason: "The backend is locked. Unlock it."}}}
+	res := backendCheck{env: SystemEnv{}}.Run(context.Background(), st)
+	if len(res) != 1 || res[0].OK || !strings.Contains(res[0].Cause, "locked") || res[0].NextStep == "" {
+		t.Errorf("backend check = %+v", res)
 	}
 }

@@ -122,6 +122,16 @@ func TestServeGlobalLock(t *testing.T) {
 	if res, err := admin.FaultClear(ctx); err != nil || res.Cleared || res.Finding == "" {
 		t.Fatalf("clear with the cause = %+v, %v", res, err)
 	}
+	// The commands of the human work during the lock (T28, T27).
+	if code, out, _ := a38Out(t, bin, "fault", "status", "--config", cfgPath); code != 1 || !strings.Contains(out, "audit_failed") {
+		t.Errorf("a38 fault status: code %d, %q", code, out)
+	}
+	if code, out, _ := a38Out(t, bin, "doctor", "--config", cfgPath); code == 0 || !strings.Contains(out, "audit_failed") || strings.Contains(out, "beispiel-wert") {
+		t.Errorf("a38 doctor: code %d, %q", code, out)
+	}
+	if code, out, errOut := a38Out(t, bin, "fault", "clear", "--config", cfgPath); code == 0 || !strings.Contains(out+errOut, "cannot be written") {
+		t.Errorf("a38 fault clear with the cause: code %d, %q %q", code, out, errOut)
+	}
 	if _, err := a.FaultClear(ctx); protocol.CodeOf(err) != protocol.CodeInvalidRequest {
 		t.Fatalf("clear on the agent socket = %v, want invalid_request", err)
 	}
@@ -133,8 +143,8 @@ func TestServeGlobalLock(t *testing.T) {
 	if st, err := admin.Status(ctx); err != nil || st.Fault == nil || st.Fault.CheckPassed == nil || !*st.Fault.CheckPassed {
 		t.Fatalf("status after the repair = %+v, %v", st, err)
 	}
-	if res, err := admin.FaultClear(ctx); err != nil || !res.Cleared {
-		t.Fatalf("clear = %+v, %v", res, err)
+	if code, out, errOut := a38Out(t, bin, "fault", "clear", "--config", cfgPath); code != 0 || !strings.Contains(out, "Delivery is open.") {
+		t.Fatalf("a38 fault clear: code %d, %q %q", code, out, errOut)
 	}
 	if v, code := ask(a, pass); code != "" || v != "beispiel-wert-serve" {
 		t.Fatalf("A after the clear: %s", code)
