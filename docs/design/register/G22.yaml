@@ -1,0 +1,9 @@
+id: G22
+zustand: eingeloest
+titel: Das Audit-Log hat keine Ereignisart für Beginn und Ende der globalen Sperre
+bezug: '#15'
+schluessel: '#15/sperre-ereignis'
+lauf: '2.0'
+branch: docs/15-design-nachtraege
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

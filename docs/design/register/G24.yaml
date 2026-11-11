@@ -1,0 +1,9 @@
+id: G24
+zustand: eingeloest
+titel: Woher die Angabe „Name“ des Agents kommt, ist offen
+bezug: '#15'
+schluessel: '#15/agent-name'
+lauf: '2.0'
+branch: docs/15-design-nachtraege
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'
