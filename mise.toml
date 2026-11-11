@@ -80,9 +80,7 @@ description = "All checks of CI: fmt, vet, lint, test, vuln, secrets, tools:chec
 depends = ["fmt", "vet", "lint", "test", "vuln", "secrets", "tools:check"]
 
 [tasks."design:check"]
-description = "Check the design set (docs/design) with dg-register; local only, the tool comes from a private repository"
-# renovate: datasource=github-releases depName=digitalgedacht/dg_register extractVersion=^cli-v(?<version>.+)$
-tools = { "github:digitalgedacht/dg_register" = { version = "0.6.0", version_prefix = "cli-v", bin = "dg-register" } }
+description = "Check the design set (docs/design) with dg-register; local only, needs the globally installed dg-register (mise global)"
 run = "dg-register check"
 
 [tasks."uv:sync"]

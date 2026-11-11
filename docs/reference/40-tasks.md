@@ -34,8 +34,10 @@ Aufruf: `mise run <task>`.
 |---|---|
 | `design:check` | Prüft das Design-Set mit `dg-register check`. |
 
-`design:check` läuft nur lokal. `dg-register` liegt in einem privaten Repo
-einer anderen Organisation. Die CI dieses Repos hat darauf keinen Zugriff.
+`design:check` läuft nur lokal und braucht das global installierte
+`dg-register` (globale mise-Konfiguration). `dg-register` liegt in einem
+privaten Repo einer anderen Organisation. Die CI dieses Repos hat darauf
+keinen Zugriff.
 
 ## Doku
 

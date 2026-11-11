@@ -10,8 +10,9 @@ Nummer von Hand.
 
 ## Voraussetzung
 
-`dg-register` ist installiert. Die verlangte Version steht in
-`design-sets.yaml` unter `cli`.
+`dg-register` ist global installiert (globale mise-Konfiguration). Dieses
+Repo legt keine Version von `dg-register` fest. Die verlangte Mindestversion
+steht in `design-sets.yaml` unter `cli`.
 
 ## Artefakt anlegen
 
