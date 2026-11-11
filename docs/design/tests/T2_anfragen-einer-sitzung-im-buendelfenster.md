@@ -15,11 +15,13 @@ beweist: [F2, D5]
 
 {{ design_kopf(page) }}
 
-**Form:** Go-Test mit `--ui script`. Das Skript zählt die Freigabeanfragen.
+**Form:** Go-Test mit `--ui script` und einer gefälschten Uhr. Das Skript zählt die Freigabeanfragen. Das Bündelfenster kommt aus der Konfiguration des Tests.
 
 **Schritte:** Eine Sitzung sendet drei einzelne Anfragen im Abstand von 200 Millisekunden.
 
 **Erwartung:** Es entsteht genau eine Freigabeanfrage mit drei Einträgen. Eine vierte Anfrage nach dem Fenster erzeugt eine zweite Freigabeanfrage.
+
+**Weitere Fälle:** Eine Anfrage kurz vor dem Ende des Fensters gehört zum Bündel; eine Anfrage kurz danach öffnet ein neues Bündel. Eine späte Anfrage verlängert das Fenster nicht. Eine Anfrage, die ein Grant abdeckt, öffnet kein Fenster. Zwei Sitzungen im selben Fenster ergeben zwei Bündel.
 
 **Scheitert, wenn:** der Daemon je Anfrage eine Freigabeanfrage startet.
 

@@ -18,7 +18,7 @@ Schutzmaßnahme eine Klasse:
 | **inherited** | Ein anderer Dienst erzwingt die Maßnahme. `a38` verlässt sich darauf. |
 | **not-provided** | Niemand leistet die Maßnahme. Der Grund steht dabei. |
 
-**Stand:** Entwurf des Designlaufs 1. Das Review durch Stefan steht aus.
+**Stand:** Entwurf des Designlaufs 1. Stefan hat die Entscheidungen am 2026-11-11 im Review durchgesehen. Die Abnahme dieser Seite steht aus.
 
 ## Zwei Rahmenfakten
 
@@ -80,6 +80,8 @@ Der Daemon vertraut `a38 mcp` deshalb nicht mehr als dem Agent
 | Die Nachrichten folgen einem festen Schema. | enforced | versioniertes Schema, Größengrenze, Ablehnung unbekannter Felder ({{ ref("D26") }}) | {{ ref("T10") }} |
 | Die Sitzung und die Herkunft bestimmt der Daemon. | enforced | Peer-Daten des Sockets, Sitzungs-ID vom Daemon ({{ ref("D25") }}) | {{ ref("T11") }} |
 | Die Angaben des Agents ändern die geprüften Fakten nicht. | enforced | getrennte Felder, getrennte Anzeige ({{ ref("D4") }}) | {{ ref("T11") }} |
+| Der Name der Sitzung steht nur bei den Angaben des Agents. | enforced | Startwert von `a38 mcp`, getrenntes Feld ({{ ref("D25") }}) | {{ ref("T21") }} |
+| Der Daemon prüft den Namen der Sitzung. | **not-provided** | Der Name kommt aus der Zone des Agents ({{ ref("G19") }}). | – |
 | Der Daemon bündelt die Anfragen. | enforced | Bündelfenster im Daemon ({{ ref("D5") }}, {{ ref("D29") }}) | {{ ref("T2") }}, {{ ref("T19") }} |
 | Eine Anfrage außerhalb der Allowlist erreicht den Menschen nicht. | enforced | Policy-Prüfung vor der Freigabe ({{ ref("D28") }}) | {{ ref("T3") }} |
 | Eine Anfrage außerhalb von dev liefert im MVP keinen Wert. | enforced | Ablehnung ohne Freigabeanfrage ({{ ref("D24") }}) | {{ ref("T3") }} |
@@ -103,7 +105,7 @@ Der Daemon vertraut `a38 mcp` deshalb nicht mehr als dem Agent
 | Maßnahme | Klasse | Mechanismus | Nachweis |
 |---|---|---|---|
 | Nur der Daemon enthält Code für 1Password. | enforced | Das Backend liegt hinter einem Build-Tag. Der linux-Build enthält es nicht ({{ ref("D42") }}). | {{ ref("T13") }} |
-| Der Daemon liest nur Vaults der Allowlist. | enforced | Policy im Daemon ({{ ref("D12") }}, {{ ref("D28") }}) | {{ ref("T3") }} |
+| Der Daemon liest nur Vaults aus der Konfiguration und aus der Allowlist des Projekts. | enforced | Liste der Vaults mit Umgebung ({{ ref("D12") }}, {{ ref("D47") }}), Policy je Projekt ({{ ref("D28") }}) | {{ ref("T3") }}, {{ ref("T22") }} |
 | Der Zugang ist auf die dev-Vaults begrenzt. | inherited | Rechte des Service Accounts in 1Password ({{ ref("D39") }}) | {{ ref("T15") }} |
 | Der Daemon hält keinen Secret-Wert länger als für die Auslieferung. | enforced | kein Cache, kein Wert in Log oder Audit-Log ({{ ref("D34") }}) | {{ ref("T8") }} |
 | Das Token des Service Accounts ist vor anderen Prozessen des Benutzers geschützt. | **not-provided** | Ort und Schutz des Tokens sind offen ({{ ref("G3") }}). | – |

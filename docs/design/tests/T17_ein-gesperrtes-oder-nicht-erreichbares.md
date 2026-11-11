@@ -17,7 +17,7 @@ beweist: [F10, D35]
 
 **Form:** Go-Test mit den Fehlerzuständen des Fake-Backends.
 
-**Erwartung:** Der Agent erhält `backend_locked` oder `backend_unavailable`. Ohne laufenden Daemon meldet `a38 mcp` `daemon_unavailable`. Kein Fall liefert einen Wert.
+**Erwartung:** Der Agent erhält `backend_locked` oder `backend_unavailable`. Ohne laufenden Daemon meldet `a38 mcp` `daemon_unavailable`. Kein Fall liefert einen Wert. Das Audit-Log enthält je Fall mit laufendem Daemon einen Eintrag der Ereignisart Fehler mit dem Code.
 
 
 Belegt: {{ ref("F10") }}, {{ ref("D35") }}.

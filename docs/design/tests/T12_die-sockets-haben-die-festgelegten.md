@@ -17,7 +17,7 @@ beweist: [D43, D44]
 
 **Form:** Go-Test.
 
-**Erwartung:** Das Verzeichnis hat `0700`, jeder Socket `0600`. Der Daemon bricht den Start ab, wenn das Verzeichnis weitere Rechte hat. Ein Widerruf über den Agent-Socket endet mit `invalid_request`.
+**Erwartung:** Das Verzeichnis hat `0700`, jeder Socket `0600`. Der Daemon bricht den Start ab, wenn das Verzeichnis weitere Rechte hat. Ein Widerruf und die Liste aller Grants über den Agent-Socket enden mit `invalid_request`.
 
 
 Belegt: {{ ref("D43") }}, {{ ref("D44") }}.

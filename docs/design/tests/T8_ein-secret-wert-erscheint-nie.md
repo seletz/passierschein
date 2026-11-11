@@ -21,6 +21,8 @@ beweist: [D34, D6]
 
 **Erwartung:** Der Kennwert steht nur in der MCP-Antwort des freigegebenen Falls.
 
+**Kein Cache:** Der Test ändert den Wert im Fake-Backend zwischen zwei Auslieferungen unter einem Grant. Die zweite Antwort enthält den neuen Wert. Der Zähler der Lesezugriffe steigt um eins.
+
 **Scheitert, wenn:** der Kennwert an einer anderen Stelle steht.
 
 

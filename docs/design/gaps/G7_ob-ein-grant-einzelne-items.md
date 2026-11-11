@@ -22,6 +22,6 @@ register:
 Offene Fragen:
 
 - Soll die Freigabeanfrage die Wahl „ganzer Vault“ anbieten?
-- Welche Laufzeit ist der Standard, und welche ist die Obergrenze?
+- Die Laufzeit hat {{ ref("D32") }} beantwortet: ein globaler Wert der Konfiguration, Standard vier Stunden.
 
 **Quelle:** Projektnotiz, Ablauf Schritt 4.

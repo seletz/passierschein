@@ -33,7 +33,7 @@ Review ([Issue 2](https://github.com/seletz/passierschein/issues/2)).
 | UC | {{ ref("UC1") }}–{{ ref("UC14") }} |
 | D | {{ ref("D1") }}–{{ ref("D47") }} |
 | F | {{ ref("F1") }}–{{ ref("F19") }} |
-| T | {{ ref("T1") }}–{{ ref("T20") }} |
+| T | {{ ref("T1") }}–{{ ref("T25") }} |
 | G | {{ ref("G1") }}–{{ ref("G19") }} |
 | RI | {{ ref("RI1") }}–{{ ref("RI12") }} |
 

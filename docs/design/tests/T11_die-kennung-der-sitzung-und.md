@@ -17,9 +17,9 @@ beweist: [D4, D25]
 
 **Form:** Go-Test mit `--ui script`.
 
-**Schritte:** Der Agent sendet in seinen Angaben einen falschen Prozessnamen, ein falsches Projekt und eine fremde Sitzungskennung.
+**Schritte:** Der Agent schreibt in Name, Aufgabe und Begründung einen falschen Prozessnamen, ein falsches Projekt und eine fremde Sitzungskennung. Eine Sitzung im Arbeitsverzeichnis des Projekts B nennt in ihren Angaben das Projekt A und fordert einen Vault an, den nur A nutzen darf.
 
-**Erwartung:** Die geprüften Fakten der Freigabeanfrage nennen den wirklichen Prozess und das wirkliche Arbeitsverzeichnis. Die Angaben des Agents stehen nur im Abschnitt der Angaben. Ein Grant einer anderen Sitzung gilt nicht.
+**Erwartung:** Die geprüften Fakten der Freigabeanfrage nennen den wirklichen Prozess, das wirkliche Arbeitsverzeichnis und das Projekt, das aus dem Arbeitsverzeichnis folgt. Die Angaben des Agents stehen nur im Abschnitt der Angaben. Ein Grant einer anderen Sitzung gilt nicht. Die Anfrage der Sitzung in Projekt B endet mit `not_allowed` ohne Freigabeanfrage.
 
 
 Belegt: {{ ref("D4") }}, {{ ref("D25") }}.

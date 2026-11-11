@@ -15,11 +15,11 @@ beweist: [D29, D30]
 
 {{ design_kopf(page) }}
 
-**Form:** Go-Test mit `--ui script`.
+**Form:** Go-Test mit `--ui script` und einer gefälschten Uhr. Die Obergrenze kommt aus der Konfiguration; der Test läuft mit dem Standard zehn und mit dem Wert drei.
 
 **Schritte:** Eine Sitzung sendet zwölf Referenzen im Bündelfenster. Zwei Sitzungen senden zur gleichen Zeit je eine Anfrage.
 
-**Erwartung:** Die Freigabeanfrage enthält zehn Einträge; zwei Einträge enden mit `bundle_too_large`. Die zwei Sitzungen erzeugen zwei Freigabeanfragen nacheinander, nie zur gleichen Zeit.
+**Erwartung:** Die Freigabeanfrage enthält zehn Einträge; zwei Einträge enden mit `bundle_too_large`. Die zwei Sitzungen erzeugen zwei Freigabeanfragen nacheinander, nie zur gleichen Zeit. Genau die Obergrenze ist erlaubt. Die ersten Einträge in der Reihenfolge des Eingangs bleiben. Ein Bündelfenster von 0 oder eine Obergrenze von 0 in der Konfiguration: Der Daemon startet nicht.
 
 
 Belegt: {{ ref("D29") }}, {{ ref("D30") }}.

@@ -18,7 +18,7 @@ beleg:
 
 {{ design_kopf(page) }}
 
-**Entscheidung:** Jeder Eintrag hat eine laufende Nummer, einen Zeitpunkt, eine Ereignisart, die Sitzung, die geprüften Fakten, die Angaben des Agents, die Referenzen und das Ergebnis. Ereignisarten: Anfrage, Bündel, Entscheidung, Grant, Auslieferung, Ablehnung, Widerruf, Ablauf, Fehler. Der Hash eines Eintrags ist SHA-256 über den Hash des vorigen Eintrags und die kanonische Form des Eintrags. `a38 audit verify` berechnet die Kette neu.
+**Entscheidung:** Jeder Eintrag hat eine laufende Nummer, einen Zeitpunkt, eine Ereignisart, die Sitzung, die geprüften Fakten, die Angaben des Agents mit dem Namen der Sitzung, die Referenzen und das Ergebnis. Ereignisarten: Anfrage, Bündel, Entscheidung, Grant, Auslieferung, Ablehnung, Widerruf, Ablauf, Fehler. Der Hash eines Eintrags ist SHA-256 über den Hash des vorigen Eintrags und die kanonische Form des Eintrags. `a38 audit verify` berechnet die Kette neu.
 
 **Begründung:** Die Auswertung nach Projekt, Agent, Zugangsdatum, Zeit und Ergebnis braucht diese Felder.
 

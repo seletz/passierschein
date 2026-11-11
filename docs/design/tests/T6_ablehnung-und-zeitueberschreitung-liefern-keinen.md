@@ -15,9 +15,11 @@ beweist: [F4, F10]
 
 {{ design_kopf(page) }}
 
-**Form:** Go-Test mit `--ui auto-deny` und mit einem Skript, das nie antwortet.
+**Form:** Go-Test mit `--ui auto-deny`, mit einem Skript, das nie antwortet, und mit einem Skript, das scheitert.
 
-**Erwartung:** Der Agent erhält `denied` oder `timeout`. Die Antwort enthält keinen Wert. Es entsteht kein Grant. Das Fake-Backend zählt keinen Lesezugriff auf einen Wert.
+**Fälle:** Ablehnung; keine Antwort; das Skript endet mit einem Fehler; das Skript schreibt kein JSON; das Skript schreibt `approved` mit einem Exit-Code ungleich 0.
+
+**Erwartung:** Der Agent erhält `denied`, `timeout` oder `ui_failed`. Die Antwort enthält keinen Wert. Es entsteht kein Grant. Das Fake-Backend zählt keinen Lesezugriff auf einen Wert. Das Audit-Log enthält je Fall einen Eintrag mit der Ereignisart und dem Code.
 
 
 Belegt: {{ ref("F4") }}, {{ ref("F10") }}.
