@@ -1,0 +1,24 @@
+# Example file for the fake backend. All names and values are fake.
+vaults:
+  - name: beispiel.app.k8s-dev
+    items:
+      - name: datenbank-dev
+        fields:
+          - name: username
+            value: beispiel-wert-1
+          - name: password
+            value: beispiel-wert-2
+      - name: objektspeicher-dev
+        fields:
+          - name: username
+            value: beispiel-wert-3
+          - name: password
+            value: beispiel-wert-4
+  - name: beispiel.infra.k8s-dev
+    items:
+      - name: datenbank-dev
+        fields:
+          - name: username
+            value: beispiel-wert-5
+          - name: password
+            value: beispiel-wert-6

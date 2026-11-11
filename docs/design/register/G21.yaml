@@ -1,0 +1,9 @@
+id: G21
+zustand: eingeloest
+titel: Ein Fehlercode für einen internen Fehler des Daemons fehlt
+bezug: '#15'
+schluessel: '#15/interner-fehler'
+lauf: '2.0'
+branch: docs/15-design-nachtraege
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

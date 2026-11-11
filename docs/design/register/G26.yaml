@@ -1,0 +1,9 @@
+id: G26
+zustand: eingeloest
+titel: Der Prototyp des Popups zeigt Fälle, die das Design ausschließt
+bezug: '#15'
+schluessel: '#15/prototyp-abgleich'
+lauf: '2.0'
+branch: docs/15-design-nachtraege
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

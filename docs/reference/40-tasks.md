@@ -24,6 +24,7 @@ Aufruf: `mise run <task>`.
 | `vuln` | Sucht mit govulncheck nach bekannten Schwachstellen. |
 | `secrets` | Durchsucht die Git-Historie mit gitleaks nach Secrets. |
 | `secrets:staged` | Durchsucht die vorgemerkten Änderungen nach Secrets. |
+| `deps:linux:check` | Prüft, dass der linux-Build kein Paket für 1Password enthält. |
 | `tools:check` | Prüft die Werkzeugversionen und die Form der Workflows. |
 | `check` | Führt alle Checks der CI aus. |
 | `hooks:install` | Richtet den Git-Hook `pre-commit` ein. |
