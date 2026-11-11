@@ -391,6 +391,13 @@ Der Entwurfslauf hält die folgenden Punkte fest.
 - Angaben des Agenten: Der Agent schreibt in `task` und `reason` beliebigen Text. Das Popup kürzt diese Texte auf 3 Zeilen und zeigt sie nie im Bereich der geprüften Fakten und nie im Dialog von Touch ID.
 - Unterrolle: Eine neue Version von macOS oder von OmniWM ändert die Unterrolle oder die Zulassung. Dann kachelt OmniWM das Popup möglicherweise. Die Regel aus dem Abschnitt „Regel nach Bundle-ID“ ist das Gegenmittel.
 
+## Abnahme
+
+Stefan hat den Entwurf des Popups am 2026-11-11 für das MVP abgenommen.
+
+- Die Sprache der Oberfläche legt die Entwicklung fest. Bis dahin gelten die Annahmen dieses Berichts.
+- Stefan teilt den Einwand „Lange Bündel“: Eine Freigabeanfrage zeigt möglicherweise zu viele Zugangsdaten. Der Praxistest gibt die Antwort. Eine Obergrenze je Bündel gibt es bis dahin nicht.
+
 ## Offene Punkte
 
 Die folgenden Prüfungen braucht Stefan am Bildschirm.
