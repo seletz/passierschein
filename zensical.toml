@@ -1,0 +1,110 @@
+[project]
+site_name = "Passierschein"
+site_description = "Credential-Broker für Coding Agents: Freigabe mit Kontext, Grants mit Laufzeit, Audit-Log."
+site_author = "Stefan Eletzhofer"
+site_url = "https://seletz.github.io/passierschein/"
+repo_url = "https://github.com/seletz/passierschein"
+copyright = "Copyright &copy; 2026 Stefan Eletzhofer"
+
+# Strict: tote interne Links und kaputte Anker brechen den Build, statt nur zu
+# warnen. Was lokal grün ist (`mise run docs:build`), bleibt in der CI grün.
+strict = true
+
+# Kein explizites `nav`: die Sidebar ist ordnergetrieben aus den vier
+# Diátaxis-Ordnern docs/tutorials, docs/how-to, docs/reference und
+# docs/explanation, dazu docs/design (Design-Set) und docs/tags (Tag-Index).
+# Jeder Ordner trägt eine index.md als Landing-Page (`navigation.indexes`),
+# die auch den Abschnittstitel liefert (`section_renamed`) und über `weight:`
+# die Reihenfolge festlegt. Seiten sind nach Dateiname sortiert;
+# Zahlenpräfixe, wo die Reihenfolge zählt.
+
+# Zensical ersetzt die Vorgabeliste der Erweiterungen, wenn dieser Schlüssel
+# gesetzt ist; deshalb steht alles Benutzte hier.
+[project.markdown_extensions]
+abbr = {}
+admonition = {}
+attr_list = {}
+def_list = {}
+footnotes = {}
+md_in_html = {}
+"pymdownx.betterem" = {}
+"pymdownx.details" = {}
+"pymdownx.inlinehilite" = {}
+"pymdownx.keys" = {}
+"pymdownx.mark" = {}
+"pymdownx.smartsymbols" = {}
+"pymdownx.tasklist" = { custom_checkbox = true }
+
+[project.markdown_extensions.toc]
+permalink = true
+
+# Makros zur Bauzeit (docs_macros.py im Repo-Root): version_banner() für
+# Version, Build-Datum und Commit-Hash, ref(), design_kopf() und
+# design_index() für das Design-Set. Nur Seiten mit `render_macros: true`
+# laufen durch Jinja; ein Fehler in einem Makro bricht den Build.
+[project.markdown_extensions."zensical.extensions.macros"]
+module_name = "docs_macros"
+render_by_default = false
+on_error_fail = true
+
+# Icons im Text (:lucide-wrench:, :octicons-arrow-right-24:) für die Karten
+# der Startseite.
+[project.markdown_extensions."pymdownx.emoji"]
+emoji_generator = "zensical.extensions.emoji.to_svg"
+emoji_index = "zensical.extensions.emoji.twemoji"
+
+[project.markdown_extensions."pymdownx.highlight"]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+
+[project.markdown_extensions."pymdownx.superfences"]
+custom_fences = [{ name = "mermaid", class = "mermaid" }]
+
+[project.markdown_extensions."pymdownx.tabbed"]
+alternate_style = true
+combine_header_slug = true
+
+[project.theme]
+language = "de"
+# Keine Instant-Navigation: Safari lässt die Adresszeile nach
+# history.pushState auf der alten URL stehen.
+features = [
+    "content.code.annotate",
+    "content.code.copy",
+    "content.code.select",
+    "content.tabs.link",
+    "navigation.footer",
+    "navigation.indexes",
+    "navigation.top",
+    "navigation.tracking",
+    "search.highlight",
+]
+
+[[project.theme.palette]]
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Dunkles Design"
+
+[[project.theme.palette]]
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Helles Design"
+
+[project.theme.icon]
+logo = "lucide/stamp"
+
+# Front-Matter-Vorgaben je Verzeichnis aus `.meta.yml`, vererbt nach unten;
+# die Seite überschreibt. Die Tags der Seiten kommen von dort.
+[project.plugins.meta]
+
+# Tag-Baum: Tags sind hierarchisch mit „/“ (`Design-Set/Gap` liegt unter
+# `Design-Set`). Der Index steht auf docs/tags/index.md.
+[project.plugins.tags]
+tags_hierarchy = true
+
+# Abschnittstitel aus der index.md des Ordners („Referenz“ statt
+# „Reference“), Reihenfolge nach `weight:`; `headless: true` nimmt eine Seite
+# aus der Navigation (Artefaktseiten des Design-Sets).
+[project.plugins."mkdocs-nav-weight"]
+section_renamed = true

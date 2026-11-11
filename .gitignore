@@ -1,0 +1,14 @@
+/bin/
+/build/
+/dist/
+/site/
+/.venv/
+__pycache__/
+*.test
+*.out
+*.db
+*.db-wal
+*.db-shm
+.env
+.build/
+.DS_Store

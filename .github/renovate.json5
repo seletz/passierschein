@@ -1,0 +1,34 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+    "config:recommended",
+    // Actions stay pinned to a commit hash with the version as comment
+    // (scripts/tool-versions-check.sh checks this form).
+    "helpers:pinGitHubActionDigests",
+    ":semanticCommits",
+  ],
+  // Tool pins at mise tasks (`tools = { ... }`): the mise manager reads only
+  // [tools]. A comment line above the pin names the data source.
+  customManagers: [
+    {
+      customType: "regex",
+      managerFilePatterns: ["/^mise\\.toml$/"],
+      matchStrings: [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\ntools = \\{ \"[^\"]+\" = (?:\\{ version = )?\"(?<currentValue>[^\"]+)\"",
+      ],
+    },
+  ],
+  packageRules: [
+    {
+      // go.mod and mise.toml must name the same Go version (tools:check).
+      matchPackageNames: ["go", "golang"],
+      groupName: "go toolchain",
+    },
+    {
+      // A new Go minor version needs a tick in the Dependency Dashboard.
+      matchPackageNames: ["go", "golang"],
+      matchUpdateTypes: ["major", "minor"],
+      dependencyDashboardApproval: true,
+    },
+  ],
+}

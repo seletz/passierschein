@@ -1,0 +1,8 @@
+# Zeigerdatei: das Design-Set von Passierschein.
+version: 1
+cli: ">=0.6.0"
+sets:
+  passierschein:
+    wurzel: docs/design
+    familien: [UC, D, F, T, G, RI]
+    owner: [Stefan]
