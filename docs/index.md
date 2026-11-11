@@ -10,9 +10,10 @@ render_macros: true
 Passierschein ist ein Credential-Broker für Coding Agents. Das
 Kommandozeilenwerkzeug heißt `a38`.
 
-!!! warning "Stand: Design"
-    Das Projekt ist in der Designphase. Das Repo enthält das Grundgerüst und
-    das Design-Set. Es enthält noch keine Funktionen.
+!!! warning "Stand: Stufe 1"
+    Stufe 1 läuft lokal mit einem Fake-Backend und einer gefälschten Freigabe.
+    Es gibt noch kein 1Password-Backend und kein Popup mit Touch ID.
+    Das [Tutorial](tutorials/10-erste-schritte.md) führt durch den Ablauf.
 
 ## Zweck
 

@@ -3,13 +3,13 @@ render_macros: true
 id: 'F15'
 titel: 'Installation als LaunchAgent und Konfiguration'
 bereich: 'Betrieb und Release'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 1
 headless: true
 status: aktiv
 stufe: 3
-umsetzung: zu-bauen
+umsetzung: teilweise
 implementiert: [D28, D42]
 use_cases: [UC11]
 ---

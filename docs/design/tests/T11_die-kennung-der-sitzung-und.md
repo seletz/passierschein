@@ -3,12 +3,12 @@ render_macros: true
 id: 'T11'
 titel: 'Die Kennung der Sitzung und die geprüften Fakten kommen vom Daemon'
 bereich: 'Grenzen und Identität'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 2
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [D4, D25]
 ---
 # T11 — Die Kennung der Sitzung und die geprüften Fakten kommen vom Daemon

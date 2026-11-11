@@ -3,12 +3,12 @@ render_macros: true
 id: 'T1'
 titel: 'Der Ablauf liefert mit Fake-Backend und automatischer Freigabe den Wert und schreibt das Audit-Log'
 bereich: 'Anfrage und Bündelung'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 1
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F1, F6, F8, F9]
 ---
 # T1 — Der Ablauf liefert mit Fake-Backend und automatischer Freigabe den Wert und schreibt das Audit-Log

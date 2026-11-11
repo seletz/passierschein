@@ -3,12 +3,12 @@ render_macros: true
 id: 'T28'
 titel: 'Eine Störung des Daemons sperrt die Auslieferung für alle Sitzungen, bis sie behoben ist'
 bereich: 'Grants und Auslieferung'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 7
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [D48, D36]
 ---
 # T28 — Eine Störung des Daemons sperrt die Auslieferung für alle Sitzungen, bis sie behoben ist
