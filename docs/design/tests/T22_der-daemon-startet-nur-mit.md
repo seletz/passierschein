@@ -9,7 +9,7 @@ order: 3
 headless: true
 status: aktiv
 umsetzung: zu-bauen
-beweist: [D12, D47, F15]
+beweist: [D12, D47, D28, F15]
 ---
 # T22 — Der Daemon startet nur mit einer vollständigen Konfiguration der Vaults
 
@@ -23,7 +23,7 @@ beweist: [D12, D47, F15]
 
 **Fälle ohne Namensvergleich:** Ein Vault mit dem Namen `beispiel-prod` und der Umgebung dev liefert aus. Ein Vault mit dem Namen `beispiel-dev` und der Umgebung prod endet mit `not_allowed`. Ein Vault `k8s-beispiel` im Fake-Backend, aber nicht in der Konfiguration, endet mit `not_allowed`; das Backend zählt keine Auflösung und keinen Lesezugriff.
 
-**Offen:** Ob ein Vault in der Allowlist eines Projekts, der in der Liste der Vaults fehlt, den Start verhindert.
+**Fehlerhaftes Projekt:** Die Allowlist des Projekts A nennt einen Vault, der in der Liste der Vaults fehlt. Der Daemon startet. Jede Anfrage aus Projekt A endet mit `config_invalid`, ohne Freigabeanfrage. Das Skript der Oberfläche erhält eine Meldung mit dem Grund. Das Audit-Log enthält die Ablehnung. Eine Anfrage aus Projekt B arbeitet normal.
 
 
-Belegt: {{ ref("D12") }}, {{ ref("D47") }}, {{ ref("F15") }}.
+Belegt: {{ ref("D12") }}, {{ ref("D47") }}, {{ ref("D28") }}, {{ ref("F15") }}.

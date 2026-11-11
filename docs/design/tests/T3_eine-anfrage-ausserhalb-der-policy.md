@@ -21,7 +21,7 @@ beweist: [F3, D12, D24, D28, D47]
 
 **Erwartung:** Jeder Fall endet mit `not_allowed`. Ein unbekannter Vault und ein vorhandener, nicht genannter Vault ergeben dieselbe Antwort. Das Skript der Freigabe läuft nie. Das Fake-Backend zählt keine Auflösung eines Namens und keinen Lesezugriff. Das Audit-Log enthält je Fall eine Ablehnung.
 
-**Offen:** Das Ergebnis eines gemischten Bündels mit einer erlaubten und einer nicht erlaubten Referenz ist nicht entschieden.
+**Alles oder nichts:** Eine Anfrage mit einer erlaubten und einer nicht erlaubten Referenz endet ganz mit `not_allowed`. Das Fake-Backend zählt auch für die erlaubte Referenz keinen Lesezugriff.
 
 **Scheitert, wenn:** eine Freigabeanfrage entsteht oder ein Wert zurückkommt.
 

@@ -24,11 +24,11 @@ beweist: [D25, D4, D36]
 - Kein Name gesetzt: Die Verbindung arbeitet. Die Freigabeanfrage zeigt eine ausdrückliche Leermarke und keinen erfundenen Wert.
 - Steuerzeichen im Namen (Zeilenumbruch, Escape-Folge, NUL, Zeichen für die Schreibrichtung): `invalid_request` beim Aufbau der Verbindung. Weder die Freigabeanfrage noch `a38 audit list` enthält ein rohes Steuerzeichen.
 - Ein Name über der Längengrenze: `invalid_request`. Der Daemon bedient andere Sitzungen weiter.
-- Zwei Verbindungen mit demselben Namen erhalten zwei verschiedene Kennungen. Ein Grant der ersten gilt nicht für die zweite.
+- Zwei Verbindungen mit demselben Namen: Jede Anfrage beider Sitzungen endet mit `session_name_conflict`. Es entsteht keine Freigabeanfrage. Ein bestehender Grant der ersten Sitzung liefert nicht mehr aus, solange beide verbunden sind. Nach dem Ende einer der beiden Verbindungen arbeitet die andere wieder.
 - Der Name trägt keinen Grant: Nach dem Ende der Verbindung braucht eine neue Verbindung mit demselben Namen eine neue Freigabe.
 - Der Name steht je Verbindung fest: Eine zweite Anmeldung oder ein Feld für den Namen in `request_credentials` endet mit `invalid_request`.
 
-**Offen:** Die Form des Startwerts, die Längengrenze, die erlaubten Zeichen und die Anzeige bei gleichem Namen ({{ ref("G19") }}).
+**Offen:** Die Form des Startwerts, die Längengrenze und die erlaubten Zeichen ({{ ref("G19") }}).
 
 
 Belegt: {{ ref("D25") }}, {{ ref("D4") }}, {{ ref("D36") }}.

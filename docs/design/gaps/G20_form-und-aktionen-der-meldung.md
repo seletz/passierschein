@@ -17,7 +17,7 @@ register:
 
 {{ design_kopf(page) }}
 
-{{ ref("D36") }} verlangt ein Popup, wenn das Schreiben in das Audit-Log fehlschlägt. Der Mensch soll sofort handeln können.
+{{ ref("D36") }} verlangt ein Popup, wenn das Schreiben in das Audit-Log fehlschlägt. Der Mensch soll sofort handeln können. Dieselbe Art von Meldung nennt den Grund, wenn die Konfiguration eines Projekts fehlerhaft ist ({{ ref("D28") }}).
 
 Offene Fragen:
 

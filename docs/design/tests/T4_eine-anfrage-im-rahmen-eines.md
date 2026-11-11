@@ -23,7 +23,7 @@ beweist: [F5, D8, D32]
 
 **Fälle zur Laufzeit:** Ohne Wert in der Konfiguration gilt der Grant kurz vor vier Stunden und endet nach vier Stunden. Ein Wert von 30 Minuten gilt. Ein Wert von zwölf Stunden gilt; es gibt keine feste Obergrenze. Das Skript wählt 15 Minuten bei einem Wert von vier Stunden: Der Grant endet nach 15 Minuten, und der Eintrag im Audit-Log nennt 15 Minuten. Das Skript liefert 0, einen negativen Wert oder Text: kein Grant, Code `ui_failed`. Ein Wert der Konfiguration von 0, ein negativer Wert oder Text: Der Daemon startet nicht.
 
-**Offen:** Das Ergebnis, wenn die Freigabe eine längere Laufzeit als die Konfiguration liefert, ist nicht entschieden. Der Vorschlag ist: kein Grant.
+Das Skript liefert eine längere Laufzeit als die Konfiguration: kein Grant, Code `ui_failed`.
 
 
 Belegt: {{ ref("F5") }}, {{ ref("D8") }}, {{ ref("D32") }}.

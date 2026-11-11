@@ -18,7 +18,7 @@ beleg:
 
 {{ design_kopf(page) }}
 
-**Entscheidung:** Ein Grant gilt für eine Sitzung und für genau die Zugangsdaten, die der Mensch angehakt hat. Die Laufzeit ist ein Wert der Konfiguration. Er gilt global für `a38`. Der Standard ist vier Stunden. Der Mensch kann in der Freigabeanfrage eine kürzere Laufzeit wählen.
+**Entscheidung:** Ein Grant gilt für eine Sitzung und für genau die Zugangsdaten, die der Mensch angehakt hat. Die Laufzeit ist ein Wert der Konfiguration. Er gilt global für `a38`. Der Standard ist vier Stunden. Der Mensch kann in der Freigabeanfrage eine kürzere Laufzeit wählen. Liefert die Freigabe eine längere Laufzeit als die Konfiguration, vergibt der Daemon keinen Grant und meldet `ui_failed`.
 
 **Begründung:** Der kleinste Umfang ist der sichere Standard.
 

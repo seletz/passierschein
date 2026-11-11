@@ -25,6 +25,6 @@ Offene Fragen:
 - Was zeigt die Freigabeanfrage, wenn die Sitzung keinen Namen hat oder der Mensch sie später umbenennt?
 - Kann der Daemon den Namen prüfen, zum Beispiel über die Sitzungsdaten des Agent-Werkzeugs zur Prozess-ID? Ohne Prüfung steht der Name bei den Angaben des Agents ({{ ref("D4") }}).
 - Wie heißt das Gegenstück bei anderen Agent-Werkzeugen?
-- Ein gekaperter Agent kann den Namen einer anderen Sitzung nennen ({{ ref("RI2") }}). Wie macht die Freigabeanfrage das erkennbar?
+- Entschieden (Stefan, 2026-11-11): Zwei Sitzungen mit demselben Namen sind ein Fehler; der Daemon lehnt beide ab ({{ ref("D25") }}). Offen bleiben die Längengrenze und die erlaubten Zeichen des Namens.
 
 **Quelle:** Rückmeldung von Stefan zum Design, 2026-11-11.

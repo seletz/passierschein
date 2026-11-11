@@ -22,7 +22,7 @@ beweist: [D27, F9]
 - Der Agent schreibt die Referenz in anderer Schreibweise. Die Freigabeanfrage zeigt die Namen aus der YAML-Datei des Fake-Backends.
 - Ungültige Referenzen enden mit `invalid_request`: `op://vault/item` ohne Feld; ein Segment zu viel; ein anderes Schema; ein leeres Segment.
 
-**Offen:** Der Fehlercode für ein unbekanntes Item in einem erlaubten Vault ist nicht entschieden.
+- Ein unbekanntes Item und ein unbekanntes Feld in einem erlaubten Vault enden mit `not_found`, ohne Freigabeanfrage. Ein Vault außerhalb der Policy endet mit `not_allowed`.
 
 
 Belegt: {{ ref("D27") }}, {{ ref("F9") }}.
