@@ -25,6 +25,7 @@ Offene Fragen:
 - Was zeigt die Freigabeanfrage, wenn die Sitzung keinen Namen hat oder der Mensch sie später umbenennt?
 - Kann der Daemon den Namen prüfen, zum Beispiel über die Sitzungsdaten des Agent-Werkzeugs zur Prozess-ID? Ohne Prüfung steht der Name bei den Angaben des Agents ({{ ref("D4") }}).
 - Wie heißt das Gegenstück bei anderen Agent-Werkzeugen?
-- Entschieden (Stefan, 2026-11-11): Zwei Sitzungen mit demselben Namen sind ein Fehler; der Daemon lehnt beide ab ({{ ref("D25") }}). Offen bleiben die Längengrenze und die erlaubten Zeichen des Namens.
+- Entschieden (Stefan, 2026-11-11): Zwei Sitzungen mit demselben Namen sind ein Fehler; der Daemon lehnt beide ab ({{ ref("D25") }}). Länge und Zeichen des Namens stehen in {{ ref("D25") }}.
+- Namen von Sitzungen mit Leerzeichen sind nach {{ ref("D25") }} ungültig. Wer wandelt einen solchen Namen um: der Mensch beim Benennen oder die Anmeldung des MCP-Servers?
 
 **Quelle:** Rückmeldung von Stefan zum Design, 2026-11-11.
