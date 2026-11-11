@@ -23,7 +23,11 @@ beweist: [D48, D36]
 - Danach endet jede Anfrage von A und von B mit `daemon_faulted`, auch im Rahmen des Grants von A. Es entsteht keine Freigabeanfrage. Das Fake-Backend zählt keinen Lesezugriff.
 - Das Skript der Oberfläche erhält genau eine Meldung über die Störung, nicht eine je Anfrage.
 - `a38 grants list`, `a38 grants revoke` und `a38 doctor` arbeiten während der Sperre. `a38 doctor` nennt die Störung.
-- Der Test behebt die Ursache. Danach arbeiten beide Sitzungen wieder. Das Audit-Log enthält Beginn und Ende der Sperre.
+- Der Test behebt die Ursache. Die Sperre bleibt: Jede Anfrage endet weiter mit `daemon_faulted`.
+- Der Admin-Befehl zum Aufheben läuft über den Admin-Socket. Danach arbeiten beide Sitzungen wieder. Das Audit-Log enthält Beginn und Ende der Sperre.
+- Der Admin-Befehl bei bestehender Ursache hebt die Sperre nicht auf und nennt den Befund.
+- Der Befehl zum Aufheben über den Agent-Socket endet mit `invalid_request`.
+- Ein Neustart des Daemons bei bestehender Ursache führt wieder in die Sperre.
 - Die fehlerhafte Konfiguration eines Projekts sperrt nur dieses Projekt und löst keine globale Sperre aus.
 
 

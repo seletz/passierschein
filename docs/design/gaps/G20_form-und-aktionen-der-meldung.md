@@ -26,6 +26,6 @@ Offene Fragen:
 - Zeigt die Freigabe-App die Meldung, oder nutzt der Daemon die Mitteilungen von macOS? Die Freigabe-App braucht dann eine zweite Art von Nachricht.
 - Wie oft meldet der Daemon denselben Fehler, damit keine Flut von Popups entsteht?
 - Wie erfährt der Mensch den Fehler, wenn er nicht am Mac sitzt?
-- Entschieden: Die Auslieferung bleibt global gesperrt, solange der Daemon nicht fehlerfrei läuft ({{ ref("D48") }}). Offen ist, woran der Daemon das Ende der Störung erkennt.
+- Entschieden: Die Auslieferung bleibt global gesperrt, solange der Daemon nicht fehlerfrei läuft ({{ ref("D48") }}). Nur der Mensch hebt die Sperre auf. Offen ist der Name des Admin-Befehls.
 
 **Quelle:** Rückmeldung von Stefan zum Design, 2026-11-11.
