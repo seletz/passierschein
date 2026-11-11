@@ -19,6 +19,13 @@ import (
 // process has no free file descriptor.
 const acceptRetry = 100 * time.Millisecond
 
+// Limits of the drain before the server closes a connection. See
+// [Server.closeConn].
+const (
+	drainLimit   = 1 << 20
+	drainTimeout = 500 * time.Millisecond
+)
+
 // Options holds the parts of a [Server].
 type Options struct {
 	// Config is the loaded configuration. The server uses the socket
@@ -207,6 +214,29 @@ func (s *Server) track(c net.Conn) bool {
 	return true
 }
 
+// closeConn ends a connection so that the peer receives each response.
+//
+// If the server closes a socket while unread input is in its receive
+// buffer, Linux sends a reset, and the peer can lose the last response, for
+// example the error for an oversized message. closeConn therefore closes
+// the write side first, then reads and discards the rest of the input up
+// to drainLimit bytes or drainTimeout, and closes after that. The limits
+// make sure that a peer cannot keep the connection open. At the shutdown of
+// the server, closeConn closes at once.
+func (s *Server) closeConn(ctx context.Context, c *net.UnixConn) {
+	defer func() { _ = c.Close() }()
+	if ctx.Err() != nil {
+		return
+	}
+	if err := c.CloseWrite(); err != nil {
+		return
+	}
+	if err := c.SetReadDeadline(s.clock.Now().Add(drainTimeout)); err != nil {
+		return
+	}
+	_, _ = io.Copy(io.Discard, io.LimitReader(c, drainLimit))
+}
+
 // untrack closes and removes a connection.
 func (s *Server) untrack(c net.Conn) {
 	_ = c.Close()
@@ -218,6 +248,7 @@ func (s *Server) untrack(c net.Conn) {
 // handleConn reads the peer data and serves one connection. It serves only
 // a peer of the same user as the daemon.
 func (s *Server) handleConn(ctx context.Context, c *net.UnixConn, admin bool) {
+	defer s.closeConn(ctx, c)
 	peer, err := s.readPeer(c)
 	if err != nil {
 		s.log.Warn("connection closed: cannot read the peer data", "error", err)

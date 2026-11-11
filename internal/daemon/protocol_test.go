@@ -138,6 +138,11 @@ func TestInvalidMessages(t *testing.T) {
 		{name: "request before hello", beforeHello: true, data: valid + "\n", wantID: "r-9", wantClose: true},
 		{name: "not JSON before hello", beforeHello: true, data: "beispiel\n", wantClose: true},
 		{name: "closed in the middle of hello", beforeHello: true, data: `{"version":1,"type":"hel`, noResponse: true},
+		// The daemon closes these connections with unread input in its
+		// buffer. The client must still receive the error (no reset).
+		{name: "oversized message with more input", data: `{"version":1,"type":"grant_status","id":"` + strings.Repeat("a", protocol.MaxMessageSize) + "\"}\n" + strings.Repeat("b", 256*1024), wantClose: true},
+		{name: "invalid session name with more input", beforeHello: true, data: `{"version":1,"type":"hello","session_name":"beispiel.koordinator"}` + "\n" + strings.Repeat(valid+"\n", 2000), wantClose: true},
+		{name: "request before hello with more input", beforeHello: true, data: valid + "\n" + strings.Repeat(valid+"\n", 2000), wantID: "r-9", wantClose: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -335,4 +340,44 @@ func TestHelperProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	fmt.Printf("helper %d %s\n", os.Getpid(), w.Project)
+}
+
+func TestCloseIsBounded(t *testing.T) {
+	// A peer that sends without end after an oversized message gets the
+	// error, and the daemon still closes the connection: the drain before
+	// the close has a limit.
+	r := startServer(t, testConfig(t, nil), newFakeBroker())
+	conn := rawAgent(t, r, "beispiel-koordinator")
+	stop := make(chan struct{})
+	defer close(stop)
+	go func() {
+		chunk := []byte(strings.Repeat("a", 32*1024))
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			if _, err := conn.c.Write(chunk); err != nil {
+				return
+			}
+		}
+	}()
+	e := wantErrorResponse(t, conn.read(t, protocol.AgentResponses), protocol.CodeInvalidRequest)
+	if e.ID != "" {
+		t.Errorf("error ID = %q, want none", e.ID)
+	}
+	start := time.Now()
+	// The daemon ends the connection: EOF after the half close, then the
+	// close after the drain limit.
+	buf := make([]byte, 1024)
+	for {
+		if _, err := conn.c.Read(buf); err != nil {
+			break
+		}
+	}
+	if d := time.Since(start); d > 5*time.Second {
+		t.Errorf("the connection ended after %v, want the drain limit", d)
+	}
+	r.wantWorks(t)
 }
