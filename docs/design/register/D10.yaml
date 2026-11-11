@@ -1,0 +1,9 @@
+id: D10
+zustand: eingeloest
+titel: Ein Secret außerhalb von dev geht nie als MCP-Antwort an den Agent, sondern als Datei auf einem tmpfs
+bezug: '#2'
+schluessel: '#2/nicht-dev-tmpfs'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

@@ -1,0 +1,9 @@
+id: G13
+zustand: eingeloest
+titel: Ein Ablauf für die Rotation nach einem Leck fehlt
+bezug: '#2'
+schluessel: '#2/rotation'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

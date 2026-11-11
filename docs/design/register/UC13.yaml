@@ -1,0 +1,9 @@
+id: UC13
+zustand: eingeloest
+titel: Ein Agent in der VM fordert Zugangsdaten über den weitergeleiteten Socket an
+bezug: '#2'
+schluessel: '#2/vm'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

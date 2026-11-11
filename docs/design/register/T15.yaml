@@ -1,0 +1,9 @@
+id: T15
+zustand: eingeloest
+titel: Das 1Password-Backend liest aus einem Test-Vault und meldet den gesperrten Zustand
+bezug: '#2'
+schluessel: '#2/onepassword'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

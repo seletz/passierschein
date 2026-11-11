@@ -1,0 +1,9 @@
+id: D39
+zustand: eingeloest
+titel: Der Daemon nutzt zuerst einen Service Account, die Desktop-Integration folgt hinter einem Build-Tag
+bezug: '#2'
+schluessel: '#2/service-account'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

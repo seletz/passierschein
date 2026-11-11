@@ -1,0 +1,9 @@
+id: T1
+zustand: eingeloest
+titel: Der Ablauf liefert mit Fake-Backend und automatischer Freigabe den Wert und schreibt das Audit-Log
+bezug: '#2'
+schluessel: '#2/ende-zu-ende'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

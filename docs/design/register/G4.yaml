@@ -1,0 +1,9 @@
+id: G4
+zustand: eingeloest
+titel: Der echte Dialog von Touch ID und die Sicht unter OmniWM sind nicht geprüft
+bezug: '#2'
+schluessel: '#2/ui-praxis'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

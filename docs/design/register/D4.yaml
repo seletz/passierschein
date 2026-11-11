@@ -1,0 +1,9 @@
+id: D4
+zustand: eingeloest
+titel: Die Angaben des Agents gelten als unbestätigt und stehen getrennt von den geprüften Fakten
+bezug: '#2'
+schluessel: '#2/unbestaetigt'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

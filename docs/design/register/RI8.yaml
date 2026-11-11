@@ -1,0 +1,9 @@
+id: RI8
+zustand: eingeloest
+titel: Der Mac schläft, die Agents warten und suchen Umwege
+bezug: '#2'
+schluessel: '#2/verfuegbarkeit'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

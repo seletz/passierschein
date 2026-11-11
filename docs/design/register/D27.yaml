@@ -1,0 +1,9 @@
+id: D27
+zustand: eingeloest
+titel: Eine Anfrage nennt Zugangsdaten als Referenz aus Vault, Item und Feld
+bezug: '#2'
+schluessel: '#2/referenzen'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

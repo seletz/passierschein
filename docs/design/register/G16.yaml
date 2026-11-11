@@ -1,0 +1,9 @@
+id: G16
+zustand: eingeloest
+titel: Ob der persönliche Assistent auf dem Mac über a38 läuft, ist offen
+bezug: '#2'
+schluessel: '#2/assistent'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'
