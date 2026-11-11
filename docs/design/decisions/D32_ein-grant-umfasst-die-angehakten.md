@@ -21,4 +21,4 @@ beleg:
 
 **Begründung:** Der kleinste Umfang ist der sichere Standard.
 
-**Offen:** Die Projektnotiz nennt als Beispiel „DiPA, dev-Vault, 4 h“. Das spricht für einen Grant über einen ganzen Vault ({{ ref("G7") }}).
+**Offen:** Die Projektnotiz nennt als Beispiel einen Grant für ein Projekt, einen dev-Vault und 4 h. Das spricht für einen Grant über einen ganzen Vault ({{ ref("G7") }}).

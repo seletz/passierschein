@@ -22,4 +22,6 @@ beleg:
 
 **Begründung:** Die VM ist damit nur eine Frage des Transports. Der Daemon braucht keinen Netzwerk-Port und kein gemeinsames Geheimnis.
 
+**Offen:** Der Transport in die VM ist nicht mehr festgelegt. Stefan hat am 2026-11-11 gesagt, dass SSH nicht zwingend ist. Die Optionen stehen in {{ ref("G1") }}. Der Unix-Socket für den lokalen Agent bleibt.
+
 **Quelle:** Projektnotiz, Design v0 und Stufenplan.
