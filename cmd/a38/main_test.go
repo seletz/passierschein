@@ -26,7 +26,7 @@ func TestRun(t *testing.T) {
 		{"unknown flag", []string{"--verbose"}, 2, "", `unknown command "--verbose"`},
 		{"serve", []string{"serve", "--backend", "fake", "--ui", "auto-approve"}, 1, "", "a38 serve: not implemented"},
 		{"mcp", []string{"mcp"}, 1, "", "a38 mcp: not implemented"},
-		{"audit", []string{"audit", "verify"}, 1, "", "a38 audit: not implemented"},
+		{"audit without subcommand", []string{"audit"}, 2, "", "a38 audit list"},
 		{"grants", []string{"grants", "list"}, 1, "", "a38 grants: not implemented"},
 		{"doctor", []string{"doctor"}, 1, "", "a38 doctor: not implemented"},
 		{"llm without flag", []string{"llm"}, 2, "", "usage: a38 llm --skill"},
