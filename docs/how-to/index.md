@@ -10,6 +10,7 @@ Eine Anleitung löst eine bestimmte Aufgabe.
 
 - [Skill für Agents installieren](20-skill-installieren.md)
 - [a38 als MCP-Server anmelden](22-mcp-server-anmelden.md)
+- [Störung finden und beheben](24-stoerung-finden-und-beheben.md)
 - [Entwicklungsumgebung einrichten](90-entwickeln.md)
 - [Doku schreiben und bauen](92-doku-schreiben.md)
 - [Design-Artefakt anlegen](94-design-artefakt-anlegen.md)

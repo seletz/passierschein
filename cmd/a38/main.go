@@ -40,6 +40,7 @@ var commands = []command{
 	{"serve", "Run the daemon: agent socket, admin socket, approval and audit log", runServe},
 	{"mcp", "Run the MCP server for one agent session (stdio)", runMCP},
 	{"grants", "List and revoke grants", runGrants},
+	{"fault", "Show and lift the global delivery lock", runFault},
 	{"audit", "List the audit log and verify its hash chain", runAudit},
 	{"doctor", "Check the state of a38 and name the next step for each finding", runDoctor},
 	{"llm", "Print the instructions for agents (--skill)", runLLM},
@@ -85,10 +86,4 @@ func usage(w io.Writer) {
 func runVersion(_ []string, stdout, _ io.Writer) int {
 	_, _ = fmt.Fprintln(stdout, version.String())
 	return exitOK
-}
-
-// notImplemented is the body of a command that has no code yet.
-func notImplemented(name string, stderr io.Writer) int {
-	_, _ = fmt.Fprintf(stderr, "a38 %s: not implemented\n", name)
-	return exitFailure
 }
