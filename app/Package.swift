@@ -1,6 +1,6 @@
 // swift-tools-version: 6.0
 // The approval app of a38 (F11). The daemon starts it for one approval
-// request or one notice. See docs/reference/90-freigabe-app.md.
+// request or one notice. See docs/reference/85-freigabe-app.md.
 import PackageDescription
 
 // The test switches (--skip-auth, --auto-close, ...) exist only in a debug
