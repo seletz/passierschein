@@ -18,37 +18,31 @@ stufe: 1
 
 **Auslöser:** Eine Freigabeanfrage ist sichtbar.
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Agent
+    participant D as Daemon
+    actor H as Mensch
+    D->>H: Popup der Freigabe-App
+    alt Ablehnung
+        H-->>D: Deny oder Esc
+        D-->>A: Fehler denied
+    else Zeitablauf
+        D-->>A: Fehler timeout
+    else Teilauswahl
+        H-->>D: Teil ausgewählt, Touch ID
+        D-->>A: Werte für die Auswahl,<br/>denied für den Rest
+    end
+    Note over D: Audit-Log: Entscheidung
+```
+
 **Ablauf:**
 
 1. Der Mensch lehnt ab, oder die Wartezeit der Freigabe läuft ab ({{ ref("D30") }}).
 2. Der Daemon vergibt keinen Grant und liefert keinen Wert aus.
 3. Der Agent erhält einen Fehler mit einem stabilen Code: `denied` oder `timeout` ({{ ref("D35") }}).
 4. Der Daemon schreibt die Entscheidung in das Audit-Log.
-
-```mermaid
-sequenceDiagram
-    participant A as Agent
-    participant M as a38 mcp
-    participant D as Daemon
-    participant U as Freigabe-App
-    actor H as Mensch
-    D->>U: Freigabeanfrage
-    U->>H: Popup
-    alt Ablehnung
-        H->>U: Deny oder Esc
-        U-->>D: Entscheidung: abgelehnt
-        D-->>M: Fehler denied
-    else Zeitablauf
-        U-->>D: Entscheidung: timeout
-        D-->>M: Fehler timeout
-    else Teilauswahl
-        H->>U: Auswahl eines Teils und Touch ID
-        U-->>D: Entscheidung: Teil freigegeben
-        D-->>M: Werte für die Auswahl, denied für den Rest
-    end
-    M-->>A: Antwort
-    Note over D: Audit-Log: Entscheidung
-```
 
 **Ergebnis:** Der Agent weiß, dass er stoppen muss. Die Anleitung für Agents sagt: nach einer Ablehnung nicht umgehen ({{ ref("D22") }}).
 

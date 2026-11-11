@@ -20,6 +20,26 @@ stufe: 1
 
 **Vorbedingung:** Der Daemon läuft. Die Sitzung hat keinen passenden Grant.
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Agent
+    participant D as Daemon
+    participant B as Backend
+    actor H as Mensch
+    A->>D: request_credentials<br/>über a38 mcp
+    D->>D: Sitzung, Policy,<br/>Bündelfenster
+    D->>B: Namen auflösen
+    B-->>D: Namen, kein Wert
+    D->>H: Popup der Freigabe-App
+    H-->>D: Auswahl und Touch ID
+    D->>D: Grant vergeben
+    D->>B: Werte lesen
+    B-->>D: Werte
+    D-->>A: MCP-Antwort mit Werten
+    Note over D: Audit-Log bei jedem Schritt
+```
+
 **Ablauf:**
 
 1. Der Agent ruft das MCP-Werkzeug `request_credentials` auf. Er nennt die Zugangsdaten als Referenzen und gibt seine Aufgabe und eine Begründung an ({{ ref("D41") }}, {{ ref("D27") }}).
@@ -33,32 +53,6 @@ stufe: 1
 9. Der Daemon vergibt einen Grant für die Sitzung ({{ ref("D8") }}).
 10. Der Daemon liest die Werte im Backend und liefert sie als MCP-Antwort aus ({{ ref("D9") }}).
 11. Der Daemon schreibt jeden Schritt in das Audit-Log ({{ ref("D11") }}).
-
-```mermaid
-sequenceDiagram
-    participant A as Agent
-    participant M as a38 mcp
-    participant D as Daemon
-    participant B as Backend
-    participant U as Freigabe-App
-    actor H as Mensch
-    A->>M: request_credentials (Referenzen, Aufgabe, Begründung)
-    M->>D: Anfrage über den Agent-Socket
-    D->>D: Sitzung zuordnen, Policy prüfen
-    D->>D: Bündelfenster abwarten
-    D->>B: Namen von Vaults und Items auflösen
-    B-->>D: Namen, kein Secret-Wert
-    D->>U: Freigabeanfrage (geprüfte Fakten, Angaben des Agents)
-    U->>H: Popup
-    H->>U: Auswahl und Touch ID
-    U-->>D: Entscheidung
-    D->>D: Grant vergeben
-    D->>B: Werte lesen
-    B-->>D: Werte
-    D-->>M: Werte
-    M-->>A: MCP-Antwort mit den Werten
-    Note over D: Jeder Schritt steht im Audit-Log
-```
 
 **Ergebnis:** Der Agent hat die freigegebenen Werte. Das Audit-Log enthält Anfrage, Entscheidung, Grant und Auslieferung.
 

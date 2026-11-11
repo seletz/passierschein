@@ -18,6 +18,23 @@ stufe: 5
 
 **Auslöser:** Der Agent braucht Zugangsdaten aus einem Vault, der nicht zur Umgebung dev gehört.
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Agent
+    participant D as Daemon
+    actor H as Mensch
+    A->>D: request_credentials<br/>(Vault außerhalb von dev)
+    alt MVP
+        D-->>A: Fehler not_allowed,<br/>ohne Popup
+    else ab Stufe 5
+        D->>H: Popup, Umgebung hervorgehoben
+        H-->>D: Auswahl und Touch ID
+        D->>D: Wert in Datei auf tmpfs,<br/>mit Laufzeit
+        D-->>A: Pfad der Datei, nie der Wert
+    end
+```
+
 **Ablauf im MVP:** Der Daemon lehnt die Anfrage ohne Freigabeanfrage ab. Der Agent erhält den Code `not_allowed`. Der Daemon schreibt die Ablehnung in das Audit-Log ({{ ref("D24") }}).
 
 **Ablauf ab Stufe 5:**
@@ -25,29 +42,6 @@ stufe: 5
 1. Der Daemon startet eine Freigabe. Die Freigabeanfrage hebt die Umgebung hervor.
 2. Nach der Freigabe schreibt der Daemon den Wert in eine Datei auf einem tmpfs. Die Datei hat eine Laufzeit ({{ ref("D10") }}).
 3. Der Agent erhält den Pfad der Datei, nie den Wert.
-
-```mermaid
-sequenceDiagram
-    participant A as Agent
-    participant M as a38 mcp
-    participant D as Daemon
-    participant U as Freigabe-App
-    actor H as Mensch
-    A->>M: request_credentials (Vault außerhalb von dev)
-    M->>D: Anfrage
-    alt MVP
-        D-->>M: Fehler not_allowed, ohne Freigabeanfrage
-        M-->>A: Fehler
-    else ab Stufe 5
-        D->>U: Freigabeanfrage, Umgebung hervorgehoben
-        U->>H: Popup
-        H->>U: Auswahl und Touch ID
-        U-->>D: Entscheidung
-        D->>D: Wert in eine Datei auf dem tmpfs schreiben, mit Laufzeit
-        D-->>M: Pfad der Datei
-        M-->>A: Pfad, nie der Wert
-    end
-```
 
 **Ergebnis:** Ein Wert außerhalb von dev steht nie in einer MCP-Antwort.
 
