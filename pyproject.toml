@@ -1,0 +1,18 @@
+[project]
+name = "passierschein-docs"
+version = "0.0.0"
+description = "Documentation tooling for Passierschein (Zensical)"
+requires-python = ">=3.13"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "zensical==0.1.0",
+    "pyyaml==6.0.3",
+]
+
+# The repository root is not a package: only the docs toolchain lives here.
+[tool.uv]
+package = false

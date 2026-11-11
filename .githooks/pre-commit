@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Scan the staged changes for secrets before each commit.
+# Install with `mise run hooks:install`.
+set -euo pipefail
+exec mise run secrets:staged

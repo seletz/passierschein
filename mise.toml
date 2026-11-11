@@ -1,0 +1,136 @@
+# Tasks and tool versions of Passierschein (CLI a38). CI and the release
+# workflows run only these tasks (.github/workflows/), so a local
+# `mise run check` checks what CI checks. `mise run tools:check` keeps the
+# pins and the workflows in line.
+
+[tools]
+# Same version as the go directive in go.mod (tools:check).
+go = "1.27.4"
+# Runs the docs toolchain (Zensical, pinned in pyproject.toml and uv.lock).
+uv = "0.13.7"
+# Builds the release archives, checksums and SBOMs (.goreleaser.yml).
+goreleaser = "2.20.0"
+# Built with the pinned Go, so the linter is never older than go.mod.
+"go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = "2.15.0"
+# Finds known vulnerabilities in the modules that the code calls.
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.9.0"
+# Finds secrets in the git history and in staged changes.
+gitleaks = "8.30.1"
+
+[settings]
+# mise checks the cosign signature and the SLSA provenance of tools it
+# downloads through aqua (goreleaser, gitleaks). tools:check fails if these
+# go off.
+aqua.cosign = true
+aqua.slsa = true
+
+[env]
+# The binary is pure Go; only the race detector needs cgo (task test).
+CGO_ENABLED = "0"
+
+[tasks.build]
+description = "Build the CLI binary bin/a38 (version from git describe)"
+run = """
+VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo dev)
+COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
+DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+PKG=github.com/seletz/passierschein/internal/version
+go build -trimpath -ldflags "-s -w -X ${PKG}.Version=${VERSION#v} -X ${PKG}.Commit=${COMMIT} -X ${PKG}.Date=${DATE}" -o bin/a38 ./cmd/a38
+"""
+
+[tasks.fmt]
+description = "Check formatting: fail and list the files gofmt would change"
+run = 'out=$(gofmt -l .); if [ -n "$out" ]; then echo "$out"; exit 1; fi'
+
+[tasks.vet]
+description = "Run go vet"
+run = "go vet ./..."
+
+[tasks.lint]
+description = "Run golangci-lint"
+run = "golangci-lint run"
+
+[tasks.test]
+description = "Run all tests with the race detector"
+env = { CGO_ENABLED = "1" }
+run = "go test -race ./..."
+
+[tasks.vuln]
+description = "Run govulncheck: fail on a known vulnerability in code that a38 calls"
+run = "govulncheck ./..."
+
+[tasks.secrets]
+description = "Scan the git history for secrets with gitleaks (values are redacted in the output)"
+run = "gitleaks git --redact --no-banner"
+
+[tasks."secrets:staged"]
+description = "Scan the staged changes for secrets with gitleaks (the pre-commit hook runs this)"
+run = "gitleaks git --pre-commit --staged --redact --no-banner"
+
+[tasks."hooks:install"]
+description = "Install the git hooks of .githooks/ (pre-commit: secret scan); run once per clone"
+run = "git config core.hooksPath .githooks"
+
+[tasks."tools:check"]
+description = "Check the tool pins of mise.toml and that the workflows run only pinned actions and mise tasks"
+run = "bash scripts/tool-versions-check.sh"
+
+[tasks.check]
+description = "All checks of CI: fmt, vet, lint, test, vuln, secrets, tools:check"
+depends = ["fmt", "vet", "lint", "test", "vuln", "secrets", "tools:check"]
+
+[tasks."design:check"]
+description = "Check the design set (docs/design) with dg-register; local only, needs the globally installed dg-register (mise global)"
+run = "dg-register check"
+
+[tasks."uv:sync"]
+description = "Install the docs toolchain (Zensical) into .venv"
+run = "uv sync --locked"
+
+[tasks."docs:serve"]
+description = "Serve the documentation locally with live reload"
+depends = ["uv:sync"]
+run = "uv run --locked zensical serve --open"
+
+[tasks."docs:build"]
+description = "Build the documentation into site/ (strict: dead links fail); DOCS_VERSION overrides the version shown"
+depends = ["uv:sync"]
+# The start page names the commit through the macros extension; if the hash
+# is missing, the macros did not render.
+run = """
+uv run --locked zensical build --clean --strict
+grep -q "$(git rev-parse --short HEAD)" site/index.html || { echo "site/index.html lacks the commit hash: macros not rendered" >&2; exit 1; }
+"""
+
+[tasks.release]
+description = "Create a release: interactive semver bump, pushes the tag (the release workflow does the rest)"
+run = "bash scripts/release.sh"
+
+[tasks."release:snapshot"]
+description = "Build a snapshot release into dist/: archives, CycloneDX SBOMs and checksums as the release would, nothing published"
+# The SBOM generator is pinned here, not under [tools]: only the release needs it.
+# renovate: datasource=github-releases depName=CycloneDX/cyclonedx-gomod extractVersion=^v(?<version>.+)$
+tools = { "github:CycloneDX/cyclonedx-gomod" = "1.12.0" }
+run = "goreleaser release --snapshot --clean"
+
+[tasks."release:sbom:check"]
+description = "Check that dist/ has one SBOM per archive and that the checksum file lists both (after release:snapshot)"
+# renovate: datasource=github-releases depName=jqlang/jq extractVersion=^jq-(?<version>.+)$
+tools = { jq = "1.8.2" }
+run = "bash scripts/sbom-check.sh"
+
+[tasks."release:publish"]
+description = "CI only (release workflow): build and publish the GitHub release of the tag in GITHUB_REF_NAME"
+# renovate: datasource=github-releases depName=CycloneDX/cyclonedx-gomod extractVersion=^v(?<version>.+)$
+tools = { "github:CycloneDX/cyclonedx-gomod" = "1.12.0" }
+run = "goreleaser release --clean"
+
+[tasks."release:secrets:check"]
+description = "CI only (signed snapshot): fail unless the macOS signing and notarization secrets are set; values are never printed"
+run = "bash scripts/signing-secrets-check.sh"
+
+[tasks."release:signatures:check"]
+description = "Check that every darwin binary in dist/ carries a Developer ID signature with hardened runtime (after release:snapshot)"
+# renovate: datasource=go depName=github.com/anchore/quill
+tools = { "go:github.com/anchore/quill/cmd/quill" = "0.7.1", jq = "1.8.2" }
+run = "bash scripts/signatures-check.sh"

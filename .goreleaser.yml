@@ -1,0 +1,105 @@
+version: 2
+
+project_name: passierschein
+
+builds:
+  - id: a38
+    main: ./cmd/a38
+    binary: a38
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    # Reproducible builds: the file times come from the commit.
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    ldflags:
+      - -s -w
+      - -X github.com/seletz/passierschein/internal/version.Version={{ .Version }}
+      - -X github.com/seletz/passierschein/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/seletz/passierschein/internal/version.Date={{ .CommitDate }}
+
+# Sign and notarize the darwin binaries (Developer ID Application, hardened
+# runtime, Apple timestamp) with quill, as in total-recall. quill runs on the
+# Linux release runner. The step is only active when the secrets are set
+# (release.yml and signed-snapshot.yml pass them through); otherwise the darwin
+# binaries ship unsigned. The step rewrites the binaries in dist/ before
+# archives, SBOMs and checksums are made, so all three describe the signed
+# binary. The Swift approval app is not part of this file yet: quill signs
+# single binaries, not app bundles (see the spike on app signing).
+notarize:
+  macos:
+    - enabled: '{{ isEnvSet "MACOS_SIGN_P12" }}'
+      ids:
+        - a38
+      sign:
+        certificate: "{{ .Env.MACOS_SIGN_P12 }}"
+        password: "{{ .Env.MACOS_SIGN_PASSWORD }}"
+      notarize:
+        issuer_id: "{{ .Env.MACOS_NOTARY_ISSUER_ID }}"
+        key_id: "{{ .Env.MACOS_NOTARY_KEY_ID }}"
+        key: "{{ .Env.MACOS_NOTARY_KEY }}"
+        # Wait for the result so that a rejected submission fails the release
+        # before anything is uploaded. 20m is the maximum goreleaser allows.
+        wait: true
+        timeout: 20m
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+# One CycloneDX SBOM per platform next to the archive, cataloged from the
+# released binary itself with cyclonedx-gomod (pinned in mise.toml, tasks
+# release:snapshot and release:publish). goreleaser runs the command inside
+# dist/; the checksum file lists the SBOMs like the archives.
+sboms:
+  - id: binary
+    artifacts: binary
+    documents:
+      - "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}.cdx.json"
+    cmd: cyclonedx-gomod
+    args:
+      - bin
+      - -json
+      - -version
+      - "{{ .Version }}"
+      - -output
+      - $document
+      - $artifact
+
+checksum:
+  name_template: "checksums-{{ .Tag }}.txt"
+
+# The release notes come from the Conventional Commits since the last tag.
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - title: "Neue Funktionen"
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 0
+    - title: "Fehlerbehebungen"
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 1
+    - title: "Dokumentation"
+      regexp: '^.*?docs(\(.+\))??!?:.+$'
+      order: 2
+    - title: "Sonstiges"
+      order: 999
+  filters:
+    exclude:
+      - "^test:"
+      - "^ci:"
+
+# The repository is private, so is the release.
+release:
+  name_template: "Passierschein {{ .Tag }}"
+  prerelease: auto

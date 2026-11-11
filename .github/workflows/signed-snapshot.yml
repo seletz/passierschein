@@ -1,0 +1,52 @@
+name: Signed snapshot
+
+# Manual test of the macOS signing and notarization (notarize.macos in
+# .goreleaser.yml) without a release, as in total-recall. Builds a goreleaser
+# snapshot with the signing secrets, checks the darwin signatures and uploads
+# the darwin archives, their SBOMs and the checksums as a short-lived workflow
+# artifact. Nothing is published: --snapshot skips publishing, no tag is
+# created and the job only gets read access.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    env:
+      MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+      MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
+      MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+      MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+      MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up mise
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+
+      - name: Check that the signing secrets are set
+        run: mise run release:secrets:check
+
+      - name: Snapshot (signed)
+        run: mise run release:snapshot
+
+      - name: Check the signatures
+        run: mise run release:signatures:check
+
+      - name: Upload the darwin archives
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: signed-snapshot-darwin
+          path: |
+            dist/*-darwin-*.tar.gz
+            dist/*-darwin-*.cdx.json
+            dist/checksums-*.txt
+          if-no-files-found: error
+          retention-days: 7

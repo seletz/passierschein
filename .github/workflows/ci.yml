@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        # Full history with tags: the secret scan reads the history, and the
+        # docs show the version from git describe.
+        with:
+          fetch-depth: 0
+
+      # Installs mise and the tools of mise.toml. Every further step is a
+      # mise task, so CI checks exactly what `mise run check` checks locally.
+      - name: Set up mise
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+
+      - name: Check (fmt, vet, lint, test, vuln, secrets, tools:check)
+        run: mise run check
+
+      - name: Build
+        run: mise run build
+
+      - name: Docs
+        run: mise run docs:build
+
+      # Archives, SBOMs and checksums as the release would build them; nothing
+      # is published.
+      - name: Release snapshot
+        run: mise run release:snapshot
+
+      - name: Check the SBOMs
+        run: mise run release:sbom:check

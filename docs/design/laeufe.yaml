@@ -1,0 +1,12 @@
+# Designläufe von Passierschein (Lauf-Objekt).
+laeufe:
+  - nummer: 1
+    titel: Design bis MVP
+    issue: '#2'
+    beginn: '2026-11-11'
+    status: offen
+    teilstaende:
+      - id: '1.0'
+        bedeutung: Erststand des Designs bis zum MVP, vor dem Review
+        seit: '2026-11-11'
+        quelle: ['#2']

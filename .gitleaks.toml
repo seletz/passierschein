@@ -1,0 +1,10 @@
+# gitleaks configuration. The default rules apply; this file only adds the
+# paths that hold no secrets by construction.
+title = "passierschein"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Lock files hold package hashes, not secrets"
+paths = ['''^uv\.lock$''', '''^go\.sum$''']
