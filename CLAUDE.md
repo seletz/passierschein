@@ -14,6 +14,9 @@ Credential broker for coding agents: `a38 serve` (Go daemon on the Mac, only com
 - **Test data is neutral:** no real customer, company or person names, no real secrets, no real vault or item names. Use `beispiel.app.k8s-dev`, `datenbank-dev`, `beispielprojekt`.
 - **Secrets:** a secret value never appears in a log, an error message or test output. gitleaks runs before each commit (`mise run hooks:install`) and in CI.
 - **Do not use 1Password** (`op`, the 1Password SSH agent, the SDK) without Stefan's explicit approval. Commits are unsigned (`git -c commit.gpgsign=false commit`); push over HTTPS with the gh credentials.
+- **Pull requests:** assign each PR that Stefan must review to him (`gh pr edit <n> --add-assignee seletz`). A PR with a design proposal or a UI component shows a screenshot in its description. A PR with an open choice for Stefan stays a draft; set it to ready only after the discussion and his approval in that discussion.
+- **Docs review:** on request, show the built site in the tailnet (`tailscale serve --bg --https=<port> http://localhost:<port>`), tell Stefan the URL with the port, and remove the share after the review.
+- `dg-register` is the globally installed instance (global mise configuration). Do not pin it in this repo and do not change the global configuration; tell Stefan if a newer version is necessary.
 - Go: static build, `CGO_ENABLED=0`. TDD: failing test first. Table-driven tests. Go doc comments on exported identifiers.
 - Conventional Commits (`feat(serve): …`); the release notes come from them. SemVer.
 - Never mention Claude or AI in commits, PRs or issues.
