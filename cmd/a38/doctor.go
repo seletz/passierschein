@@ -30,10 +30,11 @@ func runDoctorWith(args []string, stdout, stderr io.Writer, newEnv func(configPa
 	var af adminFlags
 	fs := newFlagSet("doctor", stderr)
 	af.register(fs)
-	if err := fs.Parse(args); err != nil {
+	pos, err := parseInterspersed(fs, args)
+	if err != nil {
 		return exitUsage
 	}
-	if fs.NArg() != 0 {
+	if len(pos) != 0 {
 		_, _ = fmt.Fprintf(stderr, "a38 doctor: unexpected argument\n\n%s", doctorUsage)
 		return exitUsage
 	}

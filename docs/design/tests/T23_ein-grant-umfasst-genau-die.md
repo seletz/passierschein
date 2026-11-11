@@ -3,12 +3,12 @@ render_macros: true
 id: 'T23'
 titel: 'Ein Grant umfasst genau die angehakten Zugangsdaten'
 bereich: 'Grants und Auslieferung'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 5
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [D32, D7, F5]
 ---
 # T23 — Ein Grant umfasst genau die angehakten Zugangsdaten

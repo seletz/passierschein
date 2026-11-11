@@ -3,12 +3,12 @@ render_macros: true
 id: 'T22'
 titel: 'Der Daemon startet nur mit einer vollständigen Konfiguration der Vaults'
 bereich: 'Backends'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 3
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [D12, D47, D28, F15]
 ---
 # T22 — Der Daemon startet nur mit einer vollständigen Konfiguration der Vaults

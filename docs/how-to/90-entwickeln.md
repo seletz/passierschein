@@ -91,7 +91,7 @@ Voraussetzungen:
 `mise run check` enthält die Tasks der App nicht.
 Die CI läuft auf Linux und baut die App nicht.
 Vor einem Pull Request mit Änderungen in `app/` führe `mise run app:build` und `mise run app:test` lokal aus.
-Die Referenz steht unter [Freigabe-App](../reference/90-freigabe-app.md).
+Die Referenz steht unter [Freigabe-App](../reference/85-freigabe-app.md).
 
 ## Mit Worktrees arbeiten
 

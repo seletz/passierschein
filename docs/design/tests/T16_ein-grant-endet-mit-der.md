@@ -3,12 +3,12 @@ render_macros: true
 id: 'T16'
 titel: 'Ein Grant endet mit der Sitzung, dem Widerruf und dem Neustart des Daemons'
 bereich: 'Grants und Auslieferung'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 4
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [D33, F5]
 ---
 # T16 — Ein Grant endet mit der Sitzung, dem Widerruf und dem Neustart des Daemons

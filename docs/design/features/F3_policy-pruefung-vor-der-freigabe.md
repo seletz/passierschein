@@ -3,13 +3,13 @@ render_macros: true
 id: 'F3'
 titel: 'Policy-Prüfung vor der Freigabe'
 bereich: 'Grants und Auslieferung'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 1
 headless: true
 status: aktiv
 stufe: 1
-umsetzung: zu-bauen
+umsetzung: vorhanden
 implementiert: [D12, D24, D28, D47]
 use_cases: [UC1, UC5]
 ---

@@ -33,7 +33,7 @@ Aufruf: `mise run <task>`.
 
 Die Tasks laufen nur auf macOS mit Xcode.
 Sie gehören nicht zu `check`, weil die CI auf Linux läuft.
-Die Einzelheiten stehen in der [Referenz der Freigabe-App](90-freigabe-app.md).
+Die Einzelheiten stehen in der [Referenz der Freigabe-App](85-freigabe-app.md).
 
 | Task | Zweck |
 |---|---|

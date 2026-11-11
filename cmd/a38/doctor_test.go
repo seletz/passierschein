@@ -48,12 +48,13 @@ type fakeEnv struct {
 
 func healthyEnv(t *testing.T) *fakeEnv {
 	t.Helper()
+	project := t.TempDir() // exists, so the path check finds nothing
 	cfg, err := config.Parse([]byte(`version: 1
 vaults:
   - {name: beispiel.app.k8s-dev, environment: dev}
 projects:
   - name: beispielprojekt
-    paths: [/tmp/a38-beispielprojekt]
+    paths: [` + project + `]
     vaults: [beispiel.app.k8s-dev]
 paths:
   socket_dir: /tmp/a38-doctor/run
@@ -122,6 +123,9 @@ func TestDoctor(t *testing.T) {
 		{"project with invalid configuration", func(e *fakeEnv) {
 			e.cfg.Projects[0].Invalid = "the vault beispiel.app.k8s-prod is not in the vault list"
 		}, 1, []string{`the configuration of the project "beispielprojekt" is invalid`, "beispiel.app.k8s-prod is not in the vault list", "restart the daemon"}},
+		{"project path does not exist", func(e *fakeEnv) {
+			e.cfg.Projects[0].MissingPaths = []string{"/tmp/beispielprojekt-fehlt"}
+		}, 1, []string{`the project "beispielprojekt" has a path that does not exist`, "/tmp/beispielprojekt-fehlt", "create the directory or fix the path"}},
 		{"backend locked", func(e *fakeEnv) {
 			e.backend = doctor.Component{State: doctor.StateLocked, Detail: "the vault app is locked"}
 		}, 1, []string{"backend is locked", "the vault app is locked", "unlock"}},

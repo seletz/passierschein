@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/seletz/passierschein/internal/config"
 	"github.com/seletz/passierschein/internal/daemon"
+	"github.com/seletz/passierschein/internal/doctor"
 	"github.com/seletz/passierschein/internal/protocol"
 	"github.com/seletz/passierschein/internal/session"
 )
@@ -247,5 +249,85 @@ func TestFaultClear(t *testing.T) {
 				t.Errorf("code %d, stdout %q, stderr %q", code, out, errOut)
 			}
 		})
+	}
+}
+
+func TestHumanCommandsFlagOrder(t *testing.T) {
+	// Issue 44: each human command accepts the flags before and after the
+	// positional arguments, and "--" ends the flags.
+	audit := auditFixture(t, 3)
+	tests := []struct {
+		name     string
+		before   []string // command with the flags first
+		after    []string // the same with the flags last
+		wantCode int
+		wantOut  string
+		revoked  []string
+	}{
+		{"grants revoke", []string{"grants", "revoke", "--json", "--config", "@cfg", "g-1"},
+			[]string{"grants", "revoke", "g-1", "--json", "--config", "@cfg"}, 0, `{"revoked":"g-1"}`, []string{"g-1"}},
+		{"grants revoke mixed", []string{"grants", "revoke", "--config", "@cfg", "g-1", "--json"},
+			[]string{"grants", "revoke", "--config", "@cfg", "g-1", "--json"}, 0, "revoked", []string{"g-1"}},
+		{"grants revoke after double dash", []string{"grants", "revoke", "--config", "@cfg", "--", "g-1"},
+			[]string{"grants", "revoke", "--config", "@cfg", "--", "g-1"}, 0, "ended", []string{"g-1"}},
+		{"grants list", []string{"grants", "list", "--json", "--config", "@cfg"},
+			[]string{"grants", "list", "--config", "@cfg", "--json"}, 0, "g-1", nil},
+		{"fault status", []string{"fault", "status", "--json", "--config", "@cfg"},
+			[]string{"fault", "status", "--config", "@cfg", "--json"}, 0, `"locked":false`, nil},
+		{"fault clear", []string{"fault", "clear", "--json", "--config", "@cfg"},
+			[]string{"fault", "clear", "--config", "@cfg", "--json"}, 0, `"cleared":true`, nil},
+		{"audit verify", []string{"audit", "verify", "--file", audit},
+			[]string{"audit", "verify", "--file", audit}, 0, "intact", nil},
+		{"audit list", []string{"audit", "list", "--limit", "1", "--file", audit},
+			[]string{"audit", "list", "--file", audit, "--limit", "1"}, 0, "beispiel-koordinator", nil},
+		{"unexpected positional", []string{"grants", "list", "--config", "@cfg", "x"},
+			[]string{"grants", "list", "x", "--config", "@cfg"}, 2, "", nil},
+		{"two ids after flags", []string{"grants", "revoke", "--config", "@cfg", "g-1", "g-2"},
+			[]string{"grants", "revoke", "g-1", "g-2", "--config", "@cfg"}, 2, "", nil},
+	}
+	for _, tt := range tests {
+		for _, order := range []struct {
+			name string
+			args []string
+		}{{"flags first", tt.before}, {"flags last", tt.after}} {
+			t.Run(tt.name+"/"+order.name, func(t *testing.T) {
+				b := &testBroker{grants: []protocol.Grant{sampleGrant(t, "g-1")}}
+				cfg := startAdminDaemon(t, b)
+				args := slices.Clone(order.args)
+				for i, a := range args {
+					if a == "@cfg" {
+						args[i] = cfg
+					}
+				}
+				code, out, errOut := runCmd(args...)
+				if code != tt.wantCode || !strings.Contains(out, tt.wantOut) {
+					t.Errorf("code %d, stdout %q, stderr %q", code, out, errOut)
+				}
+				if strings.Join(b.revoked, ",") != strings.Join(tt.revoked, ",") {
+					t.Errorf("revoked = %v, want %v", b.revoked, tt.revoked)
+				}
+			})
+		}
+	}
+}
+
+func TestDoctorFlagOrder(t *testing.T) {
+	// Issue 44: doctor accepts the flags in any place and still refuses
+	// an argument.
+	for _, args := range [][]string{{"--json", "--config", "c"}, {"--config", "c", "--json"}} {
+		var o, e bytes.Buffer
+		code := runDoctorWith(args, &o, &e, func(path string) doctor.Env {
+			if path != "c" {
+				t.Errorf("config = %q, want c", path)
+			}
+			return healthyEnv(t)
+		})
+		if code != 0 || !strings.Contains(o.String(), `"ok":true`) {
+			t.Errorf("%v: code %d, stdout %q, stderr %q", args, code, o.String(), e.String())
+		}
+	}
+	var o, e bytes.Buffer
+	if code := runDoctorWith([]string{"x", "--json"}, &o, &e, func(string) doctor.Env { return healthyEnv(t) }); code != 2 {
+		t.Errorf("with argument: code %d, want 2", code)
 	}
 }

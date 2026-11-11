@@ -3,12 +3,12 @@ render_macros: true
 id: 'T20'
 titel: 'a38 llm --skill gibt die eingebettete Anleitung aus und nennt jeden Fehlercode'
 bereich: 'Oberflächen'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 1
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F14, D22]
 ---
 # T20 — a38 llm --skill gibt die eingebettete Anleitung aus und nennt jeden Fehlercode

@@ -1,6 +1,6 @@
 ---
 title: Referenz
-description: "Fakten zum Nachschlagen: Tasks, Release, Konventionen, Fake-Backend, Befehle, Freigabe-App."
+description: "Fakten zum Nachschlagen: Tasks, Release, Konventionen, Fake-Backend, Befehle, Freigabe-App, Testabdeckung."
 icon: lucide/book-open
 weight: 30
 ---
@@ -13,4 +13,5 @@ Die Referenz beschreibt Fakten zum Nachschlagen.
 - [Konventionen](60-konventionen.md)
 - [Fake-Backend](70-fake-backend.md)
 - [Befehle für den Menschen](80-befehle-fuer-den-menschen.md)
-- [Freigabe-App](90-freigabe-app.md)
+- [Freigabe-App](85-freigabe-app.md)
+- [Testabdeckung der Stufe 1](90-testabdeckung.md)

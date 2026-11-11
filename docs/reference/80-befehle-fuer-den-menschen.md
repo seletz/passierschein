@@ -15,6 +15,10 @@ Alle Befehle lesen die Konfigurationsdatei mit `--config <datei>`.
 Ohne das Argument gilt `A38_CONFIG`, danach der Standardort.
 Die Befehle `grants`, `fault` und `doctor` kennen `--json`.
 
+Die Schalter dürfen vor und nach den Argumenten stehen.
+`a38 grants revoke <grant-id> --config <datei>` und `a38 grants revoke --config <datei> <grant-id>` sind gleich.
+Ein `--` beendet die Schalter.
+
 ## Exit-Codes
 
 | Code | Bedeutung |
