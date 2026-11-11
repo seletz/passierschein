@@ -87,10 +87,11 @@ func runAuditVerify(args []string, stdout, stderr io.Writer) int {
 	var af auditFlags
 	fs := newAuditFlagSet("verify", stderr)
 	af.register(fs)
-	if err := fs.Parse(args); err != nil {
+	pos, err := parseInterspersed(fs, args)
+	if err != nil {
 		return exitUsage
 	}
-	if fs.NArg() != 0 {
+	if len(pos) != 0 {
 		_, _ = fmt.Fprintln(stderr, "a38 audit verify: unexpected argument")
 		return exitUsage
 	}
@@ -132,10 +133,11 @@ func runAuditList(args []string, stdout, stderr io.Writer) int {
 	fs.StringVar(&since, "since", "", "only entries at or after this time")
 	fs.StringVar(&until, "until", "", "only entries before this time")
 	fs.IntVar(&limit, "limit", 0, "show at most this many entries, the newest")
-	if err := fs.Parse(args); err != nil {
+	pos, err := parseInterspersed(fs, args)
+	if err != nil {
 		return exitUsage
 	}
-	if fs.NArg() != 0 {
+	if len(pos) != 0 {
 		_, _ = fmt.Fprintln(stderr, "a38 audit list: unexpected argument")
 		return exitUsage
 	}

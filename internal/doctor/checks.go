@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/seletz/passierschein/internal/config"
@@ -28,6 +29,15 @@ func (c configCheck) Run(_ context.Context, st *State) []Result {
 	for _, p := range invalid {
 		out = append(out, finding("project "+p.Name, fmt.Sprintf("the configuration of the project %q is invalid", p.Name), p.Invalid,
 			"fix the project in the configuration file and restart the daemon (a38 serve)"))
+	}
+	// A path that does not exist is not an invalid project: the project
+	// stays valid, but no session can match the path (issue 44).
+	for _, p := range cfg.Projects {
+		if len(p.MissingPaths) > 0 {
+			out = append(out, finding("project "+p.Name, fmt.Sprintf("the project %q has a path that does not exist", p.Name),
+				strings.Join(p.MissingPaths, ", "),
+				"create the directory or fix the path in the configuration file, then restart the daemon (a38 serve)"))
+		}
 	}
 	return out
 }

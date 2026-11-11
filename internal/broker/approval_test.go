@@ -245,3 +245,23 @@ func buildFakeScript(t *testing.T) string {
 	}
 	return bin
 }
+
+// T21: a session without a name gives an approval request with an empty
+// session name, never an invented one, and audit entries without a name.
+func TestApprovalRequestWithoutSessionName(t *testing.T) {
+	h := newHarness(t)
+	s := sess("s-1", "beispielprojekt")
+	s.Name = ""
+	h.rec.Enqueue(fakeui.ReplyApproveAll())
+	if r := h.approveFlow(s, refPass); r.err != nil {
+		t.Fatal(r.err)
+	}
+	if got := h.rec.Requests()[0].Claims.SessionName; got != "" {
+		t.Errorf("approval request session name = %q, want empty", got)
+	}
+	for _, e := range h.events() {
+		if e.Claims.SessionName != "" {
+			t.Errorf("%s: claims name = %q, want empty", e.Type, e.Claims.SessionName)
+		}
+	}
+}

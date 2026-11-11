@@ -221,7 +221,8 @@ func TestGrantEnds(t *testing.T) {
 				h.t.Fatalf("revoke: %v, %v", res, e)
 			}
 		}, "the human revoked the grant", audit.EventRevocation},
-		{"restart", func(h *harness, _ string) { h.restart() }, "", ""},
+		// A graceful stop writes the end; an ungraceful end writes nothing.
+		{"restart", func(h *harness, _ string) { h.b.Shutdown(); h.restart() }, audit.DetailDaemonStopped, audit.EventExpiry},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -237,7 +238,7 @@ func TestGrantEnds(t *testing.T) {
 				t.Fatalf("grants after the end = %+v", g)
 			}
 			next := s
-			if tt.event == audit.EventExpiry {
+			if tt.event == audit.EventExpiry && tt.detail == audit.DetailSessionEnded {
 				// An ended session never comes back. Its request ends at
 				// once; the same request of the next session of the agent
 				// needs a new approval.
@@ -251,9 +252,6 @@ func TestGrantEnds(t *testing.T) {
 			}
 			if n := len(h.rec.Requests()); n != 2 {
 				t.Errorf("approval requests = %d, want 2", n)
-			}
-			if tt.event == "" {
-				return
 			}
 			ev := h.eventsOf(tt.event)
 			if len(ev) < 1 || ev[0].Result.GrantID != id || ev[0].Result.Detail != tt.detail {
@@ -406,5 +404,32 @@ func TestAuthenticationRule(t *testing.T) {
 				t.Errorf("read or grant without authentication")
 			}
 		})
+	}
+}
+
+// T16: Shutdown ends each live grant once, with the reason daemon_stopped,
+// and a second call writes nothing more.
+func TestShutdownEndsGrants(t *testing.T) {
+	h := newHarness(t)
+	h.rec.Enqueue(fakeui.ReplyApproveAll(), fakeui.ReplyApproveAll())
+	if r := h.approveFlow(sess("s-1", "beispielprojekt"), refPass); r.err != nil {
+		t.Fatal(r.err)
+	}
+	if r := h.approveFlow(sess("s-2", "beispielprojekt"), refUser); r.err != nil {
+		t.Fatal(r.err)
+	}
+	h.b.Shutdown()
+	h.b.Shutdown()
+	if g := h.grants(); len(g) != 0 {
+		t.Errorf("grants after Shutdown = %+v", g)
+	}
+	ev := h.eventsOf(audit.EventExpiry)
+	if len(ev) != 2 {
+		t.Fatalf("expiry events = %d, want 2", len(ev))
+	}
+	for _, e := range ev {
+		if e.Result.Detail != audit.DetailDaemonStopped || e.Result.GrantID == "" || len(e.References) != 1 {
+			t.Errorf("event = %+v", e)
+		}
 	}
 }
