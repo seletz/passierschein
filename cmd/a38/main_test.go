@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/seletz/passierschein/internal/skill"
 )
 
 func TestRun(t *testing.T) {
@@ -27,7 +29,8 @@ func TestRun(t *testing.T) {
 		{"audit without subcommand", []string{"audit"}, 2, "", "a38 audit list"},
 		{"grants", []string{"grants", "list"}, 1, "", "a38 grants: not implemented"},
 		{"doctor", []string{"doctor"}, 1, "", "a38 doctor: not implemented"},
-		{"llm", []string{"llm", "--skill"}, 1, "", "a38 llm: not implemented"},
+		{"llm without flag", []string{"llm"}, 2, "", "usage: a38 llm --skill"},
+		{"llm with unknown flag", []string{"llm", "--other"}, 2, "", "usage: a38 llm --skill"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -55,5 +58,19 @@ func TestUsageListsEachCommand(t *testing.T) {
 		if !strings.Contains(stdout.String(), "\n  "+name+" ") {
 			t.Errorf("the usage text does not list the command %q", name)
 		}
+	}
+}
+
+// T20: "a38 llm --skill" prints exactly the embedded file.
+func TestLLMSkillPrintsEmbeddedFile(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	if got := run([]string{"llm", "--skill"}, &stdout, &stderr); got != 0 {
+		t.Fatalf("exit code = %d, want 0 (stderr %q)", got, stderr.String())
+	}
+	if stdout.String() != skill.Text() {
+		t.Error("the output differs from the embedded file")
+	}
+	if stdout.Len() == 0 || stderr.Len() != 0 {
+		t.Errorf("stdout has %d bytes, stderr = %q", stdout.Len(), stderr.String())
 	}
 }
