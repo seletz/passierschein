@@ -28,7 +28,7 @@ SSH ist nicht zwingend (Stefan, 2026-11-11). Optionen für den Transport in die 
 
 Jede Option außer dem Unix-Socket braucht eine Antwort darauf, wer den Endpunkt erreichen darf.
 
-**Spike:** Der Bericht des Spikes (`docs/explanation/spikes/40-tailscale-vm-zugang.md`, Pull Request 12) empfiehlt einen eigenen Tailscale-Knoten im Daemon (`tsnet`) mit einem Tag, VMs mit einem zweiten Tag und eine Regel der Policy für genau einen Port. Die VM ist dann die Sitzung. Der Praxistest und die Entscheidung von Stefan stehen aus.
+**Spike:** Der [Bericht des Spikes](../../explanation/spikes/40-tailscale-vm-zugang.md) empfiehlt einen eigenen Tailscale-Knoten im Daemon (`tsnet`) mit einem Tag, VMs mit einem zweiten Tag und eine Regel der Policy für genau einen Port. Die VM ist dann die Sitzung. Der Praxistest und die Entscheidung von Stefan stehen aus.
 
 **Bevorzugt:** Tailscale (Stefan, 2026-11-11). Tailscale liefert stabile Identitäten und ist im Testumfeld im Einsatz. Die Policy des Tailnets soll den Zugriff so beschränken, dass nur die eigenen VMs den Endpunkt auf dem Mac erreichen. Ein Spike prüft das und die Folgen für den Betrieb der VMs ([Issue 11](https://github.com/seletz/passierschein/issues/11)).
 

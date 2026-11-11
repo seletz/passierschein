@@ -9,7 +9,12 @@ order: 1
 headless: true
 type: Gap
 kind: design
-status: offen
+status: geschlossen
+beleg:
+  wer: Stefan
+  datum: '2026-11-11'
+  durch: [D32]
+  notiz: 'im Review am 2026-11-11 entschieden: Grant über die angehakten Zugangsdaten'
 register:
   owner: Stefan
 ---

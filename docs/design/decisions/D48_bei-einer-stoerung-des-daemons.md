@@ -24,6 +24,6 @@ beleg:
 
 **Abgrenzung:** Die fehlerhafte Konfiguration eines einzelnen Projekts ist keine Störung des Daemons. Sie sperrt nur dieses Projekt ({{ ref("D28") }}). Ein gesperrtes oder nicht erreichbares Backend ist ein Fehler der Anfrage und keine Störung ({{ ref("D35") }}).
 
-**Vorschlag des Designlaufs zu den Einzelheiten:** Der Daemon zeigt je Störung ein Popup und nicht eines je Anfrage. Widerruf, die Liste der Grants und `a38 doctor` arbeiten während der Sperre weiter. Die Sperre endet, wenn die Prüfung der Ursache wieder besteht oder nach einem Neustart ohne Befund. Der Daemon schreibt Beginn und Ende der Sperre in das Audit-Log, sobald das Schreiben möglich ist.
+**Einzelheiten:** Der Daemon zeigt je Störung ein Popup und nicht eines je Anfrage. Widerruf, die Liste der Grants und `a38 doctor` arbeiten während der Sperre weiter. Die Sperre endet, wenn die Prüfung der Ursache wieder besteht oder nach einem Neustart ohne Befund. Der Daemon schreibt Beginn und Ende der Sperre in das Audit-Log, sobald das Schreiben möglich ist.
 
 **Begründung:** Ein Daemon in einem unklaren Zustand darf keine Zugangsdaten ausgeben. Der Mensch muss die Störung sofort sehen.

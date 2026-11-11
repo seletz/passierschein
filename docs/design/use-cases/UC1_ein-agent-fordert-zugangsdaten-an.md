@@ -58,6 +58,6 @@ sequenceDiagram
 10. Der Daemon liest die Werte im Backend und liefert sie als MCP-Antwort aus ({{ ref("D9") }}).
 11. Der Daemon schreibt jedes Ereignis in das Audit-Log, sobald es eintritt, und die Auslieferung vor der Antwort ({{ ref("D11") }}, {{ ref("D36") }}).
 
-**Ergebnis:** Der Agent hat die freigegebenen Werte. Das Audit-Log enthält Anfrage, Entscheidung, Grant und Auslieferung.
+**Ergebnis:** Der Agent hat die freigegebenen Werte. Das Audit-Log enthält Anfrage, Bündel, Entscheidung, Grant und Auslieferung.
 
 **Abweichungen:** Ablehnung und Zeitüberschreitung ({{ ref("UC4") }}), Fehler ({{ ref("UC14") }}), Anfrage außerhalb von dev ({{ ref("UC5") }}).

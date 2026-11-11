@@ -18,7 +18,7 @@ Schutzmaßnahme eine Klasse:
 | **inherited** | Ein anderer Dienst erzwingt die Maßnahme. `a38` verlässt sich darauf. |
 | **not-provided** | Niemand leistet die Maßnahme. Der Grund steht dabei. |
 
-**Stand:** Entwurf des Designlaufs 1. Stefan hat die Entscheidungen am 2026-11-11 im Review durchgesehen. Die Abnahme dieser Seite steht aus.
+**Stand:** Designlauf 1, von Stefan am 2026-11-11 im Review abgenommen.
 
 ## Zwei Rahmenfakten
 

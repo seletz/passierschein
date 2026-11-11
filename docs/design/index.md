@@ -11,8 +11,14 @@ Das Design-Set beschreibt, was Passierschein leistet und warum. Es entsteht
 vor dem Code. Das Werkzeug `dg-register` vergibt die Nummern und prüft das
 Set.
 
-**Stand:** Designlauf 1 „Design bis MVP“, Teilstand 1.0, Entwurf vor dem
-Review ([Issue 2](https://github.com/seletz/passierschein/issues/2)).
+**Stand:** Designlauf 1 „Design bis MVP“, Teilstand 1.1. Stefan hat das
+Design am 2026-11-11 im Review abgenommen. Der Lauf ist seit dem 2026-11-11
+eingefroren ([Issue 2](https://github.com/seletz/passierschein/issues/2)).
+
+**Eingefroren heißt:** Der Text eines Artefakts dieses Laufs ändert sich
+nicht mehr. Findet die Entwicklung einen Fehler im Design, oder wirft Stefan
+bei einer Abnahme eine Entscheidung um, entsteht in einem neuen Lauf eine
+neue Entscheidung. Die alte Entscheidung erhält den Status „ersetzt“.
 
 ## Lesereihenfolge
 
