@@ -34,6 +34,32 @@ stufe: 1
 10. Der Daemon liest die Werte im Backend und liefert sie als MCP-Antwort aus ({{ ref("D9") }}).
 11. Der Daemon schreibt jeden Schritt in das Audit-Log ({{ ref("D11") }}).
 
+```mermaid
+sequenceDiagram
+    participant A as Agent
+    participant M as a38 mcp
+    participant D as Daemon
+    participant B as Backend
+    participant U as Freigabe-App
+    actor H as Mensch
+    A->>M: request_credentials (Referenzen, Aufgabe, Begründung)
+    M->>D: Anfrage über den Agent-Socket
+    D->>D: Sitzung zuordnen, Policy prüfen
+    D->>D: Bündelfenster abwarten
+    D->>B: Namen von Vaults und Items auflösen
+    B-->>D: Namen, kein Secret-Wert
+    D->>U: Freigabeanfrage (geprüfte Fakten, Angaben des Agents)
+    U->>H: Popup
+    H->>U: Auswahl und Touch ID
+    U-->>D: Entscheidung
+    D->>D: Grant vergeben
+    D->>B: Werte lesen
+    B-->>D: Werte
+    D-->>M: Werte
+    M-->>A: MCP-Antwort mit den Werten
+    Note over D: Jeder Schritt steht im Audit-Log
+```
+
 **Ergebnis:** Der Agent hat die freigegebenen Werte. Das Audit-Log enthält Anfrage, Entscheidung, Grant und Auslieferung.
 
 **Abweichungen:** Ablehnung und Zeitüberschreitung ({{ ref("UC4") }}), Fehler ({{ ref("UC14") }}), Anfrage außerhalb von dev ({{ ref("UC5") }}).

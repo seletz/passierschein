@@ -28,4 +28,29 @@ stufe: 1
 4. Der Mensch entscheidet wie in {{ ref("UC1") }}.
 5. Bei einer Freigabe entsteht ein weiterer Grant für die Sitzung. Der bestehende Grant bleibt unverändert.
 
+```mermaid
+sequenceDiagram
+    participant A as Agent
+    participant M as a38 mcp
+    participant D as Daemon
+    participant U as Freigabe-App
+    actor H as Mensch
+    A->>M: request_credentials
+    M->>D: Anfrage über den Agent-Socket
+    D->>D: Grant prüfen: deckt die Anfrage nicht ab
+    D->>U: Freigabeanfrage, als Abweichung markiert
+    U->>H: Popup: bestehender Grant, nur die neuen Zugangsdaten
+    alt Freigabe
+        H->>U: Auswahl und Touch ID
+        U-->>D: Entscheidung: freigegeben
+        D->>D: weiteren Grant vergeben
+        D-->>M: Werte
+        M-->>A: MCP-Antwort mit den Werten
+    else Ablehnung oder Zeitablauf
+        U-->>D: Entscheidung: abgelehnt
+        D-->>M: Fehler denied oder timeout
+        M-->>A: Fehler
+    end
+```
+
 **Ergebnis:** Eine Abweichung fällt dem Menschen auf. Sie sieht anders aus als eine erste Anfrage.

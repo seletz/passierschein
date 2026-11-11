@@ -26,6 +26,29 @@ stufe: 5
 2. Nach der Freigabe schreibt der Daemon den Wert in eine Datei auf einem tmpfs. Die Datei hat eine Laufzeit ({{ ref("D10") }}).
 3. Der Agent erhält den Pfad der Datei, nie den Wert.
 
+```mermaid
+sequenceDiagram
+    participant A as Agent
+    participant M as a38 mcp
+    participant D as Daemon
+    participant U as Freigabe-App
+    actor H as Mensch
+    A->>M: request_credentials (Vault außerhalb von dev)
+    M->>D: Anfrage
+    alt MVP
+        D-->>M: Fehler not_allowed, ohne Freigabeanfrage
+        M-->>A: Fehler
+    else ab Stufe 5
+        D->>U: Freigabeanfrage, Umgebung hervorgehoben
+        U->>H: Popup
+        H->>U: Auswahl und Touch ID
+        U-->>D: Entscheidung
+        D->>D: Wert in eine Datei auf dem tmpfs schreiben, mit Laufzeit
+        D-->>M: Pfad der Datei
+        M-->>A: Pfad, nie der Wert
+    end
+```
+
 **Ergebnis:** Ein Wert außerhalb von dev steht nie in einer MCP-Antwort.
 
 **Offen:** Der Ablauf mit der Datei ist nicht entworfen ({{ ref("G11") }}).

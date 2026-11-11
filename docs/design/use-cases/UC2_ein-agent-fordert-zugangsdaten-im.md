@@ -27,4 +27,22 @@ stufe: 1
 3. Der Daemon liefert die Werte ohne Freigabeanfrage aus.
 4. Der Daemon schreibt die Auslieferung mit dem Verweis auf den Grant in das Audit-Log.
 
+```mermaid
+sequenceDiagram
+    participant A as Agent
+    participant M as a38 mcp
+    participant D as Daemon
+    participant B as Backend
+    A->>M: request_credentials
+    M->>D: Anfrage über den Agent-Socket
+    D->>D: Policy prüfen
+    D->>D: Grant prüfen: deckt die Anfrage ab
+    D->>B: Werte lesen
+    B-->>D: Werte
+    D-->>M: Werte
+    M-->>A: MCP-Antwort mit den Werten
+    Note over D: Audit-Log: Auslieferung mit Verweis auf den Grant
+    Note over A,D: Kein Popup, der Mensch ist nicht beteiligt
+```
+
 **Ergebnis:** Der Mensch sieht kein Popup. Die Auslieferung ist im Audit-Log nachvollziehbar.
