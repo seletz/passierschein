@@ -1,6 +1,6 @@
 ---
 title: Erklärungen
-description: "Hintergrund: Konzept und Spikes."
+description: "Hintergrund: Konzept, Architektur und Spikes."
 icon: lucide/lightbulb
 weight: 40
 ---
@@ -9,4 +9,5 @@ weight: 40
 Eine Erklärung beschreibt Hintergrund und Zusammenhänge.
 
 - [Konzept](konzept.md)
+- [Architektur](architektur.md)
 - [Spikes](spikes/index.md)
