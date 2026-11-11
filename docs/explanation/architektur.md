@@ -70,7 +70,7 @@ Die Abhängigkeitsregel gilt in jedem Fall.
 | `internal/bundle` | Bündelfenster und Obergrenze je Sitzung | 21 |
 | `internal/grant` | Grants im Arbeitsspeicher: Vergabe, Prüfung, Ablauf, Widerruf | 22 |
 | `internal/broker` | Ablauf einer Anfrage von der Policy bis zur Auslieferung; setzt `AgentHandler` und `AdminHandler` um | 22 |
-| `internal/fault` | globale Sperre bei einer Störung, Meldung an den Menschen, Aufheben | 23 |
+| `internal/fault` | globale Sperre bei einer Störung, Meldung an den Menschen, Aufheben; die Schnittstellen `Gate` und `Lock` entstehen mit Issue 21 und 22 | 23 |
 | `internal/mcp` | MCP-Server und Client für den Agent-Socket; `cmd/a38/mcp.go` | 24 |
 | `internal/admin` | Client für den Admin-Socket; `cmd/a38/grants.go` | 25 |
 | `internal/doctor` | Prüfungen von `a38 doctor`; `cmd/a38/doctor.go` | 25 |
@@ -144,10 +144,10 @@ sequenceDiagram
     M->>S: request_credentials<br/>mit Referenzen
     Note over S: Audit: Anfrage
     S->>S: Policy prüfen<br/>(config, policy)
-    S->>S: Bündelfenster<br/>abwarten (bundle)
-    Note over S: Audit: Bündel
     S->>B: Resolve:<br/>Namen auflösen
     B-->>S: Namen,<br/>kein Wert
+    S->>S: Bündelfenster<br/>abwarten (bundle)
+    Note over S: Audit: Bündel
     S->>U: Approve:<br/>Freigabeanfrage
     U-->>S: Entscheidung<br/>mit Auswahl
     Note over S: Audit: Entscheidung
@@ -163,7 +163,70 @@ Vier Punkte sind für den Code wichtig:
 - Die Policy-Prüfung steht vor dem Backend. Eine Anfrage außerhalb der Policy erreicht weder das Backend noch den Menschen ({{ ref("D28") }}, {{ ref("T3") }}).
 - Der Eintrag für die Auslieferung steht vor dem Lesen der Werte ({{ ref("D36") }}). Schlägt `Append` fehl, ruft der Broker `Read` nicht auf ({{ ref("T26") }}).
 - Der Broker hält einen Wert nur für die Antwort ({{ ref("D34") }}). Der Typ `protocol.Secret` gibt den Wert in keiner Textausgabe aus.
-- Deckt ein Grant die Anfrage ab, entfallen die Schritte 5 bis 10 ({{ ref("UC2") }}).
+- Der Broker löst die Namen gleich nach der Policy auf, noch vor dem Bündelfenster. So endet ein unbekanntes Item sofort mit `not_found` und belegt keinen Platz im Bündel ({{ ref("D27") }}).
+- Deckt ein Grant die Anfrage ab, entfallen Bündelfenster, Freigabe und Grant ({{ ref("UC2") }}). Die Auflösung der Namen bleibt: Der Grant gilt für die Namen des Backends.
+
+## Broker
+
+Die Issues 21 und 22 setzen den Broker um.
+Fünf Pakete teilen sich die Arbeit:
+
+| Paket | Inhalt |
+|---|---|
+| `internal/policy` | Prüfung einer Anfrage gegen die Konfiguration, alles oder nichts |
+| `internal/bundle` | Bündelfenster mit festem Ende, Obergrenze, Reihenfolge des Eingangs |
+| `internal/grant` | Grants im Arbeitsspeicher: Abdeckung, Ablauf, Ende mit der Sitzung, Widerruf |
+| `internal/fault` | Schnittstellen `Gate` und `Lock` der globalen Sperre; `NoLock` sperrt nie |
+| `internal/broker` | Ablauf einer Anfrage; setzt `AgentHandler` und `AdminHandler` um |
+
+`policy`, `bundle` und `grant` sind reine Datenstrukturen.
+Sie sind nicht nebenläufig sicher.
+Der Broker hält seine Sperre, wenn er sie nutzt.
+
+### Ablauf und Invarianten
+
+1. Die globale Sperre ist offen. Sonst endet die Anfrage mit `daemon_faulted`.
+2. Die Anfrage ist gültig. Der Broker schreibt das Ereignis „Anfrage“.
+3. Die Policy erlaubt jede Referenz. Sonst endet die ganze Anfrage mit `not_allowed` oder `config_invalid`.
+4. Das Backend löst jede Referenz auf. Ein Fehler beendet die ganze Anfrage.
+5. Ein Grant der Sitzung deckt die Referenz ab, oder die Referenz kommt in das Bündel der Sitzung.
+6. Am Ende des Fensters entsteht genau eine Freigabeanfrage. Der Broker prüft die Entscheidung selbst.
+7. Eine Freigabe erzeugt einen Grant für die angehakten Einträge.
+8. Der Broker prüft unter seiner Sperre den Grant und schreibt das Ereignis „Auslieferung“. Erst danach liest er die Werte.
+
+Drei Regeln gelten auf jedem Weg:
+
+- Ein Wert verlässt den Broker nur für eine Referenz, die ein lebender Grant derselben Sitzung im Moment der Auslieferung abdeckt.
+- Ein Grant existiert erst, wenn sein Ereignis im Audit-Log steht.
+- Ein Fehler der ganzen Anfrage liefert keinen Wert, auch nicht für eine Referenz unter einem Grant.
+
+Der Broker schreibt ein Ereignis, das Grants ändert oder nutzt, unter seiner Sperre.
+Die Reihenfolge im Audit-Log ist so die Reihenfolge der Änderungen.
+Ein Widerruf steht vor einer Auslieferung, oder die Auslieferung steht vor dem Widerruf.
+
+### Ereignisse je Ausgang
+
+| Ausgang | Ereignisse | Code |
+|---|---|---|
+| Freigabe | Anfrage, Bündel, Entscheidung, Grant, Auslieferung | – |
+| Teilauswahl | Anfrage, Bündel, Entscheidung, Grant, Ablehnung, Auslieferung | `denied` je nicht angehaktem Eintrag |
+| Grant deckt ab | Anfrage, Auslieferung mit dem Grant | – |
+| Policy | Anfrage, Ablehnung | `not_allowed`, `config_invalid` |
+| Unbekanntes Item oder Feld | Anfrage, Ablehnung | `not_found` |
+| Bündel voll | Ablehnung der überzähligen Einträge | `bundle_too_large` |
+| Ablehnung durch den Menschen | Anfrage, Bündel, Ablehnung | `denied` |
+| Wartezeit abgelaufen | Anfrage, Bündel, Ablauf | `timeout` |
+| Fehler der Freigabe | Anfrage, Bündel, Fehler | `ui_failed` |
+| Fehler des Backends | Anfrage, Fehler | `backend_locked`, `backend_unavailable` |
+| Sitzung endet während der Freigabe | Ablauf mit `session_ended` | – |
+| Ende eines Grants | Ablauf mit `lifetime_ended` oder `session_ended`, Widerruf | – |
+
+### Was der Daemon verdrahtet
+
+- `broker.New(cfg, backend, ui, auditStore, clock, logger)` erstellt den Broker.
+- Die UI ist eine `approval/queue.Queue`. Sie setzt die Wartezeit von {{ ref("D30") }} durch. Der Broker lässt zusätzlich nur eine Freigabeanfrage zur gleichen Zeit zu.
+- `Broker.Run(ctx)` entfernt abgelaufene Grants alle 30 Sekunden und schreibt ihr Ereignis. Ohne `Run` gilt ein Grant trotzdem nie über seine Laufzeit hinaus; das Ereignis entsteht dann bei der nächsten Anfrage.
+- `broker.WithLock` setzt die globale Sperre. Bis Issue 23 ist es `fault.NoLock`. Der Broker ruft `Lock.Raise` bei jedem Fehler des Audit-Logs auf.
 
 ## Protokoll auf den Sockets
 
