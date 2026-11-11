@@ -369,6 +369,12 @@ Die Abweichungen:
 Der Prototyp ignoriert unbekannte Felder.
 Die neuen Felder brechen ihn deshalb nicht.
 
+### Freigabe-App
+
+Die Freigabe-App `a38-approve` liegt im Ordner `app/` ({{ ref("F11") }}).
+Sie prüft jede Nachricht streng gegen diese Typen: Ein unbekanntes Feld, ein fehlendes Pflichtfeld oder ein Eintrag außerhalb von dev ist ein Fehler.
+Die [Referenz der Freigabe-App](../reference/90-freigabe-app.md) beschreibt Fälle, Regeln, Exit-Codes und Testschalter.
+
 ## Schnittstellen zu Backend und Audit-Log
 
 `backend.Backend` hat drei Methoden: `Vaults`, `Resolve` und `Read` ({{ ref("D38") }}).
