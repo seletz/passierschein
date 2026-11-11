@@ -33,26 +33,64 @@ func (b *syncBuffer) String() string {
 	return b.buf.String()
 }
 
+// fakeBackend is the fake backend of the tests. The values are fake.
+const fakeBackend = `vaults:
+  - name: beispiel.app.k8s-dev
+    items:
+      - name: datenbank-dev
+        fields:
+          - name: username
+            value: beispiel-wert-user
+          - name: password
+            value: beispiel-wert-serve
+`
+
 // writeConfig writes a configuration file with the sockets in a short
-// directory under /tmp and returns its path and the socket directory.
-func writeConfig(t *testing.T) (path, socketDir string) {
+// directory under /tmp and a fake backend file. The project
+// "beispielprojekt" contains the working directory of the test. It returns
+// the path of the configuration, the socket directory and the path of the
+// fake backend file.
+func writeConfig(t *testing.T) (path, socketDir, fakeFile string) {
 	t.Helper()
 	dir, err := os.MkdirTemp("/tmp", "a38-")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if wd, err = filepath.EvalSymlinks(wd); err != nil {
+		t.Fatal(err)
+	}
 	socketDir = filepath.Join(dir, "run")
 	path = filepath.Join(dir, "config.yaml")
-	data := fmt.Sprintf("version: 1\npaths:\n  socket_dir: %s\n  audit_file: %s\n", socketDir, filepath.Join(dir, "audit.db"))
+	data := fmt.Sprintf(`version: 1
+vaults:
+  - {name: beispiel.app.k8s-dev, environment: dev}
+projects:
+  - name: beispielprojekt
+    paths: [%q]
+    vaults: [beispiel.app.k8s-dev]
+bundle:
+  window: 50ms
+paths:
+  socket_dir: %s
+  audit_file: %s
+`, wd, socketDir, filepath.Join(dir, "audit.db"))
 	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	return path, socketDir
+	fakeFile = filepath.Join(dir, "fake.yaml")
+	if err := os.WriteFile(fakeFile, []byte(fakeBackend), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path, socketDir, fakeFile
 }
 
 func TestServeFlags(t *testing.T) {
-	cfg, _ := writeConfig(t)
+	cfg, _, _ := writeConfig(t)
 	tests := []struct {
 		name       string
 		args       []string
@@ -66,6 +104,8 @@ func TestServeFlags(t *testing.T) {
 		{"real backend with script", []string{"--config", cfg, "--backend", "1password", "--ui", "script"}, "--backend 1password needs --ui app"},
 		{"argument", []string{"--config", cfg, "--backend", "fake", "--ui", "auto-deny", "extra"}, "unexpected argument"},
 		{"unknown flag", []string{"--verbose"}, "flag provided but not defined"},
+		{"fake backend without file", []string{"--config", cfg, "--backend", "fake", "--ui", "auto-deny"}, "--backend fake needs --fake-file"},
+		{"script without program", []string{"--config", cfg, "--backend", "fake", "--fake-file", "x.yaml", "--ui", "script"}, "--ui script needs --ui-script"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -82,7 +122,7 @@ func TestServeFlags(t *testing.T) {
 
 func TestServeConfigPriority(t *testing.T) {
 	// D49: the flag --config has priority over A38_CONFIG.
-	good, _ := writeConfig(t)
+	good, _, fakeFile := writeConfig(t)
 	missing := "/tmp/a38-missing/config.yaml"
 	tests := []struct {
 		name     string
@@ -98,7 +138,7 @@ func TestServeConfigPriority(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("A38_CONFIG", tt.env)
-			args := []string{"--backend", "fake", "--ui", "auto-approve"}
+			args := []string{"--backend", "fake", "--fake-file", fakeFile, "--ui", "auto-approve"}
 			if tt.flag != "" {
 				args = append(args, "--config", tt.flag)
 			}
@@ -113,16 +153,45 @@ func TestServeConfigPriority(t *testing.T) {
 	}
 }
 
+// TestServeStartFailures: the daemon does not start without its parts.
+func TestServeStartFailures(t *testing.T) {
+	cfg, socketDir, fakeFile := writeConfig(t)
+	tests := []struct {
+		name       string
+		args       []string
+		wantStderr string
+	}{
+		{"missing fake file", []string{"--backend", "fake", "--fake-file", "/tmp/a38-missing/fake.yaml", "--ui", "auto-approve"}, "fake backend"},
+		{"approval app", []string{"--backend", "fake", "--fake-file", fakeFile, "--ui", "app"}, "not implemented"},
+		{"1password backend", []string{"--backend", "1password", "--ui", "app"}, "not implemented"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			args := append([]string{"--config", cfg}, tt.args...)
+			if code := serve(context.Background(), args, &stdout, &stderr); code != exitFailure {
+				t.Errorf("exit code = %d, want %d", code, exitFailure)
+			}
+			if !strings.Contains(stderr.String(), tt.wantStderr) {
+				t.Errorf("stderr = %q, want %q", stderr.String(), tt.wantStderr)
+			}
+			if _, err := os.Stat(filepath.Join(socketDir, "agent.sock")); !os.IsNotExist(err) {
+				t.Error("a socket exists after a failed start")
+			}
+		})
+	}
+}
+
 func TestServeRuns(t *testing.T) {
-	// The daemon starts, answers each request with daemon_faulted until
-	// the broker exists, and stops cleanly.
-	cfg, socketDir := writeConfig(t)
+	// T1 (part): the daemon starts with the broker, delivers a value
+	// with automatic approval, shows the grant and stops cleanly.
+	cfg, socketDir, fakeFile := writeConfig(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var stdout, stderr syncBuffer
 	done := make(chan int, 1)
 	go func() {
-		done <- serve(ctx, []string{"--config", cfg, "--backend", "fake", "--ui", "auto-approve"}, &stdout, &stderr)
+		done <- serve(ctx, []string{"--config", cfg, "--backend", "fake", "--fake-file", fakeFile, "--ui", "auto-approve"}, &stdout, &stderr)
 	}()
 	agentSocket := filepath.Join(socketDir, "agent.sock")
 	deadline := time.Now().Add(10 * time.Second)
@@ -146,16 +215,28 @@ func TestServeRuns(t *testing.T) {
 		t.Fatalf("Hello() error = %v", err)
 	}
 	ref, _ := protocol.ParseReference("op://beispiel.app.k8s-dev/datenbank-dev/password")
-	_, err = c.RequestCredentials(reqCtx, &protocol.RequestCredentials{References: []protocol.Reference{ref}})
-	if protocol.CodeOf(err) != protocol.CodeDaemonFaulted {
-		t.Errorf("request error = %v, want daemon_faulted", err)
+	creds, err := c.RequestCredentials(reqCtx, &protocol.RequestCredentials{References: []protocol.Reference{ref}})
+	if err != nil {
+		t.Fatalf("request error = %v", err)
+	}
+	if len(creds.Entries) != 1 || creds.Entries[0].Value == nil || creds.Entries[0].Value.Reveal() != "beispiel-wert-serve" {
+		t.Fatalf("the answer has no value")
+	}
+	grants, err := c.GrantStatus(reqCtx)
+	if err != nil || len(grants.Grants) != 1 {
+		t.Errorf("grant status = %+v, %v", grants, err)
+	}
+	other, _ := protocol.ParseReference("op://beispiel.app.k8s-prod/datenbank/password")
+	if _, err := c.RequestCredentials(reqCtx, &protocol.RequestCredentials{References: []protocol.Reference{other}}); protocol.CodeOf(err) != protocol.CodeNotAllowed {
+		t.Errorf("request outside the policy: %v, want not_allowed", err)
 	}
 	admin, err := client.DialAdmin(reqCtx, filepath.Join(socketDir, "admin.sock"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := admin.Status(reqCtx); protocol.CodeOf(err) != protocol.CodeDaemonFaulted {
-		t.Errorf("status error = %v, want daemon_faulted", err)
+	st, err := admin.Status(reqCtx)
+	if err != nil || st.Grants != 1 || st.Fault != nil {
+		t.Errorf("status = %+v, %v", st, err)
 	}
 
 	cancel()
@@ -168,9 +249,12 @@ func TestServeRuns(t *testing.T) {
 		t.Error("the agent socket exists after the stop")
 	}
 	log := stderr.String()
-	for _, want := range []string{"each request ends with daemon_faulted", "daemon stopped", "session started", "session ended"} {
+	for _, want := range []string{"daemon started", "daemon stopped", "session started", "session ended"} {
 		if !strings.Contains(log, want) {
 			t.Errorf("log does not contain %q:\n%s", want, log)
 		}
+	}
+	if strings.Contains(log, "beispiel-wert-serve") {
+		t.Error("the log contains the value")
 	}
 }

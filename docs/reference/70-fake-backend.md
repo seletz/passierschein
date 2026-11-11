@@ -9,7 +9,9 @@ tags:
 Das Fake-Backend liest Vaults, Items und Felder aus einer YAML-Datei.
 Es dient den Tests und der lokalen Entwicklung.
 Das Paket heißt `internal/backend/fake`.
-`a38 serve --backend fake` nutzt es.
+`a38 serve --backend fake --fake-file <datei>` nutzt es.
+Der Schalter `--fake-file` nennt die YAML-Datei.
+Ohne den Schalter startet der Daemon nicht.
 
 ## Format der Datei
 

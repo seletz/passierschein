@@ -85,7 +85,7 @@ func TestMCPSessionNameReachesDaemon(t *testing.T) {
 		{"no name", nil, "", "|coding-agent"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			cfgPath, _ := writeConfig(t)
+			cfgPath, _, _ := writeConfig(t)
 			cfg, err := config.Load(cfgPath)
 			if err != nil {
 				t.Fatal(err)
@@ -142,9 +142,11 @@ func TestMCPSessionNameReachesDaemon(t *testing.T) {
 }
 
 func TestMCPProcessesEndToEnd(t *testing.T) {
-	// T1 (part): the real processes "a38 serve" and "a38 mcp". The daemon
-	// has the placeholder handler, so the call ends with daemon_faulted.
-	// When the broker is wired in, only the expectation changes.
+	// T1: the real processes "a38 serve --backend fake --ui auto-approve"
+	// and "a38 mcp". An MCP client asks for two references of a dev
+	// vault. The answer has both values, and the audit log has request,
+	// bundle, decision, grant and delivery in this sequence. A second case
+	// with auto-deny delivers no value and writes the denial.
 	if testing.Short() {
 		t.Skip("builds the binary")
 	}
@@ -152,48 +154,163 @@ func TestMCPProcessesEndToEnd(t *testing.T) {
 	if out, err := exec.Command("go", "build", "-o", bin, ".").CombinedOutput(); err != nil {
 		t.Fatalf("go build: %v\n%s", err, out)
 	}
-	cfgPath, socketDir := writeConfig(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
+	refs := []string{
+		"op://beispiel.app.k8s-dev/datenbank-dev/username",
+		"op://beispiel.app.k8s-dev/datenbank-dev/password",
+	}
+	tests := []struct {
+		ui         string
+		wantValues map[string]string
+		wantCode   protocol.Code
+		wantAudit  []string
+	}{
+		{
+			ui:         "auto-approve",
+			wantValues: map[string]string{refs[0]: "beispiel-wert-user", refs[1]: "beispiel-wert-serve"},
+			wantAudit:  []string{"request", "bundle", "decision", "grant", "delivery"},
+		},
+		{
+			ui:        "auto-deny",
+			wantCode:  protocol.CodeDenied,
+			wantAudit: []string{"request", "bundle", "denial"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.ui, func(t *testing.T) {
+			cfgPath, socketDir, fakeFile := writeConfig(t)
+			stop := startServe(t, bin, cfgPath, socketDir, "--backend", "fake", "--fake-file", fakeFile, "--ui", tt.ui)
+			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+			defer cancel()
+
+			cmd := exec.CommandContext(ctx, bin, "mcp", "--config", cfgPath, "--session-name", "beispiel-koordinator")
+			var mcpErr syncBuffer
+			cmd.Stderr = &mcpErr
+			cs, err := mcp.NewClient(&mcp.Implementation{Name: "coding-agent", Version: "1"}, nil).
+				Connect(ctx, &mcp.CommandTransport{Command: cmd}, nil)
+			if err != nil {
+				t.Fatalf("connect: %v; stderr:\n%s", err, mcpErr.String())
+			}
+			res, err := cs.CallTool(ctx, &mcp.CallToolParams{
+				Name: "request_credentials",
+				Arguments: map[string]any{
+					"references": refs,
+					"task":       "Run the tests", "reason": "The tests need the login.",
+				},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = cs.Close()
+			sc, _ := json.Marshal(res.StructuredContent)
+			var got struct {
+				Entries []struct {
+					Reference string  `json:"reference"`
+					Value     *string `json:"value"`
+				} `json:"entries"`
+				Error *struct {
+					Code protocol.Code `json:"code"`
+				} `json:"error"`
+			}
+			if err := json.Unmarshal(sc, &got); err != nil {
+				t.Fatal(err)
+			}
+			if tt.wantCode != "" {
+				if !res.IsError || got.Error == nil || got.Error.Code != tt.wantCode || strings.Contains(string(sc), "beispiel-wert") {
+					t.Errorf("result: isError %v, error %+v; want %s and no value", res.IsError, got.Error, tt.wantCode)
+				}
+			} else {
+				values := map[string]string{}
+				for _, e := range got.Entries {
+					if e.Value != nil {
+						values[e.Reference] = *e.Value
+					}
+				}
+				if res.IsError || len(values) != 2 || values[refs[0]] != tt.wantValues[refs[0]] || values[refs[1]] != tt.wantValues[refs[1]] {
+					t.Errorf("result: isError %v, %d values; want both values", res.IsError, len(values))
+				}
+			}
+			stop()
+			// The end of the session can add the expiry of the grant.
+			types := auditTypes(t, bin, cfgPath)
+			if len(types) < len(tt.wantAudit) || !slicesEqual(types[:len(tt.wantAudit)], tt.wantAudit) {
+				t.Errorf("audit = %v, want %v first", types, tt.wantAudit)
+			}
+			for _, rest := range types[min(len(types), len(tt.wantAudit)):] {
+				if rest != "expiry" {
+					t.Errorf("audit = %v: unexpected event %q", types, rest)
+				}
+			}
+		})
+	}
+}
+
+// startServe starts "a38 serve" as a process and waits for the agent
+// socket. The returned function stops the daemon and waits for its end.
+func startServe(t *testing.T, bin, cfgPath, socketDir string, args ...string) func() {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
 	var serveErr syncBuffer
-	serve := exec.CommandContext(ctx, bin, "serve", "--config", cfgPath, "--backend", "fake", "--ui", "auto-approve")
+	serve := exec.CommandContext(ctx, bin, append([]string{"serve", "--config", cfgPath}, args...)...)
 	serve.Stderr = &serveErr
+	serve.Cancel = func() error { return serve.Process.Signal(os.Interrupt) }
 	if err := serve.Start(); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { cancel(); _ = serve.Wait() })
+	var once sync.Once
+	stop := func() {
+		once.Do(func() {
+			cancel()
+			_ = serve.Wait()
+			if strings.Contains(serveErr.String(), "beispiel-wert") {
+				t.Error("the log of the daemon contains a value")
+			}
+		})
+	}
+	t.Cleanup(stop)
 	deadline := time.Now().Add(10 * time.Second)
 	for {
 		if _, err := os.Stat(filepath.Join(socketDir, "agent.sock")); err == nil {
-			break
+			return stop
 		}
 		if time.Now().After(deadline) {
 			t.Fatalf("no agent socket; stderr:\n%s", serveErr.String())
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
+}
 
-	cmd := exec.CommandContext(ctx, bin, "mcp", "--config", cfgPath, "--session-name", "beispiel-koordinator")
-	var mcpErr syncBuffer
-	cmd.Stderr = &mcpErr
-	cs, err := mcp.NewClient(&mcp.Implementation{Name: "coding-agent", Version: "1"}, nil).
-		Connect(ctx, &mcp.CommandTransport{Command: cmd}, nil)
+// auditTypes reads the event types with "a38 audit list --json".
+func auditTypes(t *testing.T, bin, cfgPath string) []string {
+	t.Helper()
+	out, err := exec.Command(bin, "audit", "list", "--config", cfgPath, "--json").Output()
 	if err != nil {
-		t.Fatalf("connect: %v; stderr:\n%s", err, mcpErr.String())
+		t.Fatalf("a38 audit list: %v", err)
 	}
-	defer func() { _ = cs.Close() }()
-	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
-		Name: "request_credentials",
-		Arguments: map[string]any{
-			"references": []string{"op://beispiel.app.k8s-dev/datenbank-dev/password"},
-			"task":       "Run the tests", "reason": "The tests need the login.",
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
+	if strings.Contains(string(out), "beispiel-wert") {
+		t.Error("the audit log contains a value")
 	}
-	sc, _ := json.Marshal(res.StructuredContent)
-	if !res.IsError || !strings.Contains(string(sc), `"code":"daemon_faulted"`) {
-		t.Errorf("result = isError %v, %s; want daemon_faulted", res.IsError, sc)
+	var types []string
+	dec := json.NewDecoder(bytes.NewReader(out))
+	for dec.More() {
+		var e struct {
+			Type string `json:"type"`
+		}
+		if err := dec.Decode(&e); err != nil {
+			t.Fatal(err)
+		}
+		types = append(types, e.Type)
 	}
+	return types
+}
+
+func slicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

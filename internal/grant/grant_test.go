@@ -1,0 +1,99 @@
+package grant
+
+import (
+	"testing"
+	"time"
+
+	"github.com/seletz/passierschein/internal/protocol"
+	"github.com/seletz/passierschein/internal/session"
+)
+
+var t0 = time.Date(2026, 11, 11, 9, 0, 0, 0, time.UTC)
+
+func r(field string) protocol.Reference {
+	return protocol.Reference{Vault: "beispiel.app.k8s-dev", Item: "datenbank-dev", Field: field}
+}
+
+func g(id string, sid session.ID, life time.Duration, fields ...string) Grant {
+	var refs []protocol.Reference
+	for _, f := range fields {
+		refs = append(refs, r(f))
+	}
+	return Grant{ID: id, Facts: session.Facts{SessionID: sid}, Refs: refs, GrantedAt: t0, ExpiresAt: t0.Add(life)}
+}
+
+// T4, T11, T23, D8, D32: a grant covers exactly its credentials, for its
+// own session, until the end of its lifetime.
+func TestCover(t *testing.T) {
+	s := NewStore()
+	s.Add(g("g1", "s-a", time.Hour, "username"))
+	s.Add(g("g2", "s-a", 2*time.Hour, "password"))
+	tests := []struct {
+		name  string
+		sid   session.ID
+		field string
+		at    time.Duration
+		want  string
+	}{
+		{"own session", "s-a", "username", 0, "g1"},
+		{"other credential", "s-a", "token", 0, ""},
+		{"other session", "s-b", "username", 0, ""},
+		{"shortly before the end", "s-a", "username", time.Hour - time.Nanosecond, "g1"},
+		{"at the end", "s-a", "username", time.Hour, ""},
+		{"second grant", "s-a", "password", time.Hour, "g2"},
+	}
+	for _, tt := range tests {
+		got, ok := s.Cover(tt.sid, r(tt.field), t0.Add(tt.at))
+		if ok != (tt.want != "") || got.ID != tt.want {
+			t.Errorf("%s: Cover = %q, %v; want %q", tt.name, got.ID, ok, tt.want)
+		}
+	}
+}
+
+// T16, T25, D33: a grant ends with its lifetime, its session and the
+// revocation.
+func TestEnds(t *testing.T) {
+	s := NewStore()
+	s.Add(g("g1", "s-a", time.Hour, "username"))
+	s.Add(g("g2", "s-a", 3*time.Hour, "password"))
+	s.Add(g("g3", "s-b", 3*time.Hour, "password"))
+	s.Add(g("g4", "s-b", 3*time.Hour, "username"))
+
+	if got := s.Live("s-a", t0); len(got) != 2 || got[0].ID != "g1" {
+		t.Fatalf("Live = %+v", got)
+	}
+	if _, ok := s.Remove("g1", t0.Add(time.Hour)); ok {
+		t.Error("Remove found a grant after its end")
+	}
+	exp := s.Expired(t0.Add(time.Hour))
+	if len(exp) != 1 || exp[0].ID != "g1" {
+		t.Fatalf("Expired = %+v", exp)
+	}
+	if len(s.Expired(t0.Add(time.Hour))) != 0 {
+		t.Error("Expired returned a grant twice")
+	}
+	if got, ok := s.Remove("g3", t0); !ok || got.ID != "g3" {
+		t.Fatalf("Remove = %+v, %v", got, ok)
+	}
+	if _, ok := s.Remove("g3", t0); ok {
+		t.Error("Remove found a removed grant")
+	}
+	ended := s.RemoveSession("s-a", t0)
+	if len(ended) != 1 || ended[0].ID != "g2" {
+		t.Fatalf("RemoveSession = %+v", ended)
+	}
+	if all := s.All(t0); len(all) != 1 || all[0].ID != "g4" {
+		t.Fatalf("All = %+v", all)
+	}
+}
+
+// Add keeps its own copy of the references.
+func TestAddCopies(t *testing.T) {
+	s := NewStore()
+	gr := g("g1", "s-a", time.Hour, "username")
+	s.Add(gr)
+	gr.Refs[0] = r("password")
+	if _, ok := s.Cover("s-a", r("username"), t0); !ok {
+		t.Error("a change of the caller changed the grant")
+	}
+}
