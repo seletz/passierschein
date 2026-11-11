@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "type": "approval_request",
+  "request_id": "req-c-0001",
+  "timeout_seconds": 120,
+  "verified": {
+    "origin": "vm",
+    "project": "beispielprojekt",
+    "vm_name": "beispiel-vm-01",
+    "ssh_session": "ssh beispiel@beispiel-vm-01 (session 7)"
+  },
+  "claims": {
+    "agent": "coding-agent",
+    "task": "Deploy the preview to the dev cluster",
+    "reason": "The deploy step needs the registry login."
+  },
+  "credentials": [
+    { "id": "c1", "vault": "beispiel.app.k8s-dev", "title": "registry-dev", "environment": "dev", "deviation": "new_item" },
+    { "id": "c2", "vault": "beispiel.infra.k8s-dev", "title": "dns-dev", "environment": "dev", "deviation": "new_vault" }
+  ],
+  "grant": {
+    "ttl_seconds": 14400,
+    "scope": { "project": "beispielprojekt", "vaults": ["beispiel.app.k8s-dev", "beispiel.infra.k8s-dev"] }
+  },
+  "existing_grant": {
+    "grant_id": "grant-0007",
+    "expires_at": "2026-11-11T21:30:00Z",
+    "scope": { "project": "beispielprojekt", "vaults": ["beispiel.app.k8s-dev"] },
+    "item_count": 2
+  }
+}

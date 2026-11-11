@@ -7,6 +7,7 @@ Credential broker for coding agents: `a38 serve` (Go daemon on the Mac, only com
 ## Rules
 
 - **Design before code.** No product code before Stefan has reviewed the design. Use cases, features, decisions, tests, gaps and risks only with `dg-register` (skill `dg-register`); never assign a number by hand, never write a bare ID in text (`{{ ref("D1") }}`).
+- **Use cases:** a use case with a complex flow shows a Mermaid sequence diagram (fenced block `mermaid`; Zensical renders it).
 - **Spikes** answer open questions. Report in `docs/explanation/spikes/`, throwaway code in `spikes/`.
 - **Worktrees only** (`wt switch --create <type>/<issue>-<name>`), never work on `develop`. Never `wt --yes`; hook approvals are Stefan's decision. Merge only through a PR and only with Stefan's approval.
 - **Tasks:** `mise` for everything, no Makefiles. Workflows call only `mise run <task>`; actions are pinned to a commit hash (`mise run tools:check`). Tool versions are pinned in `mise.toml`.

@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "type": "approval_request",
+  "request_id": "req-b-0001",
+  "timeout_seconds": 120,
+  "verified": {
+    "origin": "local",
+    "project": "beispielprojekt",
+    "peer_pid": 4242,
+    "process": "agent-cli",
+    "cwd": "/Users/beispiel/develop/beispielprojekt"
+  },
+  "claims": {
+    "agent": "coding-agent",
+    "task": "Start the full dev environment",
+    "reason": "The compose file refers to twelve secrets."
+  },
+  "credentials": [
+    {
+      "id": "c1",
+      "vault": "beispiel.app.k8s-dev",
+      "title": "datenbank-dev",
+      "environment": "dev"
+    },
+    {
+      "id": "c2",
+      "vault": "beispiel.app.k8s-dev",
+      "title": "objektspeicher-dev",
+      "environment": "dev"
+    },
+    {
+      "id": "c3",
+      "vault": "beispiel.app.k8s-dev",
+      "title": "nachrichtenbus-dev",
+      "environment": "dev"
+    },
+    {
+      "id": "c4",
+      "vault": "beispiel.app.k8s-dev",
+      "title": "cache-dev",
+      "environment": "dev"
+    },
+    {
+      "id": "c5",
+      "vault": "beispiel.app.k8s-dev",
+      "title": "suchindex-dev",
+      "environment": "dev"
+    },
+    {
+      "id": "c6",
+      "vault": "beispiel.app.k8s-dev",
+      "title": "mailversand-dev",
+      "environment": "dev"
+    },
+    {
+      "id": "c7",
+      "vault": "beispiel.app.k8s-dev",
+      "title": "api-schluessel-dev",
+      "environment": "dev"
+    },
+    {
+      "id": "c8",
+      "vault": "beispiel.app.k8s-dev",
+      "title": "registry-dev",
+      "environment": "dev"
+    },
+    {
+      "id": "c9",
+      "vault": "beispiel.infra.k8s-dev",
+      "title": "monitoring-dev",
+      "environment": "dev"
+    },
+    {
+      "id": "c10",
+      "vault": "beispiel.infra.k8s-dev",
+      "title": "logsammler-dev",
+      "environment": "dev"
+    },
+    {
+      "id": "c11",
+      "vault": "beispiel.infra.k8s-dev",
+      "title": "backup-dev",
+      "environment": "dev"
+    },
+    {
+      "id": "c12",
+      "vault": "beispiel.infra.k8s-dev",
+      "title": "dns-dev",
+      "environment": "dev"
+    }
+  ],
+  "grant": {
+    "ttl_seconds": 14400,
+    "scope": {
+      "project": "beispielprojekt",
+      "vaults": [
+        "beispiel.app.k8s-dev",
+        "beispiel.infra.k8s-dev"
+      ]
+    }
+  }
+}
