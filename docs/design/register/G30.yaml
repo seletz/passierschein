@@ -1,0 +1,9 @@
+id: G30
+zustand: eingeloest
+titel: Ein Grant hängt an den Namen des Backends und nicht an einer festen Kennung des Items
+bezug: '#15'
+schluessel: '#15/item-identitaet'
+lauf: '2.0'
+branch: docs/15-design-nachtraege-2
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

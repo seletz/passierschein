@@ -1,0 +1,9 @@
+id: G32
+zustand: eingeloest
+titel: Was a38 mcp tut, wenn der Daemon die Verbindung beendet, ist nicht festgelegt
+bezug: '#15'
+schluessel: '#15/verbindung-weg'
+lauf: '2.0'
+branch: docs/15-design-nachtraege-2
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

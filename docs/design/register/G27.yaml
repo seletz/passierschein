@@ -1,0 +1,9 @@
+id: G27
+zustand: eingeloest
+titel: Ein Fehlercode für das Ende der Sitzung während einer Anfrage fehlt
+bezug: '#15'
+schluessel: '#15/sitzungsende-code'
+lauf: '2.0'
+branch: docs/15-design-nachtraege-2
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'
