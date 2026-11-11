@@ -9,11 +9,13 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"slices"
 	"strings"
 	"syscall"
 
 	"github.com/seletz/passierschein/internal/approval"
+	"github.com/seletz/passierschein/internal/approval/appui"
 	"github.com/seletz/passierschein/internal/approval/fakeui"
 	"github.com/seletz/passierschein/internal/approval/queue"
 	"github.com/seletz/passierschein/internal/backend"
@@ -45,6 +47,7 @@ type serveFlags struct {
 	ui       string
 	fakeFile string
 	script   string
+	uiApp    string
 }
 
 // parseServeFlags reads and checks the command line.
@@ -57,6 +60,7 @@ func parseServeFlags(args []string, stderr io.Writer) (serveFlags, error) {
 	fs.StringVar(&f.ui, "ui", "", "approval UI: "+strings.Join(uis, ", "))
 	fs.StringVar(&f.fakeFile, "fake-file", "", "YAML file of the fake backend (with --backend fake)")
 	fs.StringVar(&f.script, "ui-script", "", "program and arguments of the approval script, split at white space (with --ui script)")
+	fs.StringVar(&f.uiApp, "ui-app", "", "path of the approval app (with --ui app; default: paths.ui_app of the configuration, else next to the a38 binary)")
 	if err := fs.Parse(args); err != nil {
 		return f, err
 	}
@@ -72,6 +76,8 @@ func parseServeFlags(args []string, stderr io.Writer) (serveFlags, error) {
 		return f, fmt.Errorf("--backend %s needs --ui app", f.backend)
 	case f.backend == "fake" && f.fakeFile == "":
 		return f, errors.New("--backend fake needs --fake-file")
+	case f.uiApp != "" && f.ui != "app":
+		return f, errors.New("--ui-app needs --ui app")
 	case f.ui == "script" && strings.TrimSpace(f.script) == "":
 		return f, errors.New("--ui script needs --ui-script")
 	}
@@ -157,8 +163,22 @@ func newBroker(f serveFlags, cfg *config.Config, log *slog.Logger) (*broker.Brok
 		return nil, nil, nil, err
 	}
 	clk := clock.System{}
-	ui, err := fakeui.New(mode, fakeui.Options{ScriptCommand: strings.Fields(f.script), Clock: clk})
-	if err != nil {
+	var ui approval.UI
+	var closeUI func()
+	appPath := ""
+	if mode == approval.ModeApp {
+		appPath = resolveUIApp(f.uiApp, cfg.Paths.UIApp, executablePath)
+		app, err := appui.New(appui.Options{Path: appPath, Clock: clk, Logger: log})
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		// A missing or bad app does not stop the daemon: each request
+		// then ends with ui_failed and a38 doctor names the finding.
+		if err := app.Check(); err != nil {
+			log.Error("the approval app cannot be used; each approval request ends with ui_failed", "path", appPath, "error", err)
+		}
+		ui, closeUI = app, app.Close
+	} else if ui, err = fakeui.New(mode, fakeui.Options{ScriptCommand: strings.Fields(f.script), Clock: clk}); err != nil {
 		return nil, nil, nil, err
 	}
 	store, err := openAuditFile(cfg.Paths.AuditFile)
@@ -166,6 +186,9 @@ func newBroker(f serveFlags, cfg *config.Config, log *slog.Logger) (*broker.Brok
 		log.Error("cannot open the audit log", "error", err)
 	}
 	closeAll := func() {
+		if closeUI != nil {
+			closeUI() // ends the apps of the notices that still run
+		}
 		if err := store.Close(); err != nil {
 			log.Error("cannot close the audit log", "error", err)
 		}
@@ -174,7 +197,7 @@ func newBroker(f serveFlags, cfg *config.Config, log *slog.Logger) (*broker.Brok
 	// the wait time (D30). A notice passes the queue at once.
 	q := queue.New(ui, clk, 0)
 	lock := fault.New(fault.Options{Store: store, UI: q, Clock: clk, Logger: log})
-	b := broker.New(cfg, be, q, store, clk, log, broker.WithUIMode(mode), broker.WithLock(lock))
+	b := broker.New(cfg, be, q, store, clk, log, broker.WithUIMode(mode), broker.WithUIApp(appPath), broker.WithLock(lock))
 	return b, lock, closeAll, nil
 }
 
@@ -186,4 +209,53 @@ func newBackend(f serveFlags) (backend.Backend, error) {
 	default:
 		return nil, fmt.Errorf("--backend %s is not implemented in stage 1", f.backend)
 	}
+}
+
+// DefaultAppNames lists the file names that the daemon looks for next to
+// its own binary, in this order, if neither the flag nor the configuration
+// names the approval app. The paths are relative to the directory of the
+// binary.
+var DefaultAppNames = []string{
+	"a38-approve",
+	filepath.Join("a38-approve.app", "Contents", "MacOS", "a38-approve"),
+}
+
+// executablePath returns the path of the running binary with links
+// resolved, or an empty string.
+func executablePath() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	if real, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = real
+	}
+	return exe
+}
+
+// resolveUIApp returns the path of the approval app: the flag, else the
+// configuration, else the first of [DefaultAppNames] next to the binary
+// that exists. If none exists it returns the first name, so that the
+// message names a path.
+func resolveUIApp(flagValue, configured string, exe func() string) string {
+	switch {
+	case flagValue != "":
+		if abs, err := filepath.Abs(flagValue); err == nil {
+			return abs // the app runs with another working directory
+		}
+		return flagValue
+	case configured != "":
+		return configured
+	}
+	self := exe()
+	if self == "" {
+		return DefaultAppNames[0] // relative: the file check refuses it
+	}
+	dir := filepath.Dir(self)
+	for _, n := range DefaultAppNames {
+		if _, err := os.Stat(filepath.Join(dir, n)); err == nil {
+			return filepath.Join(dir, n)
+		}
+	}
+	return filepath.Join(dir, DefaultAppNames[0])
 }

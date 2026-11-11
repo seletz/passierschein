@@ -121,7 +121,7 @@ func (b *Broker) Status(ctx context.Context, req *protocol.Status) (res *protoco
 		// The UI has no health check. The daemon starts only with a UI
 		// that it could build; a failure shows at the next approval
 		// request as ui_failed.
-		resp.UI = &protocol.UIStatus{Mode: string(b.uiMode), Usable: b.ui != nil}
+		resp.UI = &protocol.UIStatus{Mode: string(b.uiMode), Usable: b.ui != nil, AppPath: b.uiApp}
 		if b.ui == nil {
 			resp.UI.Reason = "The daemon has no approval UI."
 		}

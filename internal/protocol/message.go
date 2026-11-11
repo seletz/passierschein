@@ -293,6 +293,9 @@ type UIStatus struct {
 	Usable bool `json:"usable"`
 	// Reason is the finding in one sentence if Usable is false.
 	Reason string `json:"reason,omitempty"`
+	// AppPath is the path of the approval app for the mode app. The
+	// doctor checks the file. It is empty for each other mode.
+	AppPath string `json:"app_path,omitempty"`
 }
 
 // Fault describes the fault that locks delivery for all sessions.
