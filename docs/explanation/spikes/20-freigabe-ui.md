@@ -396,7 +396,7 @@ Der Entwurfslauf hält die folgenden Punkte fest.
 Stefan hat den Entwurf des Popups am 2026-11-11 für das MVP abgenommen.
 
 - Die Sprache der Oberfläche legt die Entwicklung fest. Bis dahin gelten die Annahmen dieses Berichts.
-- Stefan teilt den Einwand „Lange Bündel“: Eine Freigabeanfrage zeigt möglicherweise zu viele Zugangsdaten. Der Praxistest gibt die Antwort. Eine Obergrenze je Bündel gibt es bis dahin nicht.
+- Stefan teilt den Einwand „Lange Bündel“: Eine Freigabeanfrage zeigt möglicherweise zu viele Zugangsdaten. Der Praxistest gibt die Antwort. Bis dahin gilt die Obergrenze des Designs: zehn Einträge je Bündel, konfigurierbar.
 
 ## Offene Punkte
 
