@@ -34,7 +34,7 @@ Review ([Issue 2](https://github.com/seletz/passierschein/issues/2)).
 | D | {{ ref("D1") }}–{{ ref("D47") }} |
 | F | {{ ref("F1") }}–{{ ref("F19") }} |
 | T | {{ ref("T1") }}–{{ ref("T20") }} |
-| G | {{ ref("G1") }}–{{ ref("G18") }} |
+| G | {{ ref("G1") }}–{{ ref("G19") }} |
 | RI | {{ ref("RI1") }}–{{ ref("RI12") }} |
 
 ## Bestätigt und angenommen
@@ -47,8 +47,7 @@ Eine Entscheidung hat eine von zwei Herkünften:
   Vorschläge dieses Designlaufs. Stefan hat sie am 2026-11-11 abgenommen,
   mit den Ausnahmen der nächsten Zeile.
 - **Annahme:** Die Seite zeigt eine Annahme mit dem Zusatz „(Annahme)“.
-  Offen sind {{ ref("D25") }} (Rückfrage offen) und {{ ref("D29") }} (bleibt
-  Annahme bis zum Praxistest).
+  Offen ist {{ ref("D29") }} (bleibt Annahme bis zum Praxistest).
 - **Im Review neu gefasst:** {{ ref("D12") }} und {{ ref("D47") }}. Die
   Konfiguration nennt die Vaults und ihre Umgebung ausdrücklich. Der Daemon
   vergleicht keine Namensmuster.

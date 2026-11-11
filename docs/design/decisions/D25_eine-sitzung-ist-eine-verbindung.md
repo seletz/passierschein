@@ -10,8 +10,9 @@ headless: true
 status: gueltig
 use_cases: [UC1, UC2]
 beleg:
-  notiz: Vorschlag des Designlaufs, zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-11'
+  notiz: Vorschlag des Designlaufs, von Stefan im Review am 2026-11-11 abgenommen
 ---
 # D25 — Eine Sitzung ist eine Verbindung zum Agent-Socket, und der Daemon vergibt ihre Kennung
 
@@ -21,6 +22,8 @@ beleg:
 
 **Begründung:** Ein Grant braucht einen Träger, den der Agent nicht wählen kann. Eine Verbindung endet mit dem Prozess.
 
-**Grenze:** Lokal sind die Peer-Daten ein Hinweis und kein Beweis ({{ ref("RI5") }}). Offene Fragen: {{ ref("G1") }}, {{ ref("G2") }}.
+**Name der Sitzung:** Der Mensch braucht zur Zuordnung den Namen der Sitzung aus seinem Agent-Werkzeug, zum Beispiel `beispiel-koordinator`. Diesen Namen findet er in allen Werkzeugen wieder, mit denen er mit den Agents arbeitet. `a38 mcp` übergibt den Namen beim Aufbau der Verbindung. Die Freigabeanfrage, das Audit-Log und die TUI zeigen ihn. Der Name ist eine Angabe aus der Zone des Agents und gilt als unbestätigt ({{ ref("D4") }}). Die Kennung des Daemons bleibt der Träger des Grants. Stefan hat das am 2026-11-11 im Review festgelegt.
+
+**Grenze:** Lokal sind die Peer-Daten ein Hinweis und kein Beweis ({{ ref("RI5") }}). Offene Fragen: {{ ref("G1") }}, {{ ref("G2") }}, {{ ref("G19") }}.
 
 **Quelle:** Projektnotiz, Stufe 1: Herkunft über die Peer-Daten des Sockets.

@@ -1,0 +1,9 @@
+id: G19
+zustand: eingeloest
+titel: Wie der Name der Sitzung zu a38 kommt und ob der Daemon ihn prüfen kann, ist offen
+bezug: '#2'
+schluessel: '#2/sitzungsname'
+lauf: '1.0'
+branch: docs/2-designlauf-1
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'
