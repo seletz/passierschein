@@ -1,7 +1,7 @@
 ---
 render_macros: true
 id: 'D47'
-titel: 'Die Umgebung eines Vaults folgt aus seinem Namen'
+titel: 'Die Konfiguration nennt die Umgebung jedes Vaults'
 bereich: 'Backends'
 lauf: '1.0'
 stand: '2026-11-11'
@@ -10,15 +10,16 @@ headless: true
 status: gueltig
 use_cases: [UC5, UC1]
 beleg:
-  notiz: von Stefan am 2026-11-11 nicht abgenommen; Neufassung offen
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-11'
+  notiz: Neufassung, von Stefan im Review am 2026-11-11 abgenommen
 ---
-# D47 — Die Umgebung eines Vaults folgt aus seinem Namen
+# D47 — Die Konfiguration nennt die Umgebung jedes Vaults
 
 {{ design_kopf(page) }}
 
-**Entscheidung:** Ein Vault gehört zur Umgebung dev, wenn ein Segment seines Namens genau `k8s-dev` ist. Jeder andere Vault gilt als nicht dev. Die Regel ist konfigurierbar.
+**Entscheidung:** Die Konfiguration nennt zu jedem Vault seine Umgebung: dev, test oder prod. Der Daemon leitet die Umgebung nie aus dem Namen des Vaults ab. Ein Vault ohne Angabe der Umgebung ist ein Fehler der Konfiguration. Der Daemon startet dann nicht.
 
-**Begründung:** Die Vaults folgen dem Muster `<tenant>.<app>.k8s[-dev|-test]`. Im Zweifel gilt ein Vault als nicht dev. Das ist die sichere Richtung.
+**Begründung:** Die Zuordnung ist eine Policy des Menschen. Ein Vergleich von Zeichenketten kann einen Vault falsch einordnen. Eine fehlende Angabe darf nie zu dev führen.
 
-**Nicht abgenommen:** Stefan hat diese Entscheidung am 2026-11-11 abgelehnt. Die Zuordnung eines Vaults zu einer Umgebung ist eine Policy. Sie gehört in die Konfiguration und entsteht nicht aus einem Vergleich von Zeichenketten. Die Neufassung steht aus.
+**Verlauf:** Die erste Fassung leitete die Umgebung aus einem Segment des Namens ab. Stefan hat sie am 2026-11-11 abgelehnt und diese Fassung abgenommen.

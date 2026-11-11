@@ -47,11 +47,13 @@ Eine Entscheidung hat eine von zwei Herkünften:
   Vorschläge dieses Designlaufs. Stefan hat sie am 2026-11-11 abgenommen,
   mit den Ausnahmen der nächsten Zeile.
 - **Annahme:** Die Seite zeigt eine Annahme mit dem Zusatz „(Annahme)“.
-  Offen sind {{ ref("D25") }} (Rückfrage offen), {{ ref("D29") }} (bleibt
-  Annahme bis zum Praxistest) und {{ ref("D47") }} (nicht abgenommen,
-  Neufassung offen).
+  Offen sind {{ ref("D25") }} (Rückfrage offen) und {{ ref("D29") }} (bleibt
+  Annahme bis zum Praxistest).
+- **Im Review neu gefasst:** {{ ref("D12") }} und {{ ref("D47") }}. Die
+  Konfiguration nennt die Vaults und ihre Umgebung ausdrücklich. Der Daemon
+  vergleicht keine Namensmuster.
 - **Aus der Projektnotiz, wieder offen:** {{ ref("D3") }} (Transport in die
-  VM) und {{ ref("D12") }} (Auswahl der Vaults über die Konfiguration).
+  VM).
 
 Drei Entscheidungen ruhen auf Spikes: {{ ref("D39") }} (1Password-SDK),
 {{ ref("D31") }} und {{ ref("D45") }} (Freigabe-UI), {{ ref("D46") }}

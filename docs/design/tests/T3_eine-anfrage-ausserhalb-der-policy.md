@@ -17,7 +17,7 @@ beweist: [F3, D24, D28]
 
 **Form:** Tabellengetriebener Go-Test mit `--ui script`.
 
-**Fälle:** Vault ohne `k8s` im Namen; Vault nicht in der Allowlist des Projekts; Vault mit dem Segment `k8s-test`; Vault mit dem Segment `k8s`.
+**Fälle:** Vault nicht in der Konfiguration; Vault nicht in der Allowlist des Projekts; Vault mit der Umgebung test; Vault mit der Umgebung prod; Vault ohne Angabe der Umgebung (der Daemon startet nicht).
 
 **Erwartung:** Jeder Fall endet mit `not_allowed`. Das Skript der Freigabe läuft nie. Das Audit-Log enthält je Fall eine Ablehnung.
 
