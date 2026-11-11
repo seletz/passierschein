@@ -140,7 +140,23 @@ func serve(ctx context.Context, args []string, _, stderr io.Writer) int {
 	defer stopSweep()
 	go b.Run(sweepCtx)
 	go lock.Run(sweepCtx)
-	if err := srv.Serve(ctx); err != nil {
+	// T16: on SIGINT or SIGTERM the broker ends the live grants with the
+	// reason daemon_stopped before the connections close (a closed
+	// connection would end them with session_ended) and before the audit
+	// log closes. SIGKILL and a crash write nothing.
+	serveCtx, stopServe := context.WithCancel(context.Background())
+	defer stopServe()
+	go func() {
+		select {
+		case <-ctx.Done():
+			b.Shutdown()
+		case <-serveCtx.Done():
+		}
+		stopServe()
+	}()
+	err = srv.Serve(serveCtx)
+	b.Shutdown() // a grant that a request created during the stop
+	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "a38 serve: %v\n", err)
 		return exitFailure
 	}

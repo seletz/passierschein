@@ -249,13 +249,14 @@ Ein Widerruf steht vor einer Auslieferung, oder die Auslieferung steht vor dem W
 | Interne Störung im Broker | Fehler, Beginn der Sperre | `daemon_faulted` |
 | Fehler beim Schreiben des Audit-Logs | Beginn der Sperre, sobald das Schreiben möglich ist | `audit_failed` |
 | Anfrage während der Sperre | Fehler, wenn das Schreiben möglich ist | `daemon_faulted` |
-| Ende eines Grants | Ablauf mit `lifetime_ended` oder `session_ended`, Widerruf | – |
+| Ende eines Grants | Ablauf mit `lifetime_ended`, `session_ended` oder `daemon_stopped`, Widerruf | – |
 
 ### Was der Daemon verdrahtet
 
 - `broker.New(cfg, backend, ui, auditStore, clock, logger)` erstellt den Broker.
 - Die UI ist eine `approval/queue.Queue`. Sie setzt die Wartezeit von {{ ref("D30") }} durch. Der Broker lässt zusätzlich nur eine Freigabeanfrage zur gleichen Zeit zu.
 - `Broker.Run(ctx)` entfernt abgelaufene Grants alle 30 Sekunden und schreibt ihr Ereignis. Ohne `Run` gilt ein Grant trotzdem nie über seine Laufzeit hinaus; das Ereignis entsteht dann bei der nächsten Anfrage.
+- `Broker.Shutdown()` beendet jeden lebenden Grant mit einem Ereignis „Ablauf“ und dem Grund `daemon_stopped` ({{ ref("T16") }}). `a38 serve` ruft es auf SIGINT oder SIGTERM auf, bevor es die Verbindungen schließt und bevor das Audit-Log schließt. Grants leben nur im Arbeitsspeicher. Ein Neustart beendet sie also alle. Grenze: Ein Ende ohne Signal (SIGKILL, Absturz) schreibt nichts. Das Audit-Log hat dann kein Ende-Ereignis für die Grants, die noch lebten.
 - `a38 serve` verdrahtet den Broker. `--fake-file` nennt die YAML-Datei des Fake-Backends. `--ui-script` nennt das Programm der Variante `script` mit seinen Argumenten, getrennt durch Leerzeichen. Ohne Backend oder Freigabe startet der Daemon nicht und legt keinen Socket an. Eine Audit-Datei, die der Daemon nicht öffnen oder nicht schreiben kann, verhindert den Start nicht: Der Daemon startet gesperrt (siehe [Globale Sperre](#globale-sperre)).
 - `broker.WithUIMode` nennt die Variante der Freigabe. Bei `auto-approve`, `auto-deny` und `script` darf eine Entscheidung ohne `auth` sein. Bei `app`, bei einer unbekannten Variante und ohne die Option verlangt der Broker eine bestandene Authentifizierung des Menschen; fehlt `auth`, ist sie gescheitert oder steht dort `skipped`, endet die Freigabe mit `ui_failed` ({{ ref("D7") }}).
 - `broker.WithLock` setzt die globale Sperre. `a38 serve` übergibt `fault.Global`. Ohne die Option gilt `fault.NoLock`. Der Broker ruft `Lock.Raise` bei jedem Fehler des Audit-Logs und bei jedem Absturz auf.
@@ -518,7 +519,8 @@ Das Beispiel zeigt bei allen anderen Schlüsseln außer `vaults` und `projects` 
 
 `Config.ProjectFor` leitet das Projekt aus dem Arbeitsverzeichnis ab.
 Der längste passende Pfad gewinnt.
-Der Daemon löst symbolische Links vor dem Aufruf auf.
+Der Daemon löst symbolische Links des Arbeitsverzeichnisses vor dem Aufruf auf.
+Die Konfiguration löst die Pfade der Projekte beim Laden auf (`Project.RealPaths`). Der Pfad bleibt für Meldungen so, wie er in der Datei steht (`Project.Paths`). Ein Pfad, den es nicht gibt oder den das Laden nicht auflösen kann, bleibt unverändert. Das Laden scheitert dann nicht. `a38 doctor` meldet ihn als Befund (`Project.MissingPaths`).
 Der Daemon vergleicht den Namen eines Vaults genau, ohne Rücksicht auf Muster ({{ ref("D12") }}).
 
 Der Daemon liest die Datei einmal beim Start.

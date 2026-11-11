@@ -58,22 +58,20 @@ Setze den `PATH` auch in Terminal 1.
 ## 2. Arbeitsverzeichnis und Konfiguration anlegen
 
 Lege ein Arbeitsverzeichnis mit einem Beispielprojekt an.
-Der Daemon vergleicht den echten Pfad des Projekts.
-Deshalb nutzt das Tutorial `pwd -P`.
 Auf macOS ist `/tmp` ein Link auf `/private/tmp`.
-Ein Pfad mit diesem Link passt nicht, und die Anfrage endet mit `not_allowed`.
+Das stört nicht: Der Daemon löst die Pfade der Konfiguration beim Laden auf.
+Ein Pfad, den es nicht gibt, meldet `a38 doctor`.
 
 ```sh
 mkdir -p /tmp/a38-tutorial/beispielprojekt
 cd /tmp/a38-tutorial
-BASIS=$(pwd -P)
 ```
 
 Schreibe die Konfiguration.
 Sie nennt einen Vault der Umgebung `dev` und ein Projekt, das ihn nutzen darf:
 
 ```sh
-cat > config.yaml <<EOF
+cat > config.yaml <<'EOF'
 version: 1
 vaults:
   - name: beispiel.app.k8s-dev
@@ -81,12 +79,12 @@ vaults:
 projects:
   - name: beispielprojekt
     paths:
-      - $BASIS/beispielprojekt
+      - /tmp/a38-tutorial/beispielprojekt
     vaults:
       - beispiel.app.k8s-dev
 paths:
-  socket_dir: $BASIS/run
-  audit_file: $BASIS/audit.db
+  socket_dir: /tmp/a38-tutorial/run
+  audit_file: /tmp/a38-tutorial/audit.db
 EOF
 ```
 
@@ -125,7 +123,7 @@ a38 serve --config config.yaml --backend fake --fake-file fake.yaml --ui auto-ap
 Der Daemon bleibt im Vordergrund und schreibt sein Log:
 
 ```text
-time=2026-11-11T23:59:15.647+01:00 level=INFO msg="daemon started" config=config.yaml backend=fake ui=auto-approve agent_socket=/private/tmp/a38-tutorial/run/agent.sock admin_socket=/private/tmp/a38-tutorial/run/admin.sock
+time=2026-11-12T00:15:59.922+01:00 level=INFO msg="daemon started" config=config.yaml backend=fake ui=auto-approve agent_socket=/tmp/a38-tutorial/run/agent.sock admin_socket=/tmp/a38-tutorial/run/admin.sock
 ```
 
 Der Daemon legt zwei Sockets an: den Agent-Socket für die Agents und den Admin-Socket für dich.
@@ -142,10 +140,10 @@ a38 doctor --config config.yaml
 ```text
 OK       configuration      loaded, 1 projects, 1 vaults
 OK       socket modes       directory 0700, sockets 0600
-OK       daemon             version 9a0b7a1, 0 sessions, 0 grants
+OK       daemon             version a9d5f0f-dirty, 0 sessions, 0 grants
 OK       delivery lock      delivery is open
-OK       audit file         /private/tmp/a38-tutorial/audit.db exists and is writable
-OK       audit space        323132 MiB free (least: 100 MiB)
+OK       audit file         /tmp/a38-tutorial/audit.db exists and is writable
+OK       audit space        321790 MiB free (least: 100 MiB)
 OK       audit chain        intact, 0 entries
 OK       backend            ok
 OK       approval UI        ok
@@ -224,7 +222,7 @@ Der Daemon hat die Anfrage mit `--ui auto-approve` ohne Mensch freigegeben und d
 Zeige den Wert nie in Docs, Tickets oder Logs.
 
 Endet die Antwort mit `not_allowed`, liegt das Projektverzeichnis nicht im Pfad der Konfiguration.
-Prüfe, ob du in `beispielprojekt` gestartet hast und `pwd -P` genutzt hast.
+Prüfe, ob du in `beispielprojekt` gestartet hast. Prüfe auch, ob `a38 doctor` einen Pfad meldet, den es nicht gibt.
 
 ## 6. Grants ansehen
 
@@ -237,7 +235,7 @@ a38 grants list --config config.yaml
 
 ```text
 GRANT                             SESSION   NAME                  PROJECT          CREDENTIALS                                       REMAINING
-grant-ncxbl6232wlrvmzpqxgexyaylf  s-b23262  beispiel-koordinator  beispielprojekt  op://beispiel.app.k8s-dev/datenbank-dev/password  3h59m56s
+grant-vvxtdzfet7icpv7kxt7pbjox74  s-4d5af6  beispiel-koordinator  beispielprojekt  op://beispiel.app.k8s-dev/datenbank-dev/password  3h59m56s
 ```
 
 Die Spalte `CREDENTIALS` zeigt die Referenz und nie den Wert.
@@ -253,11 +251,11 @@ a38 audit list --config config.yaml
 
 ```text
 SEQ  TIME                  TYPE      PROJECT          SESSION               REFERENCES                                        RESULT
-1    2026-11-11T22:59:22Z  request   beispielprojekt  beispiel-koordinator  op://beispiel.app.k8s-dev/datenbank-dev/password  ok
-2    2026-11-11T22:59:25Z  bundle    beispielprojekt  beispiel-koordinator  op://beispiel.app.k8s-dev/datenbank-dev/password  ok
-3    2026-11-11T22:59:25Z  decision  beispielprojekt  beispiel-koordinator  op://beispiel.app.k8s-dev/datenbank-dev/password  ok (approved)
-4    2026-11-11T22:59:25Z  grant     beispielprojekt  beispiel-koordinator  op://beispiel.app.k8s-dev/datenbank-dev/password  ok
-5    2026-11-11T22:59:25Z  delivery  beispielprojekt  beispiel-koordinator  op://beispiel.app.k8s-dev/datenbank-dev/password  ok
+1    2026-11-11T23:16:01Z  request   beispielprojekt  beispiel-koordinator  op://beispiel.app.k8s-dev/datenbank-dev/password  ok
+2    2026-11-11T23:16:04Z  bundle    beispielprojekt  beispiel-koordinator  op://beispiel.app.k8s-dev/datenbank-dev/password  ok
+3    2026-11-11T23:16:04Z  decision  beispielprojekt  beispiel-koordinator  op://beispiel.app.k8s-dev/datenbank-dev/password  ok (approved)
+4    2026-11-11T23:16:04Z  grant     beispielprojekt  beispiel-koordinator  op://beispiel.app.k8s-dev/datenbank-dev/password  ok
+5    2026-11-11T23:16:04Z  delivery  beispielprojekt  beispiel-koordinator  op://beispiel.app.k8s-dev/datenbank-dev/password  ok
 ```
 
 Die Reihenfolge ist Anfrage, Bündel, Entscheidung, Grant, Auslieferung.
@@ -278,14 +276,14 @@ Bei einem Bruch nennt der Befehl den ersten fehlerhaften Eintrag und endet mit 1
 ## 8. Den Grant widerrufen
 
 Kopiere die Kennung des Grants aus der Liste von Schritt 6.
-Die Option `--config` steht vor der Kennung:
+Die Option `--config` darf vor und nach der Kennung stehen:
 
 ```sh
-a38 grants revoke --config config.yaml grant-ncxbl6232wlrvmzpqxgexyaylf
+a38 grants revoke grant-vvxtdzfet7icpv7kxt7pbjox74 --config config.yaml
 ```
 
 ```text
-The grant grant-ncxbl6232wlrvmzpqxgexyaylf ended. The next request needs a new approval.
+The grant grant-vvxtdzfet7icpv7kxt7pbjox74 ended. The next request needs a new approval.
 ```
 
 Die Liste ist jetzt leer:
@@ -306,7 +304,7 @@ a38 audit list --config config.yaml --type revocation
 
 ```text
 SEQ  TIME                  TYPE        PROJECT          SESSION               REFERENCES                                        RESULT
-6    2026-11-11T22:59:32Z  revocation  beispielprojekt  beispiel-koordinator  op://beispiel.app.k8s-dev/datenbank-dev/password  ok (the human revoked the grant)
+6    2026-11-11T23:16:25Z  revocation  beispielprojekt  beispiel-koordinator  op://beispiel.app.k8s-dev/datenbank-dev/password  ok (the human revoked the grant)
 ```
 
 Die Kette ist weiter intakt:
@@ -327,12 +325,13 @@ Drücke dann in Terminal 1 die Tasten `Ctrl-C`.
 Das Log zeigt das Ende:
 
 ```text
-time=2026-11-11T23:59:22.003+01:00 level=INFO msg="session started" session_id=s-b232629d9268e560c0f6a41e2858d9b6 project=beispielprojekt peer_pid=87529
-time=2026-11-11T23:59:32.766+01:00 level=INFO msg="session ended" session_id=s-b232629d9268e560c0f6a41e2858d9b6
-time=2026-11-11T23:59:33.952+01:00 level=INFO msg="daemon stopped"
+time=2026-11-12T00:16:01.295+01:00 level=INFO msg="session started" session_id=s-4d5af6f40fc479e91d4d210bfdae5626 project=beispielprojekt peer_pid=57288
+time=2026-11-12T00:16:29.615+01:00 level=INFO msg="session ended" session_id=s-4d5af6f40fc479e91d4d210bfdae5626
+time=2026-11-12T00:16:30.261+01:00 level=INFO msg="daemon stopped"
 ```
 
 Der Daemon entfernt seine Sockets.
+Ein Grant, der beim Stopp noch lebt, endet mit dem Grund `daemon_stopped` im Audit-Log.
 Das Audit-Log bleibt.
 Du prüfst es auch ohne Daemon:
 

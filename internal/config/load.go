@@ -192,6 +192,15 @@ func parseProjects(raw []rawProject, cfg *Config, fail func(string, ...any)) []P
 			}
 			owner[path] = rp.Name
 			p.Paths = append(p.Paths, path)
+			// The daemon resolves the working directory of a session, so
+			// resolve the project path too. A path that does not exist
+			// stays as written and does not fail loading (issue 44).
+			real, rerr := filepath.EvalSymlinks(path)
+			if rerr != nil {
+				real = path
+				p.MissingPaths = append(p.MissingPaths, path)
+			}
+			p.RealPaths = append(p.RealPaths, real)
 		}
 		var missing []string
 		for _, vault := range rp.Vaults {

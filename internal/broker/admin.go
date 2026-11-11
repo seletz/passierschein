@@ -57,6 +57,32 @@ func (b *Broker) SessionEnded(s session.Session) {
 	}
 }
 
+// Shutdown ends each live grant with an expiry event and the reason
+// daemon_stopped. The daemon calls it on a graceful stop (SIGINT, SIGTERM)
+// before the audit log closes. Grants live only in memory, so the end of
+// the daemon ends them all. Limit: an ungraceful end (SIGKILL, crash)
+// writes nothing; the audit log then has no end event for the grants
+// that were live. Shutdown is safe to call more than once.
+func (b *Broker) Shutdown() {
+	defer b.guard("shutdown", nil)
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.expireLocked()
+	now := b.clock.Now()
+	for _, g := range b.grants.All(now) {
+		if _, ok := b.grants.Remove(g.ID, now); !ok {
+			continue
+		}
+		_ = b.record(audit.Event{
+			Type:       audit.EventExpiry,
+			Verified:   g.Facts,
+			Claims:     g.Claims,
+			References: g.Refs,
+			Result:     audit.Result{GrantID: g.ID, Detail: audit.DetailDaemonStopped},
+		})
+	}
+}
+
 // GrantsList implements daemon.AdminHandler. It shows the live grants of
 // all sessions.
 func (b *Broker) GrantsList(_ context.Context, req *protocol.GrantsList) (res *protocol.Grants, e *protocol.Error) {

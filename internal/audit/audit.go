@@ -80,6 +80,10 @@ const (
 	// DetailSessionEnded marks the expiry of a grant because the
 	// connection of its session ended.
 	DetailSessionEnded = "session_ended"
+	// DetailDaemonStopped marks the expiry of a grant because the daemon
+	// stopped on SIGINT or SIGTERM. A grant lives only in memory. An
+	// ungraceful end (SIGKILL, crash) writes nothing.
+	DetailDaemonStopped = "daemon_stopped"
 	// DetailLifetimeEnded marks the expiry of a grant at the end of its
 	// lifetime.
 	DetailLifetimeEnded = "lifetime_ended"

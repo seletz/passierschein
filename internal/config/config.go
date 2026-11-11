@@ -42,6 +42,7 @@ package config
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -136,6 +137,14 @@ type Project struct {
 	// session belongs to the project if its working directory is one of
 	// the directories or is below one.
 	Paths []string
+	// RealPaths lists Paths with symbolic links resolved at loading. A
+	// path that does not exist or cannot be resolved stays as written.
+	// ProjectFor compares the working directory with both lists.
+	RealPaths []string
+	// MissingPaths lists the paths that did not exist at loading, as
+	// written. They do not make the project invalid; a38 doctor reports
+	// them.
+	MissingPaths []string
 	// Vaults lists the vaults that the project can use.
 	Vaults []string
 	// Invalid is empty for a valid project. Otherwise it is the finding in
@@ -253,7 +262,7 @@ func (c *Config) ProjectFor(dir string) (Project, bool) {
 	var best Project
 	bestLen := -1
 	for _, p := range c.Projects {
-		for _, root := range p.Paths {
+		for _, root := range slices.Concat(p.Paths, p.RealPaths) {
 			if dir != root && !strings.HasPrefix(dir, root+string(filepath.Separator)) {
 				continue
 			}
