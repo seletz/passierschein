@@ -24,3 +24,13 @@ laeufe:
         T: [1, 28]
         G: [1, 20]
         RI: [1, 12]
+  - nummer: 2
+    titel: Nachträge aus der Entwicklung des MVP
+    issue: '#13'
+    beginn: '2026-11-11'
+    status: offen
+    teilstaende:
+      - id: '2.0'
+        bedeutung: Nachträge und Korrekturen aus der Entwicklung der Stufen 1 bis 3
+        seit: '2026-11-11'
+        quelle: ['#13']

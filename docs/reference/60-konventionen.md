@@ -35,7 +35,35 @@ ASD-STE100 ist Simplified Technical English. Die wichtigsten Regeln:
 - Der Branchname hat die Form `<art>/<issue>-<kurzname>`, zum Beispiel
   `feat/12-fake-backend`.
 - Eine Änderung kommt nur über einen Pull Request nach `develop`.
-- Stefan gibt jeden Merge frei.
+- Der Koordinator prüft jeden Pull Request und merged ihn danach selbst
+  (Stefan, 2026-11-11). Die Prüfung umfasst die CI, die Tests und den Diff.
+- Ein Pull Request mit einer Auswahl oder einer Abnahme für Stefan bleibt
+  Entwurf. Das gilt für jede Entscheidung über die Oberfläche. Er ist Stefan
+  zugewiesen. Erst nach der Freigabe in der Diskussion wird er bereit zum
+  Merge.
+- Der Titel eines Pull Requests nennt den Endstand. GitHub übernimmt ihn als
+  Nachricht des Merge-Commits.
+
+### Pflichtteile eines Pull Requests
+
+Die Vorlage `.github/pull_request_template.md` fragt diese Teile ab:
+
+| Teil | Inhalt |
+|---|---|
+| Features | die Features des Design-Sets, die der Pull Request umsetzt |
+| Use Cases | die Use Cases, die der Pull Request berührt |
+| Testfälle | die umgesetzten Testfälle mit dem Namen der Testfunktion |
+| Screenshots | mindestens ein Bild des Ergebnisses |
+
+- Ein Test nennt seinen Testfall im Namen oder im Kommentar, zum Beispiel
+  `// T2: ...`.
+- Ein Pull Request ohne Bezug zum Design-Set schreibt „keine“.
+- Ein Screenshot einer Ausgabe der Kommandozeile entsteht mit
+  `mise run pr:screenshot -- bild.png -- <befehl>`.
+- Die Bilder liegen auf dem Branch `review-assets`. Niemand merged diesen
+  Branch. `mise run pr:screenshots:upload -- <nr> bild.png` legt sie ab und
+  gibt die Zeilen für den Text des Pull Requests aus.
+- Ein Screenshot zeigt nie einen Secret-Wert.
 
 ## Commits
 
@@ -69,6 +97,17 @@ Beispiele: Vault `beispiel.app.k8s-dev`, Item `datenbank-dev`, Projekt
 - Ein Secret-Wert steht nie in einem Log, in einer Fehlermeldung oder in
   einer Testausgabe.
 - gitleaks prüft jede Änderung vor dem Commit und in der CI.
+
+## Design nach dem Freeze
+
+- Designlauf 1 ist seit dem 2026-11-11 eingefroren. Der Text seiner
+  Artefakte ändert sich nicht mehr.
+- Findet die Entwicklung einen Fehler im Design, entsteht ein neues Artefakt
+  in Lauf 2. Eine ersetzte Entscheidung erhält den Status „ersetzt“.
+- Der Status eines Gaps, eines Risikos und eines Testfalls ändert sich
+  weiter mit `dg-register set`.
+- Eine Änderung an einer abgenommenen Entscheidung braucht die Freigabe von
+  Stefan. Der Pull Request bleibt bis dahin Entwurf.
 
 ## Design vor Code
 

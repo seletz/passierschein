@@ -83,6 +83,15 @@ depends = ["fmt", "vet", "lint", "test", "vuln", "secrets", "tools:check"]
 description = "Check the design set (docs/design) with dg-register; local only, needs the globally installed dg-register (mise global)"
 run = "dg-register check"
 
+[tasks."pr:screenshot"]
+description = "Render the output of a command as a PNG for a pull request: mise run pr:screenshot -- out.png -- <command>"
+# renovate: datasource=pypi depName=playwright
+run = "uvx --with playwright==1.65.0 python scripts/term_screenshot.py"
+
+[tasks."pr:screenshots:upload"]
+description = "Put screenshots on the branch review-assets and print the Markdown lines: mise run pr:screenshots:upload -- <pr> <file.png>..."
+run = "bash scripts/pr-screenshots-upload.sh"
+
 [tasks."uv:sync"]
 description = "Install the docs toolchain (Zensical) into .venv"
 run = "uv sync --locked"
