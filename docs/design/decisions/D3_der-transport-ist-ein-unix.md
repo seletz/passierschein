@@ -1,7 +1,7 @@
 ---
 render_macros: true
 id: 'D3'
-titel: 'Der Transport ist ein Unix-Socket, für die VM derselbe Socket über SSH-RemoteForward'
+titel: 'Der Transport ist ein Unix-Socket; der Weg in die VM ist offen'
 bereich: 'Grenzen und Identität'
 lauf: '1.0'
 stand: '2026-11-11'
@@ -14,7 +14,7 @@ beleg:
   datum: '2026-11-11'
   notiz: Projektnotiz vom 2026-11-11
 ---
-# D3 — Der Transport ist ein Unix-Socket, für die VM derselbe Socket über SSH-RemoteForward
+# D3 — Der Transport ist ein Unix-Socket; der Weg in die VM ist offen
 
 {{ design_kopf(page) }}
 

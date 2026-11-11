@@ -17,7 +17,7 @@ use_cases: [UC13]
 
 {{ design_kopf(page) }}
 
-Die SSH-Verbindung leitet den Agent-Socket in die VM weiter. Der Daemon erkennt die VM und die Sitzung. Die Freigabeanfrage nennt beide als geprüfte Fakten.
+Die VM erreicht den Agent-Endpunkt des Daemons. Der Transport ist offen ({{ ref("G1") }}). Der Daemon erkennt die VM und die Sitzung. Die Freigabeanfrage nennt beide als geprüfte Fakten.
 
 
 Setzt um: {{ ref("D2") }}, {{ ref("D3") }}, {{ ref("D13") }}, {{ ref("D14") }}.

@@ -1,7 +1,7 @@
 ---
 render_macros: true
 id: 'D44'
-titel: 'Admin-Befehle laufen über einen eigenen Socket, den niemand in die VM weiterleitet'
+titel: 'Admin-Befehle laufen über einen eigenen Socket, den die VM nie erreicht'
 bereich: 'Grenzen und Identität'
 lauf: '1.0'
 stand: '2026-11-11'
@@ -13,7 +13,7 @@ beleg:
   notiz: Vorschlag des Designlaufs, zu bestätigen durch Stefan
   annahme: true
 ---
-# D44 — Admin-Befehle laufen über einen eigenen Socket, den niemand in die VM weiterleitet
+# D44 — Admin-Befehle laufen über einen eigenen Socket, den die VM nie erreicht
 
 {{ design_kopf(page) }}
 

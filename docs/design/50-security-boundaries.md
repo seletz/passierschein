@@ -66,7 +66,7 @@ Der Daemon vertraut `a38 mcp` deshalb nicht mehr als dem Agent
 | B1 Agent-Socket | Z5 → Z2 | Unix-Socket ({{ ref("D3") }}) | Anfragen des Agents; Antworten mit dev-Werten |
 | B2 Freigabe | Z2 ↔ Z3 | stdin und stdout der Freigabe-App ({{ ref("D6") }}) | Freigabeanfrage ohne Secret-Werte; Entscheidung |
 | B3 Backend | Z2 → Z4 | Go-SDK von 1Password ({{ ref("D1") }}) | Namen von Vaults und Items; Secret-Werte |
-| B4 Weiterleitung | VM → Mac | SSH-`RemoteForward` auf den Agent-Socket (Stufe 5) | dieselben Nachrichten wie B1 |
+| B4 Zugang aus der VM | VM → Mac | offen (Stufe 5): SSH-`RemoteForward`, eigener Port-Forward, Tailscale oder Host-Anbindung der VM ({{ ref("G1") }}) | dieselben Nachrichten wie B1 |
 | B5 Admin-Socket | Z1 → Z2 | zweiter Unix-Socket ({{ ref("D44") }}) | Widerruf, Liste aller Grants |
 | B6 Dateisystem | Z2 ↔ Z6 | Dateien des Benutzers | Audit-Datenbank, Konfiguration |
 
@@ -108,13 +108,16 @@ Der Daemon vertraut `a38 mcp` deshalb nicht mehr als dem Agent
 | Der Daemon hält keinen Secret-Wert länger als für die Auslieferung. | enforced | kein Cache, kein Wert in Log oder Audit-Log ({{ ref("D34") }}) | {{ ref("T8") }} |
 | Das Token des Service Accounts ist vor anderen Prozessen des Benutzers geschützt. | **not-provided** | Ort und Schutz des Tokens sind offen ({{ ref("G3") }}). | – |
 
-### B4 Weiterleitung in die VM (Stufe 5)
+### B4 Zugang aus der VM (Stufe 5)
+
+Der Transport ist offen ({{ ref("G1") }}). Die Klassen dieser Tabelle gelten erst, wenn der Transport entschieden ist.
 
 | Maßnahme | Klasse | Mechanismus | Nachweis |
 |---|---|---|---|
 | Die VM enthält keine Werkzeuge von 1Password. | inherited | Aufbau der VM ({{ ref("D2") }}) | – |
-| Nur die SSH-Sitzung des Menschen leitet den Socket weiter. | inherited | SSH-Authentifizierung | – |
-| Die VM erreicht nur den Agent-Socket, nie den Admin-Socket. | enforced | Der Admin-Socket ist ein eigener Pfad ({{ ref("D44") }}). | {{ ref("T12") }} |
+| Nur die vorgesehene VM erreicht den Agent-Endpunkt. | inherited, Mechanismus offen | je Transport: SSH-Authentifizierung, Tailscale-Identität und ACL, oder Netz der VM auf dem Host | – |
+| Ein Netzwerk-Endpunkt ist vor anderen Geräten und Prozessen geschützt. | **not-provided** | Nur der Unix-Socket hat Dateirechte. Jeder andere Transport braucht eine eigene Authentifizierung ({{ ref("G1") }}). | – |
+| Die VM erreicht nur den Agent-Endpunkt, nie den Admin-Socket. | enforced | Der Admin-Socket ist ein eigener Pfad ({{ ref("D44") }}). | {{ ref("T12") }} |
 | Der Daemon kennt die VM und die Sitzung. | **not-provided** | offen ({{ ref("G1") }}) | – |
 
 ### B6 Dateisystem

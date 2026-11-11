@@ -1,7 +1,7 @@
 ---
 render_macros: true
 id: 'G1'
-titel: 'Wie der Daemon Sitzungen und VMs über den weitergeleiteten Socket erkennt, ist offen'
+titel: 'Wie der Daemon Sitzungen und VMs erkennt und welcher Transport in die VM führt, ist offen'
 bereich: 'Grenzen und Identität'
 lauf: '1.0'
 stand: '2026-11-11'
@@ -13,11 +13,11 @@ status: offen
 register:
   owner: Stefan
 ---
-# G1 — Wie der Daemon Sitzungen und VMs über den weitergeleiteten Socket erkennt, ist offen
+# G1 — Wie der Daemon Sitzungen und VMs erkennt und welcher Transport in die VM führt, ist offen
 
 {{ design_kopf(page) }}
 
-Über SSH-`RemoteForward` kommt jede Verbindung vom SSH-Prozess auf dem Mac. Die Peer-Daten nennen dann SSH und nicht den Agent. Ohne eine verlässliche Kennung gilt ein Grant für jeden Prozess in der VM. Das betrifft die Stufe 5.
+Über SSH-`RemoteForward` kommt jede Verbindung vom SSH-Prozess auf dem Mac. Die Peer-Daten nennen dann SSH und nicht den Agent. Bei einem Netzwerk-Transport gibt es keine Peer-Daten eines Unix-Sockets. Ohne eine verlässliche Kennung gilt ein Grant für jeden Prozess in der VM. Das betrifft die Stufe 5.
 
 SSH ist nicht zwingend (Stefan, 2026-11-11). Optionen für den Transport in die VM:
 
