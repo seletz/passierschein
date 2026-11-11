@@ -17,7 +17,7 @@ use_cases: [UC8, UC6]
 
 {{ design_kopf(page) }}
 
-Der Daemon schreibt jedes Ereignis in die SQLite-Datei. `a38 audit list` zeigt die Einträge. `a38 audit verify` prüft die Kette.
+Der Daemon schreibt jedes Ereignis in die SQLite-Datei, sobald es eintritt, auch jeden Fehlschlag. Bei einem Fehler beim Schreiben liefert der Daemon nichts aus und meldet den Fehler dem Menschen. `a38 audit list` zeigt die Einträge. `a38 audit verify` prüft die Kette.
 
 
 Setzt um: {{ ref("D11") }}, {{ ref("D36") }}, {{ ref("D37") }}.

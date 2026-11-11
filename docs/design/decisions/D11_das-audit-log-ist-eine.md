@@ -18,7 +18,7 @@ beleg:
 
 {{ design_kopf(page) }}
 
-**Entscheidung:** Der Daemon schreibt jeden Grant und jede Auslieferung in eine SQLite-Datei. Jeder Eintrag enthält den Hash des vorigen Eintrags.
+**Entscheidung:** Der Daemon schreibt jeden Grant, jede Auslieferung und jeden Fehlschlag in eine SQLite-Datei. Jeder Eintrag enthält den Hash des vorigen Eintrags.
 
 **Begründung:** Die Freigaben sind auswertbar. Eine Änderung ist erkennbar.
 

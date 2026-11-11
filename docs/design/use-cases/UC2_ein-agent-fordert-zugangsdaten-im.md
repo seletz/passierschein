@@ -30,8 +30,8 @@ sequenceDiagram
     D->>D: Policy und Grant prüfen:<br/>Grant deckt die Anfrage ab
     D->>B: Werte lesen
     B-->>D: Werte
+    Note over D: Audit: Auslieferung<br/>mit Verweis auf den Grant
     D-->>A: MCP-Antwort mit Werten
-    Note over D: Audit-Log: Auslieferung<br/>mit Verweis auf den Grant
 ```
 
 **Ablauf:**

@@ -32,9 +32,11 @@ sequenceDiagram
     alt Freigabe
         H-->>D: Auswahl und Touch ID
         D->>D: weiteren Grant vergeben
+        Note over D: Audit: Entscheidung,<br/>Grant, Auslieferung
         D-->>A: MCP-Antwort mit Werten
     else Ablehnung oder Zeitablauf
         H-->>D: abgelehnt
+        Note over D: Audit: Ablehnung
         D-->>A: Fehler denied oder timeout
     end
 ```

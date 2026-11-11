@@ -26,11 +26,13 @@ sequenceDiagram
     actor H as Mensch
     A->>D: request_credentials<br/>(Vault außerhalb von dev)
     alt MVP
+        Note over D: Audit: Ablehnung
         D-->>A: Fehler not_allowed,<br/>ohne Popup
     else ab Stufe 5
         D->>H: Popup, Umgebung hervorgehoben
         H-->>D: Auswahl und Touch ID
         D->>D: Wert in Datei auf tmpfs,<br/>mit Laufzeit
+        Note over D: Audit: Auslieferung
         D-->>A: Pfad der Datei, nie der Wert
     end
 ```

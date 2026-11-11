@@ -27,14 +27,16 @@ sequenceDiagram
     D->>H: Popup der Freigabe-App
     alt Ablehnung
         H-->>D: Deny oder Esc
+        Note over D: Audit: Ablehnung
         D-->>A: Fehler denied
     else Zeitablauf
+        Note over D: Audit: Ablauf
         D-->>A: Fehler timeout
     else Teilauswahl
         H-->>D: Teil ausgewählt, Touch ID
+        Note over D: Audit: Entscheidung,<br/>Grant, Auslieferung
         D-->>A: Werte für die Auswahl,<br/>denied für den Rest
     end
-    Note over D: Audit-Log: Entscheidung
 ```
 
 **Ablauf:**

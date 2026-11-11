@@ -16,12 +16,13 @@ stufe: 1
 
 **Akteure:** Agent, Daemon.
 
-**Auslöser:** Der Agent fragt an. Der Daemon läuft nicht, das Backend ist gesperrt, oder die Freigabe-App startet nicht.
+**Auslöser:** Der Agent fragt an. Der Daemon läuft nicht, das Backend ist gesperrt, die Freigabe-App startet nicht, oder das Schreiben in das Audit-Log schlägt fehl.
 
 **Ablauf:**
 
 1. `a38 mcp` oder der Daemon erkennt den Fehler.
-2. Der Agent erhält einen Fehler mit einem stabilen Code: `daemon_unavailable`, `backend_locked`, `backend_unavailable` oder `ui_failed` ({{ ref("D35") }}).
+2. Der Agent erhält einen Fehler mit einem stabilen Code: `daemon_unavailable`, `backend_locked`, `backend_unavailable`, `ui_failed` oder `audit_failed` ({{ ref("D35") }}).
 3. Der Daemon schreibt den Fehler in das Audit-Log, wenn er läuft.
+4. Schlägt das Schreiben in das Audit-Log fehl, zeigt der Daemon dem Menschen sofort ein Popup mit der Meldung ({{ ref("D36") }}).
 
 **Ergebnis:** Der Daemon liefert nichts aus. Es gibt keinen Ersatzweg. Die Fehlermeldung enthält keinen Secret-Wert.

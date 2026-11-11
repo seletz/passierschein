@@ -28,16 +28,20 @@ sequenceDiagram
     participant B as Backend
     actor H as Mensch
     A->>D: request_credentials<br/>über a38 mcp
+    Note over D: Audit: Anfrage
     D->>D: Sitzung, Policy,<br/>Bündelfenster
+    Note over D: Audit: Bündel
     D->>B: Namen auflösen
     B-->>D: Namen, kein Wert
     D->>H: Popup der Freigabe-App
     H-->>D: Auswahl und Touch ID
+    Note over D: Audit: Entscheidung
     D->>D: Grant vergeben
+    Note over D: Audit: Grant
     D->>B: Werte lesen
     B-->>D: Werte
+    Note over D: Audit: Auslieferung
     D-->>A: MCP-Antwort mit Werten
-    Note over D: Audit-Log bei jedem Schritt
 ```
 
 **Ablauf:**
@@ -52,7 +56,7 @@ sequenceDiagram
 8. Der Mensch wählt die Zugangsdaten aus und bestätigt mit Touch ID ({{ ref("D7") }}).
 9. Der Daemon vergibt einen Grant für die Sitzung ({{ ref("D8") }}).
 10. Der Daemon liest die Werte im Backend und liefert sie als MCP-Antwort aus ({{ ref("D9") }}).
-11. Der Daemon schreibt jeden Schritt in das Audit-Log ({{ ref("D11") }}).
+11. Der Daemon schreibt jedes Ereignis in das Audit-Log, sobald es eintritt, und die Auslieferung vor der Antwort ({{ ref("D11") }}, {{ ref("D36") }}).
 
 **Ergebnis:** Der Agent hat die freigegebenen Werte. Das Audit-Log enthält Anfrage, Entscheidung, Grant und Auslieferung.
 

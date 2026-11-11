@@ -127,6 +127,7 @@ Der Transport ist offen ({{ ref("G1") }}). Die Klassen dieser Tabelle gelten ers
 | Maßnahme | Klasse | Mechanismus | Nachweis |
 |---|---|---|---|
 | Eine Änderung am Audit-Log ist erkennbar. | enforced | Hash-Kette und `a38 audit verify` ({{ ref("D11") }}, {{ ref("D36") }}) | {{ ref("T7") }} |
+| Ohne Eintrag im Audit-Log gibt es keine Auslieferung. | enforced | Eintrag vor der Antwort, Code `audit_failed`, Meldung an den Menschen ({{ ref("D36") }}) | {{ ref("T26") }} |
 | Eine Änderung am Audit-Log ist unmöglich. | **not-provided** | Die Datei gehört dem Benutzer. Wer die Datei ändern kann, kann die Kette neu berechnen ({{ ref("D37") }}, {{ ref("RI7") }}). | – |
 | Nur der Mensch ändert die Konfiguration. | **not-provided** in den Stufen 1 bis 4 | Die Datei gehört dem Benutzer ({{ ref("RI5") }}). Ab Stufe 5 liegt sie außerhalb der VM. | – |
 

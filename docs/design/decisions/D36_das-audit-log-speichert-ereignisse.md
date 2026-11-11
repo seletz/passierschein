@@ -20,6 +20,10 @@ beleg:
 
 **Entscheidung:** Jeder Eintrag hat eine laufende Nummer, einen Zeitpunkt, eine Ereignisart, die Sitzung, die geprüften Fakten, die Angaben des Agents mit dem Namen der Sitzung, die Referenzen und das Ergebnis. Ereignisarten: Anfrage, Bündel, Entscheidung, Grant, Auslieferung, Ablehnung, Widerruf, Ablauf, Fehler. Der Hash eines Eintrags ist SHA-256 über den Hash des vorigen Eintrags und die kanonische Form des Eintrags. `a38 audit verify` berechnet die Kette neu.
 
-**Begründung:** Die Auswertung nach Projekt, Agent, Zugangsdatum, Zeit und Ergebnis braucht diese Felder.
+**Zeitpunkt:** Der Daemon schreibt jedes Ereignis, sobald es eintritt. Das gilt auch für jeden Fehlschlag: Ablehnung, Ablauf und Fehler. Der Daemon liefert einen Wert erst aus, nachdem der Eintrag für die Auslieferung geschrieben ist.
 
-**Offen:** Aufbewahrung und Löschung ({{ ref("G8") }}).
+**Fehler beim Schreiben:** Schlägt das Schreiben in das Audit-Log fehl, liefert der Daemon nichts aus und vergibt keinen Grant. Der Agent erhält den Code `audit_failed`. Der Daemon zeigt dem Menschen sofort ein Popup mit der Meldung, damit der Mensch handeln kann. Der Daemon schreibt den Fehler zusätzlich in sein Log. Stefan hat das am 2026-11-11 festgelegt; die Regel „keine Auslieferung“ gilt zunächst.
+
+**Begründung:** Die Auswertung nach Projekt, Agent, Zugangsdatum, Zeit und Ergebnis braucht diese Felder. Eine Auslieferung ohne Eintrag wäre nicht nachvollziehbar.
+
+**Offen:** Aufbewahrung und Löschung ({{ ref("G8") }}). Form und Aktionen der Meldung ({{ ref("G20") }}).
