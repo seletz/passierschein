@@ -42,10 +42,11 @@ func runFaultStatus(args []string, stdout, stderr io.Writer) int {
 	var af adminFlags
 	fs := newFlagSet("fault status", stderr)
 	af.register(fs)
-	if err := fs.Parse(args); err != nil {
+	pos, err := parseInterspersed(fs, args)
+	if err != nil {
 		return exitUsage
 	}
-	if fs.NArg() != 0 {
+	if len(pos) != 0 {
 		_, _ = fmt.Fprintln(stderr, "a38 fault status: unexpected argument")
 		return exitUsage
 	}
@@ -89,10 +90,11 @@ func runFaultClear(args []string, stdout, stderr io.Writer) int {
 	var af adminFlags
 	fs := newFlagSet("fault clear", stderr)
 	af.register(fs)
-	if err := fs.Parse(args); err != nil {
+	pos, err := parseInterspersed(fs, args)
+	if err != nil {
 		return exitUsage
 	}
-	if fs.NArg() != 0 {
+	if len(pos) != 0 {
 		_, _ = fmt.Fprintln(stderr, "a38 fault clear: unexpected argument")
 		return exitUsage
 	}

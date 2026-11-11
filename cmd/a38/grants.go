@@ -41,10 +41,11 @@ func runGrantsList(args []string, stdout, stderr io.Writer) int {
 	var af adminFlags
 	fs := newFlagSet("grants list", stderr)
 	af.register(fs)
-	if err := fs.Parse(args); err != nil {
+	pos, err := parseInterspersed(fs, args)
+	if err != nil {
 		return exitUsage
 	}
-	if fs.NArg() != 0 {
+	if len(pos) != 0 {
 		_, _ = fmt.Fprintln(stderr, "a38 grants list: unexpected argument")
 		return exitUsage
 	}
@@ -113,14 +114,15 @@ func runGrantsRevoke(args []string, stdout, stderr io.Writer) int {
 	var af adminFlags
 	fs := newFlagSet("grants revoke", stderr)
 	af.register(fs)
-	if err := fs.Parse(args); err != nil {
+	pos, err := parseInterspersed(fs, args)
+	if err != nil {
 		return exitUsage
 	}
-	if fs.NArg() != 1 {
+	if len(pos) != 1 {
 		_, _ = fmt.Fprintf(stderr, "a38 grants revoke: one grant ID is necessary\n\n%s", grantsUsage)
 		return exitUsage
 	}
-	id := fs.Arg(0)
+	id := pos[0]
 	s, err := dialAdmin(af.configPath)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "a38 grants revoke: %v\n", err)

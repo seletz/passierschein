@@ -8,7 +8,7 @@ stand: '2026-11-12'
 order: 4
 headless: true
 status: aktiv
-umsetzung: teilweise
+umsetzung: vorhanden
 beweist: [D33, F5]
 ---
 # T16 — Ein Grant endet mit der Sitzung, dem Widerruf und dem Neustart des Daemons

@@ -80,3 +80,27 @@ func newFlagSet(name string, stderr io.Writer) *flag.FlagSet {
 	fs.SetOutput(stderr)
 	return fs
 }
+
+// parseInterspersed parses args with fs and accepts the flags before,
+// between and after the positional arguments. The standard flag package
+// stops at the first positional argument. A "--" ends the flags: each
+// argument after it is positional. It returns the positional arguments.
+func parseInterspersed(fs *flag.FlagSet, args []string) ([]string, error) {
+	var positional []string
+	for {
+		if err := fs.Parse(args); err != nil {
+			return nil, err
+		}
+		rest := fs.Args()
+		// Parse consumes a "--" without a trace. If the argument in front
+		// of the rest is "--", everything that follows is positional.
+		if n := len(args) - len(rest); n > 0 && args[n-1] == "--" {
+			return append(positional, rest...), nil
+		}
+		if len(rest) == 0 {
+			return positional, nil
+		}
+		positional = append(positional, rest[0])
+		args = rest[1:]
+	}
+}

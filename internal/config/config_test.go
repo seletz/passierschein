@@ -104,11 +104,15 @@ func TestParseExample(t *testing.T) {
 		},
 		Projects: []Project{
 			{Name: "beispielprojekt",
-				Paths:  []string{"/home/beispiel/develop/beispielprojekt", "/home/beispiel/develop/beispielprojekt__worktrees"},
-				Vaults: []string{"beispiel.app.k8s-dev"}},
+				Paths:        []string{"/home/beispiel/develop/beispielprojekt", "/home/beispiel/develop/beispielprojekt__worktrees"},
+				RealPaths:    []string{"/home/beispiel/develop/beispielprojekt", "/home/beispiel/develop/beispielprojekt__worktrees"},
+				MissingPaths: []string{"/home/beispiel/develop/beispielprojekt", "/home/beispiel/develop/beispielprojekt__worktrees"},
+				Vaults:       []string{"beispiel.app.k8s-dev"}},
 			{Name: "zweitprojekt",
-				Paths:  []string{"/home/beispiel/develop/zweitprojekt"},
-				Vaults: []string{"beispiel.app.k8s-dev", "beispiel.app.k8s-test"}},
+				Paths:        []string{"/home/beispiel/develop/zweitprojekt"},
+				RealPaths:    []string{"/home/beispiel/develop/zweitprojekt"},
+				MissingPaths: []string{"/home/beispiel/develop/zweitprojekt"},
+				Vaults:       []string{"beispiel.app.k8s-dev", "beispiel.app.k8s-test"}},
 		},
 		Grant:       Grant{Lifetime: 30 * time.Minute},
 		Bundle:      Bundle{Window: 1500 * time.Millisecond, MaxEntries: 3},
@@ -503,5 +507,104 @@ func TestEnvironmentValid(t *testing.T) {
 		if env.Valid() {
 			t.Errorf("%q.Valid() = true", env)
 		}
+	}
+}
+
+// T11 (part): a project path under a symbolic link matches the resolved
+// working directory of a session (issue 44).
+func TestProjectPathsUnderSymlink(t *testing.T) {
+	real, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range []string{"projekt/teil", "tief/projekt"} {
+		if err := os.MkdirAll(filepath.Join(real, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Parse([]byte(minimal + `projects:
+  - name: beispielprojekt
+    paths: [` + link + `/projekt]
+  - name: teilprojekt
+    paths: [` + real + `/projekt/teil]
+  - name: fehlt
+    paths: [` + link + `/gibt-es-nicht]
+`))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	tests := []struct {
+		dir, want string
+	}{
+		{real + "/projekt", "beispielprojekt"},
+		{real + "/projekt/src", "beispielprojekt"},
+		{real + "/projekt/teil/x", "teilprojekt"}, // longest match wins
+		{real + "/tief/projekt", ""},
+		{link + "/gibt-es-nicht/x", "fehlt"}, // not resolvable: kept as written
+	}
+	for _, tt := range tests {
+		got, ok := cfg.ProjectFor(tt.dir)
+		if ok != (tt.want != "") || got.Name != tt.want {
+			t.Errorf("ProjectFor(%q) = %q, %v; want %q", tt.dir, got.Name, ok, tt.want)
+		}
+	}
+	p, _ := cfg.Project("beispielprojekt")
+	if p.Paths[0] != link+"/projekt" {
+		t.Errorf("Paths = %v; want the path as written", p.Paths)
+	}
+	if len(p.MissingPaths) != 0 {
+		t.Errorf("MissingPaths = %v; want none", p.MissingPaths)
+	}
+	m, _ := cfg.Project("fehlt")
+	if !reflect.DeepEqual(m.MissingPaths, []string{link + "/gibt-es-nicht"}) || m.Invalid != "" {
+		t.Errorf("MissingPaths = %v, Invalid = %q; want the path and a valid project", m.MissingPaths, m.Invalid)
+	}
+}
+
+// T11 (part): the configured path is the real path and the session
+// directory comes from a symbolic link that the daemon resolved.
+func TestProjectPathRealSessionResolved(t *testing.T) {
+	real, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Parse([]byte(minimal + "projects:\n  - name: beispielprojekt\n    paths: [" + real + "]\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := filepath.EvalSymlinks(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := cfg.ProjectFor(resolved); !ok || got.Name != "beispielprojekt" {
+		t.Errorf("ProjectFor(%q) = %q, %v", resolved, got.Name, ok)
+	}
+}
+
+// T11 (part): on macOS /tmp is a link to /private/tmp.
+func TestProjectPathTmp(t *testing.T) {
+	dir, err := os.MkdirTemp("/tmp", "a38-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	resolved, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Parse([]byte(minimal + "projects:\n  - name: beispielprojekt\n    paths: [" + dir + "]\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := cfg.ProjectFor(resolved + "/src"); !ok || got.Name != "beispielprojekt" {
+		t.Errorf("ProjectFor(%q) = %q, %v", resolved, got.Name, ok)
 	}
 }
