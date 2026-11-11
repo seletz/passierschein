@@ -10,8 +10,9 @@ headless: true
 status: gueltig
 use_cases: [UC1, UC14]
 beleg:
-  notiz: Vorschlag des Designlaufs, zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-11'
+  notiz: Vorschlag des Designlaufs, von Stefan im Review am 2026-11-11 abgenommen
 ---
 # D26 — Das Protokoll auf dem Socket hat ein festes, versioniertes Schema
 

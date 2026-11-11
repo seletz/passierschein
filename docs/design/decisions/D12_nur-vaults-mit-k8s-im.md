@@ -23,3 +23,5 @@ beleg:
 **Begründung:** Die übrigen Vaults sind Altbestand. Die Vaults der Anwendungen sind je Umgebung getrennt; ein dev-Vault enthält nur dev.
 
 **Quelle:** Projektnotiz, Vault-Struktur. Die Erkennung der Umgebung: {{ ref("D47") }}.
+
+**Offen:** Stefan hat am 2026-11-11 gesagt: Das ist eine Policy. Die Konfiguration stellt sie sicher. Ein Vergleich des Namens im Daemon ist nicht nötig. Die Neufassung steht aus.

@@ -23,3 +23,5 @@ beleg:
 **Begründung:** Der Wert erreicht so nicht den Kontext des Modells.
 
 **Quelle:** Projektnotiz, Ablauf. Die Umsetzung ist offen ({{ ref("G11") }}).
+
+**Hinweis:** Die Entscheidung gilt. Der Praxistest prüft, ob sie sich bewährt (Stefan, 2026-11-11).

@@ -1,7 +1,7 @@
 ---
 render_macros: true
 id: 'D32'
-titel: 'Ein Grant umfasst die angehakten Zugangsdaten, mit einer Laufzeit von vier Stunden'
+titel: 'Ein Grant umfasst die angehakten Zugangsdaten, mit einer konfigurierbaren Laufzeit'
 bereich: 'Grants und Auslieferung'
 lauf: '1.0'
 stand: '2026-11-11'
@@ -10,14 +10,15 @@ headless: true
 status: gueltig
 use_cases: [UC2, UC3]
 beleg:
-  notiz: Vorschlag des Designlaufs, zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-11'
+  notiz: Vorschlag des Designlaufs, von Stefan im Review am 2026-11-11 abgenommen
 ---
-# D32 — Ein Grant umfasst die angehakten Zugangsdaten, mit einer Laufzeit von vier Stunden
+# D32 — Ein Grant umfasst die angehakten Zugangsdaten, mit einer konfigurierbaren Laufzeit
 
 {{ design_kopf(page) }}
 
-**Entscheidung:** Ein Grant gilt für eine Sitzung und für genau die Zugangsdaten, die der Mensch angehakt hat. Die Laufzeit ist vier Stunden. Der Mensch kann in der Freigabeanfrage eine kürzere Laufzeit wählen. Die Obergrenze ist acht Stunden.
+**Entscheidung:** Ein Grant gilt für eine Sitzung und für genau die Zugangsdaten, die der Mensch angehakt hat. Die Laufzeit ist ein Wert der Konfiguration. Er gilt global für `a38`. Der Standard ist vier Stunden. Der Mensch kann in der Freigabeanfrage eine kürzere Laufzeit wählen.
 
 **Begründung:** Der kleinste Umfang ist der sichere Standard.
 

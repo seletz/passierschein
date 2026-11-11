@@ -10,8 +10,9 @@ headless: true
 status: gueltig
 use_cases: [UC7, UC2]
 beleg:
-  notiz: Vorschlag des Designlaufs, zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-11'
+  notiz: Vorschlag des Designlaufs, von Stefan im Review am 2026-11-11 abgenommen
 ---
 # D33 — Ein Grant endet mit der Laufzeit, der Sitzung, dem Widerruf oder dem Neustart des Daemons
 

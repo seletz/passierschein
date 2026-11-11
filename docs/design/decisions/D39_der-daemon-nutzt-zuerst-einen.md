@@ -10,8 +10,9 @@ headless: true
 status: gueltig
 use_cases: [UC11]
 beleg:
-  notiz: Vorschlag des Designlaufs, zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-11'
+  notiz: Vorschlag des Designlaufs, von Stefan im Review am 2026-11-11 abgenommen
 ---
 # D39 — Der Daemon nutzt zuerst einen Service Account, die Desktop-Integration folgt hinter einem Build-Tag
 

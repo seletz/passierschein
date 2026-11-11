@@ -43,11 +43,18 @@ Eine Entscheidung hat eine von zwei Herkünften:
 
 - **Bestätigt:** {{ ref("D1") }} bis {{ ref("D22") }} stammen aus der
   Projektnotiz vom 2026-11-11. Stefan hat sie getroffen.
-- **Annahme:** {{ ref("D23") }} bis {{ ref("D47") }} sind Vorschläge dieses
-  Designlaufs. Die Seite zeigt sie mit dem Zusatz „(Annahme)“. Stefan
-  bestätigt, ändert oder verwirft sie im Review.
+- **Im Review abgenommen:** {{ ref("D23") }} bis {{ ref("D47") }} sind
+  Vorschläge dieses Designlaufs. Stefan hat sie am 2026-11-11 abgenommen,
+  mit den Ausnahmen der nächsten Zeile.
+- **Annahme:** Die Seite zeigt eine Annahme mit dem Zusatz „(Annahme)“.
+  Offen sind {{ ref("D25") }} und {{ ref("D27") }} (noch nicht besprochen),
+  {{ ref("D29") }} (bleibt Annahme bis zum Praxistest), {{ ref("D40") }}
+  (Rückfrage offen) und {{ ref("D47") }} (nicht abgenommen, Neufassung
+  offen).
+- **Aus der Projektnotiz, wieder offen:** {{ ref("D3") }} (Transport in die
+  VM) und {{ ref("D12") }} (Auswahl der Vaults über die Konfiguration).
 
-Drei Annahmen ruhen auf Spikes: {{ ref("D39") }} (1Password-SDK),
+Drei Entscheidungen ruhen auf Spikes: {{ ref("D39") }} (1Password-SDK),
 {{ ref("D31") }} und {{ ref("D45") }} (Freigabe-UI), {{ ref("D46") }}
 (Signatur der Swift-App). Kein Spike hat 1Password oder die echte
 Developer ID benutzt. Die offenen Praxistests stehen in {{ ref("G3") }},

@@ -10,8 +10,9 @@ headless: true
 status: gueltig
 use_cases: [UC8, UC6]
 beleg:
-  notiz: Vorschlag des Designlaufs, zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-11'
+  notiz: Vorschlag des Designlaufs, von Stefan im Review am 2026-11-11 abgenommen
 ---
 # D36 — Das Audit-Log speichert Ereignisse mit SHA-256-Kette, und a38 audit verify prüft die Kette
 

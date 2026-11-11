@@ -10,7 +10,7 @@ headless: true
 status: gueltig
 use_cases: [UC1]
 beleg:
-  notiz: Vorschlag des Designlaufs, zu bestätigen durch Stefan
+  notiz: bleibt Annahme (Stefan, 2026-11-11); der Praxistest prüft die Werte
   annahme: true
 ---
 # D29 — Das Bündelfenster dauert drei Sekunden, und ein Bündel hat höchstens zehn Einträge
