@@ -1,0 +1,9 @@
+id: G29
+zustand: eingeloest
+titel: Welche Ereignisart das Audit-Log je Ausgang schreibt, ist nicht festgelegt
+bezug: '#15'
+schluessel: '#15/ereignis-zuordnung'
+lauf: '2.0'
+branch: docs/15-design-nachtraege-2
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'
