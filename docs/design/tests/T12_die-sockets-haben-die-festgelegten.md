@@ -3,12 +3,12 @@ render_macros: true
 id: 'T12'
 titel: 'Die Sockets haben die festgelegten Rechte, und der Agent-Socket nimmt keine Admin-Befehle an'
 bereich: 'Grenzen und Identität'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 3
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [D43, D44]
 ---
 # T12 — Die Sockets haben die festgelegten Rechte, und der Agent-Socket nimmt keine Admin-Befehle an

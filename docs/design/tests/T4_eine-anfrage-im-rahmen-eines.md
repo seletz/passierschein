@@ -3,12 +3,12 @@ render_macros: true
 id: 'T4'
 titel: 'Eine Anfrage im Rahmen eines Grants braucht keine Freigabe, nach der Laufzeit wieder'
 bereich: 'Grants und Auslieferung'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 2
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F5, D8, D32]
 ---
 # T4 — Eine Anfrage im Rahmen eines Grants braucht keine Freigabe, nach der Laufzeit wieder

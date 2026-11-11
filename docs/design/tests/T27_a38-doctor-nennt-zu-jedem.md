@@ -3,12 +3,12 @@ render_macros: true
 id: 'T27'
 titel: 'a38 doctor nennt zu jedem Fehlerzustand die Ursache und den nächsten Schritt'
 bereich: 'Betrieb und Release'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 2
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F20, D36]
 ---
 # T27 — a38 doctor nennt zu jedem Fehlerzustand die Ursache und den nächsten Schritt

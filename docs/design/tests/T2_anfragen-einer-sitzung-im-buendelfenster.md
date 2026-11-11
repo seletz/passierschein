@@ -3,12 +3,12 @@ render_macros: true
 id: 'T2'
 titel: 'Anfragen einer Sitzung im Bündelfenster ergeben genau eine Freigabeanfrage'
 bereich: 'Anfrage und Bündelung'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 2
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F2, D5]
 ---
 # T2 — Anfragen einer Sitzung im Bündelfenster ergeben genau eine Freigabeanfrage

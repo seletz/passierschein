@@ -3,12 +3,12 @@ render_macros: true
 id: 'T21'
 titel: 'Der Name der Sitzung ist ein Startwert von a38 mcp und steht nur bei den Angaben'
 bereich: 'Grenzen und Identität'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 4
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: teilweise
 beweist: [D25, D4, D36]
 ---
 # T21 — Der Name der Sitzung ist ein Startwert von a38 mcp und steht nur bei den Angaben

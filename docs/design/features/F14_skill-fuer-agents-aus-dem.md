@@ -3,13 +3,13 @@ render_macros: true
 id: 'F14'
 titel: 'Skill für Agents aus dem Binary'
 bereich: 'Oberflächen'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 2
 headless: true
 status: aktiv
 stufe: 1
-umsetzung: zu-bauen
+umsetzung: vorhanden
 implementiert: [D22, D5]
 use_cases: [UC9]
 ---

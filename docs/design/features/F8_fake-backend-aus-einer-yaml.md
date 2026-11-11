@@ -3,13 +3,13 @@ render_macros: true
 id: 'F8'
 titel: 'Fake-Backend aus einer YAML-Datei'
 bereich: 'Backends'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 1
 headless: true
 status: aktiv
 stufe: 1
-umsetzung: zu-bauen
+umsetzung: vorhanden
 implementiert: [D38, D16]
 use_cases: [UC10]
 ---

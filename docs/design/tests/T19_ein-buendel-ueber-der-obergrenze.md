@@ -3,12 +3,12 @@ render_macros: true
 id: 'T19'
 titel: 'Ein Bündel über der Obergrenze wird gekürzt, und Bündel warten nacheinander'
 bereich: 'Anfrage und Bündelung'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 4
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [D29, D30]
 ---
 # T19 — Ein Bündel über der Obergrenze wird gekürzt, und Bündel warten nacheinander

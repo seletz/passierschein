@@ -3,13 +3,13 @@ render_macros: true
 id: 'F7'
 titel: 'Audit-Log mit Hash-Kette, Liste und Prüfung'
 bereich: 'Audit'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 1
 headless: true
 status: aktiv
 stufe: 1
-umsetzung: zu-bauen
+umsetzung: vorhanden
 implementiert: [D11, D36, D37]
 use_cases: [UC8, UC6]
 ---

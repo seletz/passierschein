@@ -3,12 +3,12 @@ render_macros: true
 id: 'T17'
 titel: 'Ein gesperrtes oder nicht erreichbares Backend führt zu einem Fehlercode ohne Ersatzweg'
 bereich: 'Anfrage und Bündelung'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 3
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F10, D35]
 ---
 # T17 — Ein gesperrtes oder nicht erreichbares Backend führt zu einem Fehlercode ohne Ersatzweg

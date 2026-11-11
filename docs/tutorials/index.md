@@ -8,5 +8,4 @@ weight: 10
 
 Ein Tutorial führt Schritt für Schritt zu einem ersten Ergebnis.
 
-Dieser Abschnitt hat noch keine Seiten. Das erste Tutorial entsteht mit der
-ersten lauffähigen Stufe von `a38`.
+- [Erste Schritte mit a38](10-erste-schritte.md): Daemon mit Fake-Backend starten, ein Zugangsdatum anfordern, Grants und Audit-Log ansehen.

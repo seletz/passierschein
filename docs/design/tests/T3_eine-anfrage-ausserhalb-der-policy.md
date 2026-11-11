@@ -3,12 +3,12 @@ render_macros: true
 id: 'T3'
 titel: 'Eine Anfrage außerhalb der Policy oder außerhalb von dev erreicht die Freigabe nicht'
 bereich: 'Grants und Auslieferung'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 1
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F3, D12, D24, D28, D47]
 ---
 # T3 — Eine Anfrage außerhalb der Policy oder außerhalb von dev erreicht die Freigabe nicht
