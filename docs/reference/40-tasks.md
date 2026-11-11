@@ -28,6 +28,13 @@ Aufruf: `mise run <task>`.
 | `check` | Führt alle Checks der CI aus. |
 | `hooks:install` | Richtet den Git-Hook `pre-commit` ein. |
 
+## Pull Requests
+
+| Task | Zweck |
+|---|---|
+| `pr:screenshot` | Rendert die Ausgabe eines Befehls als PNG. |
+| `pr:screenshots:upload` | Legt Bilder auf dem Branch `review-assets` ab. |
+
 ## Design
 
 | Task | Zweck |
