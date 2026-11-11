@@ -1,0 +1,9 @@
+id: D49
+zustand: eingeloest
+titel: Die Konfiguration ist eine YAML-Datei unter ~/.config/a38, und der Pfad bestimmt das Projekt
+bezug: '#16'
+schluessel: '#16/konfiguration'
+lauf: '2.0'
+branch: feat/16-architektur
+reserviert_am: '2026-11-11'
+eingeloest_am: '2026-11-11'

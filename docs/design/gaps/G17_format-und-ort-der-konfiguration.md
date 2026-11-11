@@ -3,13 +3,20 @@ render_macros: true
 id: 'G17'
 titel: 'Format und Ort der Konfiguration sind offen'
 bereich: 'Betrieb und Release'
-lauf: '1.0'
+lauf: '2.0'
 stand: '2026-11-11'
 order: 3
 headless: true
 type: Gap
 kind: design
-status: offen
+status: geschlossen
+beleg:
+  wer: Koordinator
+  fuer: Stefan
+  datum: '2026-11-11'
+  durch: [D49]
+  quelle: ['#16']
+  annahme: true
 register:
   owner: Stefan
 ---
