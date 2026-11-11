@@ -43,6 +43,7 @@ package broker
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
@@ -78,6 +79,7 @@ func WithLock(l fault.Lock) Option {
 // human (D7): a missing, failed or skipped authentication is ui_failed.
 func WithUIMode(m approval.Mode) Option {
 	return func(b *Broker) {
+		b.uiMode = m
 		switch m {
 		case approval.ModeAutoApprove, approval.ModeAutoDeny, approval.ModeScript:
 			b.authRequired = false
@@ -101,6 +103,8 @@ type Broker struct {
 	// authRequired: an approval needs a passed authentication of the
 	// human. It is true unless the UI is a faked mode.
 	authRequired bool
+	// uiMode is the mode of the approval UI from WithUIMode, or empty.
+	uiMode approval.Mode
 
 	// slot lets only one approval request reach the UI at a time (D30).
 	// The UI that the caller gives is also a queue with the timeout;
@@ -196,6 +200,7 @@ func (b *Broker) Run(ctx context.Context) {
 
 // sweep removes the grants at the end of their lifetime.
 func (b *Broker) sweep() {
+	defer b.guard("sweep", nil)
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.expireLocked()
@@ -257,6 +262,27 @@ func (b *Broker) auditFailed(err error) *protocol.Error {
 	b.log.Error("cannot write the audit log", "error", err)
 	b.faults.Raise(protocol.CodeAuditFailed, "The daemon cannot write the audit log.")
 	return protocol.Errorf(protocol.CodeAuditFailed, "the daemon cannot write the audit log; nothing is delivered")
+}
+
+// guard turns a panic of the broker into an internal fault of the daemon
+// (G21): it logs the panic, raises the global fault and calls set, which
+// sets the answer daemon_faulted. Use it only with defer. Each lock of mu
+// is released by its own defer before guard runs.
+func (b *Broker) guard(op string, set func()) {
+	r := recover()
+	if r == nil {
+		return
+	}
+	b.log.Error("internal fault of the broker", "operation", op, "panic", fmt.Sprint(r))
+	b.faults.Raise(protocol.CodeDaemonFaulted, "The broker found an internal fault.")
+	if set != nil {
+		set()
+	}
+}
+
+// faultedError is the answer to a request that an internal fault ended.
+func faultedError() *protocol.Error {
+	return protocol.Errorf(protocol.CodeDaemonFaulted, "the daemon found an internal fault; nothing is delivered")
 }
 
 // newID returns a new random identifier with the prefix. It is a valid ID

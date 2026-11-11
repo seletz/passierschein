@@ -16,13 +16,13 @@ import (
 	"github.com/seletz/passierschein/internal/approval"
 	"github.com/seletz/passierschein/internal/approval/fakeui"
 	"github.com/seletz/passierschein/internal/approval/queue"
-	"github.com/seletz/passierschein/internal/audit/sqlite"
 	"github.com/seletz/passierschein/internal/backend"
 	"github.com/seletz/passierschein/internal/backend/fake"
 	"github.com/seletz/passierschein/internal/broker"
 	"github.com/seletz/passierschein/internal/clock"
 	"github.com/seletz/passierschein/internal/config"
 	"github.com/seletz/passierschein/internal/daemon"
+	"github.com/seletz/passierschein/internal/fault"
 )
 
 // Values of the flags --backend (D38) and --ui (D40).
@@ -103,7 +103,7 @@ func serve(ctx context.Context, args []string, _, stderr io.Writer) int {
 	}
 
 	log := slog.New(slog.NewTextHandler(stderr, nil))
-	b, closeAll, err := newBroker(f, cfg, log)
+	b, lock, closeAll, err := newBroker(f, cfg, log)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "a38 serve: %v\n", err)
 		return exitFailure
@@ -121,12 +121,19 @@ func serve(ctx context.Context, args []string, _, stderr io.Writer) int {
 	for _, p := range cfg.InvalidProjects() {
 		log.Warn("project configuration is invalid", "project", p.Name, "finding", p.Invalid)
 	}
+	// D48, T28: a restart with the cause still present leads into the
+	// lock again. The daemon starts locked and does not refuse to start,
+	// so that a38 doctor and the admin commands can reach it.
+	if err := lock.SelfCheck(ctx); err != nil {
+		log.Error("the daemon starts with the global lock; run a38 doctor")
+	}
 	log.Info("daemon started",
 		"config", path, "backend", f.backend, "ui", f.ui,
 		"agent_socket", srv.AgentSocket(), "admin_socket", srv.AdminSocket())
 	sweepCtx, stopSweep := context.WithCancel(ctx)
 	defer stopSweep()
 	go b.Run(sweepCtx)
+	go lock.Run(sweepCtx)
 	if err := srv.Serve(ctx); err != nil {
 		_, _ = fmt.Fprintf(stderr, "a38 serve: %v\n", err)
 		return exitFailure
@@ -135,27 +142,28 @@ func serve(ctx context.Context, args []string, _, stderr io.Writer) int {
 	return exitOK
 }
 
-// newBroker builds the backend, the approval UI, the audit log and the
-// broker. It opens no socket. The returned function closes the audit log.
-// Each failure stops the start: the daemon does not run without an audit
-// log (D36).
-func newBroker(f serveFlags, cfg *config.Config, log *slog.Logger) (*broker.Broker, func(), error) {
+// newBroker builds the backend, the approval UI, the audit log, the global
+// lock and the broker. It opens no socket. The returned function closes
+// the audit log. A failure of the backend or the UI stops the start. An
+// audit file that cannot be opened does not stop it: the self-check of
+// the lock then locks delivery (D36, D48).
+func newBroker(f serveFlags, cfg *config.Config, log *slog.Logger) (*broker.Broker, *fault.Global, func(), error) {
 	be, err := newBackend(f)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	mode := approval.Mode(f.ui)
 	if err := fakeui.CheckCombination(backend.Kind(f.backend).Real(), mode); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	clk := clock.System{}
 	ui, err := fakeui.New(mode, fakeui.Options{ScriptCommand: strings.Fields(f.script), Clock: clk})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	store, err := sqlite.Open(cfg.Paths.AuditFile)
+	store, err := openAuditFile(cfg.Paths.AuditFile)
 	if err != nil {
-		return nil, nil, err
+		log.Error("cannot open the audit log", "error", err)
 	}
 	closeAll := func() {
 		if err := store.Close(); err != nil {
@@ -163,9 +171,11 @@ func newBroker(f serveFlags, cfg *config.Config, log *slog.Logger) (*broker.Brok
 		}
 	}
 	// The queue shows one approval request at a time and ends it after
-	// the wait time (D30).
-	b := broker.New(cfg, be, queue.New(ui, clk, 0), store, clk, log, broker.WithUIMode(mode))
-	return b, closeAll, nil
+	// the wait time (D30). A notice passes the queue at once.
+	q := queue.New(ui, clk, 0)
+	lock := fault.New(fault.Options{Store: store, UI: q, Clock: clk, Logger: log})
+	b := broker.New(cfg, be, q, store, clk, log, broker.WithUIMode(mode), broker.WithLock(lock))
+	return b, lock, closeAll, nil
 }
 
 // newBackend returns the backend of the flag --backend.

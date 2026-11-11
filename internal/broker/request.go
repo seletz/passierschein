@@ -27,13 +27,16 @@ type call struct {
 
 // RequestCredentials implements daemon.AgentHandler. See the package
 // documentation for the flow.
-func (b *Broker) RequestCredentials(ctx context.Context, s session.Session, req *protocol.RequestCredentials) (*protocol.Credentials, *protocol.Error) {
+func (b *Broker) RequestCredentials(ctx context.Context, s session.Session, req *protocol.RequestCredentials) (creds *protocol.Credentials, e *protocol.Error) {
+	defer b.guard("request_credentials", func() { creds, e = nil, faultedError() })
 	b.sweep()
-	// Gate of the delivery path (D48): with a fault nothing starts.
+	c := &call{s: s, req: req}
+	// Gate of the delivery path (D48): with a fault nothing starts. The
+	// request reaches neither the backend nor the human.
 	if e := b.faults.Check(); e != nil {
+		b.recordLockRejection(c, e)
 		return nil, e
 	}
-	c := &call{s: s, req: req}
 	if e := b.admit(c); e != nil {
 		return nil, e
 	}
@@ -234,6 +237,22 @@ func (b *Broker) openBundleLocked(st *sessionState, s session.Session, now time.
 func (b *Broker) requestEnded(c *call, refs []protocol.Reference) *protocol.Error {
 	_ = b.record(b.event(c, audit.EventExpiry, refs, audit.Result{Detail: audit.DetailSessionEnded}))
 	return sessionEndedError()
+}
+
+// recordLockRejection writes the event "error" for a request that the global
+// lock rejected (D36). It is best effort: while the audit log fails, the
+// write fails too, and this changes neither the lock nor the answer
+// daemon_faulted. The event names the references only of a valid request.
+func (b *Broker) recordLockRejection(c *call, e *protocol.Error) {
+	var refs []protocol.Reference
+	if c.req != nil && c.req.Validate() == nil {
+		refs = c.req.References
+		c.claims = c.s.Claims(c.req.Task, c.req.Reason)
+	}
+	if c.s.Facts.SessionID == "" {
+		return
+	}
+	_, _ = b.audit.Append(context.Background(), b.event(c, audit.EventError, refs, audit.Result{Code: e.Code, Detail: "delivery is locked"}))
 }
 
 // reject writes one event for a request that ends as a whole and returns

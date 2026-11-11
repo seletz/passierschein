@@ -92,3 +92,25 @@ func (s *Store) Append(ctx context.Context, ev audit.Event) (audit.Entry, error)
 	}
 	return s.Store.Append(ctx, ev)
 }
+
+// Probe fails with the injected error while the next Append would fail:
+// a fault is on and no Append may pass, or a rule of FailWhen is set.
+// Else it calls Probe of the inner store, if the inner store has one.
+func (s *Store) Probe(ctx context.Context) error {
+	s.mu.Lock()
+	var fail error
+	switch {
+	case s.when != nil:
+		fail = ErrInjected
+	case s.err != nil && s.skip == 0:
+		fail = s.err
+	}
+	s.mu.Unlock()
+	if fail != nil {
+		return fail
+	}
+	if p, ok := s.Store.(interface{ Probe(context.Context) error }); ok {
+		return p.Probe(ctx)
+	}
+	return nil
+}

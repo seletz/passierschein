@@ -257,6 +257,42 @@ type StatusResult struct {
 	Fault *Fault `json:"fault,omitempty"`
 	// InvalidProjects lists the projects with an invalid configuration.
 	InvalidProjects []InvalidProject `json:"invalid_projects,omitempty"`
+	// Backend is the state of the backend. It is nil if the daemon does
+	// not know it.
+	Backend *BackendStatus `json:"backend,omitempty"`
+	// UI is the state of the approval UI. It is nil if the daemon does
+	// not know it.
+	UI *UIStatus `json:"ui,omitempty"`
+}
+
+// The states of the backend in [BackendStatus].
+const (
+	// BackendOK: the backend answers.
+	BackendOK = "ok"
+	// BackendLocked: the backend is locked (backend_locked).
+	BackendLocked = "locked"
+	// BackendUnreachable: the backend does not answer
+	// (backend_unavailable).
+	BackendUnreachable = "unreachable"
+)
+
+// BackendStatus is the state of the backend for a38 doctor. It never
+// holds a value.
+type BackendStatus struct {
+	// State is [BackendOK], [BackendLocked] or [BackendUnreachable].
+	State string `json:"state"`
+	// Reason is the finding in one sentence. It is empty if State is ok.
+	Reason string `json:"reason,omitempty"`
+}
+
+// UIStatus is the state of the approval UI for a38 doctor.
+type UIStatus struct {
+	// Mode is the mode of the UI, the value of the flag --ui.
+	Mode string `json:"mode"`
+	// Usable reports whether the daemon can show an approval request.
+	Usable bool `json:"usable"`
+	// Reason is the finding in one sentence if Usable is false.
+	Reason string `json:"reason,omitempty"`
 }
 
 // Fault describes the fault that locks delivery for all sessions.
@@ -267,6 +303,18 @@ type Fault struct {
 	Reason string `json:"reason"`
 	// Since is the start of the lock.
 	Since time.Time `json:"since"`
+	// CheckPassed reports whether the check of the cause passes now. The
+	// daemon checks without a write to the audit log. It is nil if the
+	// daemon cannot check the cause. A passed check does not lift the
+	// lock: only the command fault_clear or a restart lifts it (D48).
+	CheckPassed *bool `json:"check_passed,omitempty"`
+	// Finding is the result of a failed check of the cause. It is empty
+	// if the check passed.
+	Finding string `json:"finding,omitempty"`
+	// BeginPending reports that the entry for the begin of the lock is
+	// not in the audit log yet. The daemon writes it as soon as the audit
+	// log can be written, at the latest before the entry for the end.
+	BeginPending bool `json:"begin_pending,omitempty"`
 }
 
 // InvalidProject names a project that the daemon rejects with

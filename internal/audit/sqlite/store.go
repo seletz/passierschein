@@ -231,6 +231,33 @@ func (s *Store) Append(ctx context.Context, ev audit.Event) (audit.Entry, error)
 	return e, nil
 }
 
+// Probe checks that the store can write an entry, without a change to the
+// file or the chain. It writes a row in a transaction and rolls it back.
+// The daemon uses it at the start and for the check of the cause of the
+// global delivery lock (D48). A full disk can pass the probe and still
+// fail the next Append.
+func (s *Store) Probe(ctx context.Context) (err error) {
+	if s.readOnly {
+		return errors.New("audit: the audit file is open for reading only")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("audit: cannot write the audit file: %w", err)
+	}
+	defer func() {
+		if rbErr := tx.Rollback(); err == nil && rbErr != nil {
+			err = fmt.Errorf("audit: cannot write the audit file: %w", rbErr)
+		}
+	}()
+	// The number 0 is never the number of an entry.
+	if _, err := tx.ExecContext(ctx, `INSERT INTO entries (`+columns+`) VALUES (0,0,'','','','',0,0,'','','','','','','','','','',0,'','','')`); err != nil {
+		return fmt.Errorf("audit: cannot write the audit file: %w", err)
+	}
+	return nil
+}
+
 func cloneEvent(ev audit.Event) audit.Event {
 	if len(ev.References) == 0 {
 		ev.References = nil
