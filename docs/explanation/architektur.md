@@ -244,6 +244,7 @@ Ein Widerruf steht vor einer Auslieferung, oder die Auslieferung steht vor dem W
 - `broker.New(cfg, backend, ui, auditStore, clock, logger)` erstellt den Broker.
 - Die UI ist eine `approval/queue.Queue`. Sie setzt die Wartezeit von {{ ref("D30") }} durch. Der Broker lässt zusätzlich nur eine Freigabeanfrage zur gleichen Zeit zu.
 - `Broker.Run(ctx)` entfernt abgelaufene Grants alle 30 Sekunden und schreibt ihr Ereignis. Ohne `Run` gilt ein Grant trotzdem nie über seine Laufzeit hinaus; das Ereignis entsteht dann bei der nächsten Anfrage.
+- `a38 serve` verdrahtet den Broker. `--fake-file` nennt die YAML-Datei des Fake-Backends. `--ui-script` nennt das Programm der Variante `script` mit seinen Argumenten, getrennt durch Leerzeichen. Ohne Audit-Datei, Backend oder Freigabe startet der Daemon nicht und legt keinen Socket an.
 - `broker.WithLock` setzt die globale Sperre. Bis Issue 23 ist es `fault.NoLock`. Der Broker ruft `Lock.Raise` bei jedem Fehler des Audit-Logs auf.
 
 ## Protokoll auf den Sockets
@@ -431,7 +432,7 @@ Es gibt drei Ebenen von Tests:
 
 1. **Paket-Test:** Der Test prüft ein Paket allein. Er nutzt die Fakes der Schnittstellen.
 2. **Test im Prozess:** Der Test baut den Daemon im Testprozess zusammen: Socket in einem temporären Verzeichnis, Fake-Backend, Skript-UI, gefälschte Uhr. Die meisten Testfälle des Design-Sets laufen auf dieser Ebene, weil sie die gefälschte Uhr brauchen.
-3. **Test mit Prozessen:** Der Test baut das Binary einmal je Testlauf in ein temporäres Verzeichnis. Er startet `a38 serve --backend fake --ui auto-approve` mit einer eigenen Konfigurationsdatei und danach `a38 mcp` als Kindprozesse. Er spricht MCP über stdin und stdout von `a38 mcp` ({{ ref("T1") }}). Diese Ebene nutzt die echte Uhr und deshalb kurze Werte in der Konfiguration, zum Beispiel ein Bündelfenster von 50 Millisekunden.
+3. **Test mit Prozessen:** Der Test baut das Binary einmal je Testlauf in ein temporäres Verzeichnis. Er startet `a38 serve --backend fake --fake-file <datei> --ui auto-approve` mit einer eigenen Konfigurationsdatei und danach `a38 mcp` als Kindprozesse. Er spricht MCP über stdin und stdout von `a38 mcp` ({{ ref("T1") }}). Diese Ebene nutzt die echte Uhr und deshalb kurze Werte in der Konfiguration, zum Beispiel ein Bündelfenster von 50 Millisekunden.
 
 Regeln für einen Test mit Prozessen:
 

@@ -24,7 +24,7 @@ func TestRun(t *testing.T) {
 		{"no arguments", nil, 2, "", "Usage:"},
 		{"unknown command", []string{"execute"}, 2, "", `unknown command "execute"`},
 		{"unknown flag", []string{"--verbose"}, 2, "", `unknown command "--verbose"`},
-		{"serve without configuration", []string{"serve", "--config", "/tmp/a38-missing/config.yaml", "--backend", "fake", "--ui", "auto-approve"}, 1, "", "cannot read the configuration file"},
+		{"serve without configuration", []string{"serve", "--config", "/tmp/a38-missing/config.yaml", "--backend", "fake", "--fake-file", "/tmp/a38-missing/fake.yaml", "--ui", "auto-approve"}, 1, "", "cannot read the configuration file"},
 		{"mcp", []string{"mcp"}, 1, "", "a38 mcp: not implemented"},
 		{"audit without subcommand", []string{"audit"}, 2, "", "a38 audit list"},
 		{"grants", []string{"grants", "list"}, 1, "", "a38 grants: not implemented"},
