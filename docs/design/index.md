@@ -47,10 +47,9 @@ Eine Entscheidung hat eine von zwei Herkünften:
   Vorschläge dieses Designlaufs. Stefan hat sie am 2026-11-11 abgenommen,
   mit den Ausnahmen der nächsten Zeile.
 - **Annahme:** Die Seite zeigt eine Annahme mit dem Zusatz „(Annahme)“.
-  Offen sind {{ ref("D25") }} und {{ ref("D27") }} (noch nicht besprochen),
-  {{ ref("D29") }} (bleibt Annahme bis zum Praxistest), {{ ref("D40") }}
-  (Rückfrage offen) und {{ ref("D47") }} (nicht abgenommen, Neufassung
-  offen).
+  Offen sind {{ ref("D25") }} (Rückfrage offen), {{ ref("D29") }} (bleibt
+  Annahme bis zum Praxistest) und {{ ref("D47") }} (nicht abgenommen,
+  Neufassung offen).
 - **Aus der Projektnotiz, wieder offen:** {{ ref("D3") }} (Transport in die
   VM) und {{ ref("D12") }} (Auswahl der Vaults über die Konfiguration).
 
