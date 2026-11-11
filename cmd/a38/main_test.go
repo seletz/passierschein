@@ -16,8 +16,18 @@ func TestRun(t *testing.T) {
 	}{
 		{"version flag", []string{"--version"}, 0, "a38 ", ""},
 		{"version command", []string{"version"}, 0, "a38 ", ""},
-		{"no arguments", nil, 2, "", "no commands are available yet"},
-		{"unknown command", []string{"serve"}, 2, "", "no commands are available yet"},
+		{"help flag", []string{"--help"}, 0, "Usage:", ""},
+		{"short help flag", []string{"-h"}, 0, "Usage:", ""},
+		{"help command", []string{"help"}, 0, "Commands:", ""},
+		{"no arguments", nil, 2, "", "Usage:"},
+		{"unknown command", []string{"execute"}, 2, "", `unknown command "execute"`},
+		{"unknown flag", []string{"--verbose"}, 2, "", `unknown command "--verbose"`},
+		{"serve", []string{"serve", "--backend", "fake", "--ui", "auto-approve"}, 1, "", "a38 serve: not implemented"},
+		{"mcp", []string{"mcp"}, 1, "", "a38 mcp: not implemented"},
+		{"audit", []string{"audit", "verify"}, 1, "", "a38 audit: not implemented"},
+		{"grants", []string{"grants", "list"}, 1, "", "a38 grants: not implemented"},
+		{"doctor", []string{"doctor"}, 1, "", "a38 doctor: not implemented"},
+		{"llm", []string{"llm", "--skill"}, 1, "", "a38 llm: not implemented"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -28,9 +38,22 @@ func TestRun(t *testing.T) {
 			if !strings.Contains(stdout.String(), tt.wantStdout) {
 				t.Errorf("stdout = %q, want it to contain %q", stdout.String(), tt.wantStdout)
 			}
+			if tt.wantStdout == "" && stdout.Len() != 0 {
+				t.Errorf("stdout = %q, want no output", stdout.String())
+			}
 			if !strings.Contains(stderr.String(), tt.wantStderr) {
 				t.Errorf("stderr = %q, want it to contain %q", stderr.String(), tt.wantStderr)
 			}
 		})
+	}
+}
+
+func TestUsageListsEachCommand(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	run([]string{"--help"}, &stdout, &stderr)
+	for _, name := range []string{"serve", "mcp", "audit", "grants", "doctor", "llm", "version"} {
+		if !strings.Contains(stdout.String(), "\n  "+name+" ") {
+			t.Errorf("the usage text does not list the command %q", name)
+		}
 	}
 }
