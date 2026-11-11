@@ -66,6 +66,7 @@ Die Abhängigkeitsregel gilt in jedem Fall.
 | `internal/approval/fakeui` | `UI` für `auto-approve`, `auto-deny` und `script` | 19 |
 | `internal/approval/queue` | Warteschlange und Wartezeit: höchstens eine Freigabeanfrage zur gleichen Zeit | 19 |
 | `internal/daemon` | Sockets, Rechte, Peer-Daten, Sitzungen, Namenskonflikt, Start und Ende; `cmd/a38/serve.go` | 20 |
+| `internal/client` | Verbindung zu einem Socket des Daemons: `hello`, Anfrage senden, Antwort über die Kennung zuordnen. `internal/mcp` und `internal/admin` nutzen das Paket. | 20 |
 | `internal/policy` | Prüfung einer Anfrage gegen die Konfiguration | 21 |
 | `internal/bundle` | Bündelfenster und Obergrenze je Sitzung | 21 |
 | `internal/grant` | Grants im Arbeitsspeicher: Vergabe, Prüfung, Ablauf, Widerruf | 22 |
@@ -97,6 +98,22 @@ Die zwei Hälften kennen einander nur über die Schnittstellen `AgentHandler` un
 Ein Test der Socket-Schicht nutzt einen gefälschten Broker.
 Ein Test des Brokers braucht keinen Socket.
 
+### Socket-Schicht
+
+Die Socket-Schicht setzt {{ ref("D43") }}, {{ ref("D25") }} und {{ ref("D44") }} so um:
+
+- **Start:** Der Daemon legt das Verzeichnis der Sockets mit `0700` an. Hat das Verzeichnis andere Rechte, gehört es einem anderen Benutzer oder ist es ein symbolischer Link, startet der Daemon nicht. Der Daemon korrigiert die Rechte nicht.
+- **Ein Daemon je Verzeichnis:** Der Daemon sperrt das Verzeichnis mit `flock`. Ein zweiter Daemon mit demselben Verzeichnis startet nicht.
+- **Alter Socket:** Der Daemon entfernt einen Socket nur, wenn kein Prozess eine Verbindung annimmt. Eine Datei, die kein Socket ist, entfernt er nie.
+- **Peer-Daten:** Der Kernel liefert Benutzer und Prozess-ID. Unter macOS liest der Daemon Programmpfad und Arbeitsverzeichnis mit dem Systemaufruf `proc_info`, unter Linux aus `/proc`. Beides geht ohne cgo. Ein Wert, den der Daemon nicht lesen kann, bleibt leer. Ohne Arbeitsverzeichnis hat die Sitzung kein Projekt.
+- **Benutzer:** Der Daemon bedient nur Prozesse desselben Benutzers. Er schließt jede andere Verbindung ohne Antwort.
+- **Anmeldung:** Die erste Nachricht ist `hello`. Jede andere erste Nachricht und jeder ungültige Name enden mit `invalid_request` und dem Ende der Verbindung.
+- **Ungültige Nachricht:** Eine ungültige Zeile endet mit `invalid_request`. Die Verbindung bleibt bestehen. Eine Zeile über der Größengrenze beendet die Verbindung nach der Fehlermeldung.
+- **Gleichzeitige Anfragen:** Eine Verbindung hat höchstens 64 offene Anfragen. Danach liest der Daemon die nächste Nachricht erst, wenn eine Anfrage endet.
+- **Namenskonflikt:** Die Socket-Schicht prüft den Konflikt vor und nach dem Aufruf des Brokers. Entsteht der Konflikt während einer Anfrage, endet auch diese Anfrage mit `session_name_conflict`.
+- **Fehler des Brokers:** Gibt der Broker weder Antwort noch Fehler zurück, beides, einen unbekannten Code oder eine ungültige Antwort, oder bricht er ab (`panic`), endet die Anfrage mit `daemon_faulted`. Die globale Sperre aus {{ ref("D48") }} setzt der Broker.
+- **Ende:** Beim Ende des Daemons schließt die Socket-Schicht beide Sockets und entfernt die Dateien. Sie schließt jede Verbindung und beendet den Kontext jeder offenen Anfrage. Für jede Sitzung ruft sie `SessionEnded` genau einmal auf.
+
 ## Abhängigkeitsregel
 
 Ein Paket importiert nur Pakete, die in dieser Tabelle in seiner Zeile stehen.
@@ -114,7 +131,8 @@ Die Standardbibliothek ist immer erlaubt.
 | `policy`, `bundle`, `grant`, `fault` | `protocol`, `config`, `session`, `clock`, dazu die Schnittstellenpakete `approval` und `audit` |
 | `broker` | alle Pakete oberhalb dieser Zeile, aber nur die Schnittstellenpakete und keine Umsetzung |
 | `daemon` | alle Pakete oberhalb dieser Zeile; nur `daemon` wählt die Umsetzungen aus |
-| `mcp`, `admin` | `protocol`, `config`, `version` |
+| `client` | `protocol` |
+| `mcp`, `admin` | `protocol`, `config`, `version`, `client` |
 | `doctor` | `protocol`, `config`, `admin`, `audit` |
 | `skill` | `protocol` |
 | `cmd/a38` | jedes Paket |
@@ -430,6 +448,7 @@ Jede Abhängigkeit braucht einen Grund.
 | Modul | Version | Zweck | Stand |
 |---|---|---|---|
 | `go.yaml.in/yaml/v3` | v3.0.6 | Konfigurationsdatei und Fake-Backend | in `go.mod` |
+| `golang.org/x/sys` | v0.49.0 | Peer-Daten des Sockets ohne cgo: `LOCAL_PEERCRED` und `LOCAL_PEERPID` unter macOS, `SO_PEERCRED` unter Linux | in `go.mod` |
 | `modernc.org/sqlite` | v1.62.0 | Audit-Log; SQLite in reinem Go, ohne cgo | Empfehlung für Issue 17 |
 | `github.com/modelcontextprotocol/go-sdk` | v1.8.0 | MCP-Server über stdio; das offizielle Go-SDK | Empfehlung für Issue 24 |
 
