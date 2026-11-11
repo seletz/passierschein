@@ -176,12 +176,23 @@ func roundTrip[R protocol.Message](ctx context.Context, c *Conn, req protocol.Me
 	return r, nil
 }
 
-// write sends one message.
+// write sends one message. A failed write ends the connection: the
+// daemon closed it (broken pipe), or the reader closed it after the end of
+// the input (use of closed network connection). Both races end with the
+// same error as a request that was open at the end: [ErrClosed].
 func (c *Conn) write(m protocol.Message) error {
 	c.wmu.Lock()
 	defer c.wmu.Unlock()
-	if err := protocol.Write(c.conn, m); err != nil {
-		return fmt.Errorf("client: cannot send the request: %w", err)
+	line, err := protocol.Encode(m)
+	if err != nil {
+		// An invalid message is an error of the caller; the connection
+		// stays.
+		return err
+	}
+	if _, err := c.conn.Write(append(line, '\n')); err != nil {
+		_ = c.conn.Close()
+		<-c.done
+		return fmt.Errorf("client: cannot send the request: %w", c.closedErr())
 	}
 	return nil
 }

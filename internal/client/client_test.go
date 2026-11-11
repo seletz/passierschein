@@ -147,3 +147,42 @@ func TestDialFails(t *testing.T) {
 		t.Error("DialAgent() of a missing socket error = nil")
 	}
 }
+
+func TestRequestAfterDaemonClosed(t *testing.T) {
+	// A request on a connection that the daemon closed ends with
+	// ErrClosed, also if the write races with the end of the reader.
+	dir, err := os.MkdirTemp("/tmp", "a38-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	path := filepath.Join(dir, "admin.sock")
+	l, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = l.Close() })
+	go func() {
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				return
+			}
+			_ = c.Close()
+		}
+	}()
+	for i := range 300 {
+		c, err := DialAdmin(ctx(t), path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Give the reader a chance to see the end at different points.
+		if i%3 == 1 {
+			time.Sleep(time.Duration(i%7) * 50 * time.Microsecond)
+		}
+		if _, err := c.Status(ctx(t)); !errors.Is(err, ErrClosed) {
+			t.Fatalf("attempt %d: Status() error = %v, want ErrClosed", i, err)
+		}
+		_ = c.Close()
+	}
+}
