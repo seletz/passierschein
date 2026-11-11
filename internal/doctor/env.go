@@ -137,16 +137,34 @@ func (SystemEnv) VerifyAudit(ctx context.Context, path string) (audit.Verificati
 	return s.Verify(ctx)
 }
 
-// Backend implements [Env]. The status result has no field for the backend
-// yet, so the state is unknown.
-func (SystemEnv) Backend(*protocol.StatusResult) Component {
-	return Component{State: StateUnknown, Detail: "the daemon does not report the backend state; a locked or unreachable backend fails the single request and does not lock delivery"}
+// Backend implements [Env]. It reads the backend state from the status of
+// the daemon. An old daemon without the field gives the state unknown.
+func (SystemEnv) Backend(st *protocol.StatusResult) Component {
+	if st == nil || st.Backend == nil {
+		return Component{State: StateUnknown, Detail: "the daemon does not report the backend state; a locked or unreachable backend fails the single request and does not lock delivery"}
+	}
+	switch st.Backend.State {
+	case protocol.BackendOK:
+		return Component{State: StateOK}
+	case protocol.BackendLocked:
+		return Component{State: StateLocked, Detail: st.Backend.Reason}
+	case protocol.BackendUnreachable:
+		return Component{State: StateUnreachable, Detail: st.Backend.Reason}
+	}
+	return Component{State: StateUnknown, Detail: "the daemon reports an unknown backend state"}
 }
 
-// UI implements [Env]. The status result has no field for the approval UI
-// yet, so the state is unknown.
-func (SystemEnv) UI(*protocol.StatusResult) Component {
-	return Component{State: StateUnknown, Detail: "the daemon does not report the approval UI state"}
+// UI implements [Env]. It reads the mode of the approval UI and whether
+// the daemon can use it from the status of the daemon. An old daemon
+// without the field gives the state unknown.
+func (SystemEnv) UI(st *protocol.StatusResult) Component {
+	if st == nil || st.UI == nil {
+		return Component{State: StateUnknown, Detail: "the daemon does not report the approval UI state"}
+	}
+	if !st.UI.Usable {
+		return Component{State: StateUnreachable, Detail: "mode " + st.UI.Mode + ": " + detailOr(st.UI.Reason, "not usable")}
+	}
+	return Component{State: StateOK, Detail: "mode " + st.UI.Mode}
 }
 
 // isMissing reports whether err says that a file does not exist.

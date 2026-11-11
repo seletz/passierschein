@@ -184,6 +184,8 @@ type harness struct {
 	auditPath string
 	logs      *syncBuffer
 	b         *Broker
+	// lock is the real global lock, set by withRealLock.
+	lock *fault.Global
 }
 
 // options of a harness.
@@ -192,6 +194,7 @@ type hopt struct {
 	maxEntries string
 	ui         func(*fakeui.Recorder, *clock.Fake) approval.UI
 	lock       fault.Lock
+	realLock   bool
 	mode       approval.Mode
 }
 
@@ -202,6 +205,11 @@ func withMaxEntries(n string) harnessOption { return func(o *hopt) { o.maxEntrie
 func withLockOpt(l fault.Lock) harnessOption {
 	return func(o *hopt) { o.lock = l }
 }
+
+// withRealLock wires the global lock of the daemon (fault.Global) on the
+// fault store, with the recorder as UI for the notices.
+func withRealLock() harnessOption { return func(o *hopt) { o.realLock = true } }
+
 func withMode(m approval.Mode) harnessOption { return func(o *hopt) { o.mode = m } }
 func withUI(f func(*fakeui.Recorder, *clock.Fake) approval.UI) harnessOption {
 	return func(o *hopt) { o.ui = f }
@@ -241,10 +249,14 @@ func newHarness(t *testing.T, opts ...harnessOption) *harness {
 		ui = o.ui(h.rec, h.clk)
 	}
 	bopts := []Option{WithUIMode(o.mode)}
+	logger := slog.New(slog.NewTextHandler(h.logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	if o.realLock {
+		h.lock = fault.New(fault.Options{Store: h.store, UI: h.rec, Clock: h.clk, Logger: logger})
+		o.lock = h.lock
+	}
 	if o.lock != nil {
 		bopts = append(bopts, WithLock(o.lock))
 	}
-	logger := slog.New(slog.NewTextHandler(h.logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	h.b = New(cfg, be, ui, h.store, h.clk, logger, bopts...)
 	return h
 }
@@ -254,6 +266,35 @@ func newHarness(t *testing.T, opts ...harnessOption) *harness {
 func (h *harness) restart() {
 	logger := slog.New(slog.NewTextHandler(h.logs, nil))
 	h.b = New(h.cfg, h.be, queue.New(h.rec, h.clk, 0), h.store, h.clk, logger, WithUIMode(approval.ModeScript))
+}
+
+// restartWithLock returns a new broker with a new global lock on the same
+// backend, UI and audit log, and runs the self-check of the start: a
+// restart of the daemon.
+func (h *harness) restartWithLock() {
+	logger := slog.New(slog.NewTextHandler(h.logs, nil))
+	h.lock = fault.New(fault.Options{Store: h.store, UI: h.rec, Clock: h.clk, Logger: logger})
+	_ = h.lock.SelfCheck(context.Background())
+	h.b = New(h.cfg, h.be, queue.New(h.rec, h.clk, 0), h.store, h.clk, logger, WithUIMode(approval.ModeScript), WithLock(h.lock))
+}
+
+// notices returns the notices of the UI after each sent notice arrived.
+func (h *harness) notices() []approval.Notice {
+	if h.lock != nil {
+		h.lock.Wait()
+	}
+	return h.rec.Notices()
+}
+
+// faultNotices returns the notices of the kind daemon_fault.
+func (h *harness) faultNotices() []approval.Notice {
+	var out []approval.Notice
+	for _, n := range h.notices() {
+		if n.Kind == approval.NoticeDaemonFault {
+			out = append(out, n)
+		}
+	}
+	return out
 }
 
 // sess returns a session of the project with verified facts.
@@ -515,6 +556,8 @@ func (l *spyLock) Fault() *protocol.Fault {
 	}
 	return &protocol.Fault{Code: protocol.CodeAuditFailed, Reason: "test"}
 }
+
+func (l *spyLock) Inspect(context.Context) *protocol.Fault { return l.Fault() }
 
 func (l *spyLock) Clear(context.Context) (bool, string) {
 	l.set(false)

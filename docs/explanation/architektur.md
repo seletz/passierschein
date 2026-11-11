@@ -71,7 +71,7 @@ Die Abhängigkeitsregel gilt in jedem Fall.
 | `internal/bundle` | Bündelfenster und Obergrenze je Sitzung | 21 |
 | `internal/grant` | Grants im Arbeitsspeicher: Vergabe, Prüfung, Ablauf, Widerruf | 22 |
 | `internal/broker` | Ablauf einer Anfrage von der Policy bis zur Auslieferung; setzt `AgentHandler` und `AdminHandler` um | 22 |
-| `internal/fault` | globale Sperre bei einer Störung, Meldung an den Menschen, Aufheben; die Schnittstellen `Gate` und `Lock` entstehen mit Issue 21 und 22 | 23 |
+| `internal/fault` | globale Sperre bei einer Störung, Meldung an den Menschen, Einträge im Audit-Log, Aufheben | 23 |
 | `internal/mcp` | MCP-Server und Client für den Agent-Socket; `cmd/a38/mcp.go` | 24 |
 | Admin-Befehle | `cmd/a38/admin.go`, `grants.go` und `fault.go` nutzen `internal/client` auf dem Admin-Socket; es gibt kein Paket `internal/admin` | 25 |
 | `internal/doctor` | Prüfungen von `a38 doctor`; `cmd/a38/doctor.go` | 25 |
@@ -186,7 +186,7 @@ Vier Punkte sind für den Code wichtig:
 
 ## Broker
 
-Die Issues 21 und 22 setzen den Broker um.
+Die Issues 21 und 22 setzen den Broker um, Issue 23 die globale Sperre.
 Fünf Pakete teilen sich die Arbeit:
 
 | Paket | Inhalt |
@@ -194,7 +194,7 @@ Fünf Pakete teilen sich die Arbeit:
 | `internal/policy` | Prüfung einer Anfrage gegen die Konfiguration, alles oder nichts |
 | `internal/bundle` | Bündelfenster mit festem Ende, Obergrenze, Reihenfolge des Eingangs |
 | `internal/grant` | Grants im Arbeitsspeicher: Abdeckung, Ablauf, Ende mit der Sitzung, Widerruf |
-| `internal/fault` | Schnittstellen `Gate` und `Lock` der globalen Sperre; `NoLock` sperrt nie |
+| `internal/fault` | globale Sperre `Global` hinter den Schnittstellen `Gate` und `Lock`; `NoLock` sperrt nie und dient Tests |
 | `internal/broker` | Ablauf einer Anfrage; setzt `AgentHandler` und `AdminHandler` um |
 
 `policy`, `bundle` und `grant` sind reine Datenstrukturen.
@@ -223,7 +223,7 @@ Der Broker merkt sich ihre Kennung eine Stunde lang.
 Eine Anfrage, die beim Ende der Sitzung noch läuft, öffnet kein Bündel, erreicht den Menschen nicht und schreibt kein Ereignis „Auslieferung“ ({{ ref("D33") }}).
 Der Broker baut eine Freigabeanfrage erst, wenn sie an der Reihe ist.
 Einträge, Abweichung und bestehender Grant zeigen so den Stand zur Zeit der Anzeige.
-Ein Absturz (Panic) beim Entscheiden eines Bündels ist eine Störung des Daemons: Der Broker meldet sie an die Sperre, und jede Anfrage des Bündels endet mit `daemon_faulted` ({{ ref("G21") }}).
+Ein Absturz (Panic) im Broker ist eine Störung des Daemons: Der Broker meldet sie an die Sperre, und die Anfrage endet mit `daemon_faulted` ({{ ref("G21") }}). Das gilt beim Entscheiden eines Bündels und in jeder Methode von `AgentHandler` und `AdminHandler`.
 
 Der Broker schreibt ein Ereignis, das Grants ändert oder nutzt, unter seiner Sperre.
 Die Reihenfolge im Audit-Log ist so die Reihenfolge der Änderungen.
@@ -245,7 +245,9 @@ Ein Widerruf steht vor einer Auslieferung, oder die Auslieferung steht vor dem W
 | Fehler des Backends | Anfrage, Fehler | `backend_locked`, `backend_unavailable` |
 | Sitzung endet während der Freigabe | Ablauf mit `session_ended` | – |
 | Verbindung endet während eines Aufrufs des Backends | Ablauf mit `session_ended`, kein Fehler des Backends | – |
-| Interne Störung beim Entscheiden | Fehler | `daemon_faulted` |
+| Interne Störung im Broker | Fehler, Beginn der Sperre | `daemon_faulted` |
+| Fehler beim Schreiben des Audit-Logs | Beginn der Sperre, sobald das Schreiben möglich ist | `audit_failed` |
+| Anfrage während der Sperre | Fehler, wenn das Schreiben möglich ist | `daemon_faulted` |
 | Ende eines Grants | Ablauf mit `lifetime_ended` oder `session_ended`, Widerruf | – |
 
 ### Was der Daemon verdrahtet
@@ -253,9 +255,30 @@ Ein Widerruf steht vor einer Auslieferung, oder die Auslieferung steht vor dem W
 - `broker.New(cfg, backend, ui, auditStore, clock, logger)` erstellt den Broker.
 - Die UI ist eine `approval/queue.Queue`. Sie setzt die Wartezeit von {{ ref("D30") }} durch. Der Broker lässt zusätzlich nur eine Freigabeanfrage zur gleichen Zeit zu.
 - `Broker.Run(ctx)` entfernt abgelaufene Grants alle 30 Sekunden und schreibt ihr Ereignis. Ohne `Run` gilt ein Grant trotzdem nie über seine Laufzeit hinaus; das Ereignis entsteht dann bei der nächsten Anfrage.
-- `a38 serve` verdrahtet den Broker. `--fake-file` nennt die YAML-Datei des Fake-Backends. `--ui-script` nennt das Programm der Variante `script` mit seinen Argumenten, getrennt durch Leerzeichen. Ohne Audit-Datei, Backend oder Freigabe startet der Daemon nicht und legt keinen Socket an.
+- `a38 serve` verdrahtet den Broker. `--fake-file` nennt die YAML-Datei des Fake-Backends. `--ui-script` nennt das Programm der Variante `script` mit seinen Argumenten, getrennt durch Leerzeichen. Ohne Backend oder Freigabe startet der Daemon nicht und legt keinen Socket an. Eine Audit-Datei, die der Daemon nicht öffnen oder nicht schreiben kann, verhindert den Start nicht: Der Daemon startet gesperrt (siehe [Globale Sperre](#globale-sperre)).
 - `broker.WithUIMode` nennt die Variante der Freigabe. Bei `auto-approve`, `auto-deny` und `script` darf eine Entscheidung ohne `auth` sein. Bei `app`, bei einer unbekannten Variante und ohne die Option verlangt der Broker eine bestandene Authentifizierung des Menschen; fehlt `auth`, ist sie gescheitert oder steht dort `skipped`, endet die Freigabe mit `ui_failed` ({{ ref("D7") }}).
-- `broker.WithLock` setzt die globale Sperre. Bis Issue 23 ist es `fault.NoLock`. Der Broker ruft `Lock.Raise` bei jedem Fehler des Audit-Logs auf.
+- `broker.WithLock` setzt die globale Sperre. `a38 serve` übergibt `fault.Global`. Ohne die Option gilt `fault.NoLock`. Der Broker ruft `Lock.Raise` bei jedem Fehler des Audit-Logs und bei jedem Absturz auf.
+- `Broker.Status` liefert für `a38 doctor` die Sperre mit Ursache, Beginn und dem Ergebnis der Prüfung der Ursache, die ungültigen Projekte, den Zustand des Backends (`ok`, `locked`, `unreachable`) und die Variante der Freigabe. Den Zustand des Backends fragt der Broker mit `Backend.Vaults` ab; er liest dabei keinen Wert.
+
+### Globale Sperre
+
+`fault.Global` setzt {{ ref("D48") }} um.
+
+| Ereignis | Verhalten |
+|---|---|
+| Störung | Ein Fehler beim Schreiben des Audit-Logs auf jedem Weg (auch Ablauf, Ende einer Sitzung und Widerruf) oder ein Absturz im Broker ruft `Raise` auf. Die Anfrage mit dem Fehler endet mit `audit_failed` oder `daemon_faulted`. |
+| Während der Sperre | Jede Anfrage jeder Sitzung endet mit `daemon_faulted`, auch unter einem bestehenden Grant. Sie erreicht weder das Backend noch den Menschen. Es entsteht kein Grant. |
+| Meldung | Genau eine Meldung `approval.Notice` der Art `daemon_fault` je Störung, nicht eine je Anfrage. Sie nennt die Störung, die Sperre und die nächsten Schritte: `a38 doctor`, dann `a38 fault clear` oder ein Neustart. Sie enthält keinen Wert. Die Meldung läuft in einer eigenen Goroutine; eine langsame Oberfläche hält den Daemon nicht auf. |
+| Audit-Log | Beginn und Ende sind Einträge der Art „Fehler“ mit `fault_begin` und `fault_end` ({{ ref("G22") }}). Ist das Audit-Log selbst die Ursache, bleibt der Beginn offen. Das Log des Daemons nennt das. `Global.Run` versucht den Eintrag alle 30 Sekunden erneut. Spätestens beim Aufheben steht er vor dem Ende. |
+| Admin-Befehle | `grants_list`, `grant_revoke`, `status` und `fault_clear` arbeiten während der Sperre. Auf dem Agent-Socket endet `fault_clear` mit `invalid_request`. |
+| Aufheben | Nur `fault_clear` über den Admin-Socket (`a38 fault clear`) oder ein Neustart hebt die Sperre auf. Verschwindet die Ursache von selbst, bleibt die Sperre. |
+| Prüfung der Ursache | Der Daemon prüft das Audit-Log mit einem Probe-Schreibvorgang: Er schreibt eine Zeile in einer Transaktion und nimmt sie zurück. Danach schreibt er den offenen Beginn und das Ende. Scheitert ein Schritt, bleibt die Sperre, und die Antwort nennt den Befund. Ein Absturz hat keine eigene Prüfung; nach dem Absturz gilt dieselbe Prüfung des Audit-Logs. |
+| Status | `status_result.fault` nennt Code, Grund und Beginn. `check_passed` und `finding` zeigen die Prüfung der Ursache, ohne Schreibvorgang im Audit-Log. `begin_pending` zeigt einen offenen Beginn. |
+| Start | Der Daemon prüft beim Start das Audit-Log mit demselben Probe-Schreibvorgang. Scheitert die Prüfung, startet er gesperrt und legt beide Sockets an. So erreichen `a38 doctor` und die Admin-Befehle den Daemon. Ein Neustart bei bestehender Ursache führt so wieder in die Sperre ({{ ref("T28") }}). |
+
+Keine Störung des Daemons sind: die fehlerhafte Konfiguration eines Projekts (`config_invalid`, nur dieses Projekt, {{ ref("D28") }}), ein gesperrtes oder nicht erreichbares Backend, ein Fehler oder eine Wartezeit der Freigabe und eine Ablehnung.
+
+Eine Anfrage, die das Tor vor der Sperre passiert hat und deren Eintrag „Auslieferung“ steht, liest ihre Werte noch. Der Eintrag „Auslieferung“ ist der Zeitpunkt, der zählt ({{ ref("D36") }}).
 
 ## Protokoll auf den Sockets
 
@@ -278,7 +301,7 @@ Die Version ist `1`.
 |---|---|---|
 | `grants_list` | `grants` | Grants aller Sitzungen |
 | `grant_revoke` | `grant_revoked` | Widerruf eines Grants |
-| `status` | `status_result` | Zustand des Daemons für `a38 doctor`: Störung, ungültige Projekte, Zahl der Sitzungen und Grants |
+| `status` | `status_result` | Zustand des Daemons für `a38 doctor`: Störung mit Prüfung der Ursache, ungültige Projekte, Zahl der Sitzungen und Grants, Zustand des Backends, Variante der Freigabe |
 | `fault_clear` | `fault_clear_result` | Aufheben der globalen Sperre ({{ ref("D48") }}) |
 
 Scheitert eine Anfrage als Ganzes, ist die Antwort auf beiden Sockets die Nachricht `error` mit Code und Text.

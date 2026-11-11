@@ -52,3 +52,34 @@ func TestFailAppends(t *testing.T) {
 		t.Fatalf("append after Heal: %v", err)
 	}
 }
+
+// T28 (part): Probe fails while the next Append would fail, and passes
+// after Heal. It writes nothing.
+func TestProbe(t *testing.T) {
+	ctx := context.Background()
+	inner, err := sqlite.Open(filepath.Join(t.TempDir(), "audit.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = inner.Close() }()
+	s := faultstore.New(inner)
+	if err := s.Probe(ctx); err != nil {
+		t.Fatalf("probe without fault: %v", err)
+	}
+	s.FailAppends(nil)
+	if err := s.Probe(ctx); !errors.Is(err, faultstore.ErrInjected) {
+		t.Fatalf("probe with fault = %v", err)
+	}
+	s.Heal()
+	s.FailWhen(func(audit.Event) bool { return true })
+	if err := s.Probe(ctx); !errors.Is(err, faultstore.ErrInjected) {
+		t.Fatalf("probe with a rule = %v", err)
+	}
+	s.Heal()
+	if err := s.Probe(ctx); err != nil {
+		t.Fatalf("probe after heal: %v", err)
+	}
+	if v, err := inner.Verify(ctx); err != nil || v.Entries != 0 {
+		t.Fatalf("probe wrote: %+v, %v", v, err)
+	}
+}

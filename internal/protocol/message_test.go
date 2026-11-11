@@ -163,6 +163,11 @@ func roundTripCases(t testing.TB) []struct {
 			Fault:           &Fault{Code: CodeAuditFailed, Reason: "The daemon cannot write the audit log.", Since: grantedAt},
 			InvalidProjects: []InvalidProject{{Project: "beispielprojekt", Reason: `The vault "beispiel.infra.k8s-dev" is not in the vault list.`}}}},
 		{"status_result without findings", AdminResponses, &StatusResult{ID: "a3", DaemonVersion: "0.1.0"}},
+		{"status_result with the check of the cause", AdminResponses, &StatusResult{ID: "a3", DaemonVersion: "0.1.0",
+			Fault: &Fault{Code: CodeAuditFailed, Reason: "The daemon cannot write the audit log.", Since: grantedAt,
+				CheckPassed: new(bool), Finding: "audit: cannot write the audit file", BeginPending: true},
+			Backend: &BackendStatus{State: BackendLocked, Reason: "The backend is locked."},
+			UI:      &UIStatus{Mode: "script", Usable: true}}},
 		{"fault_clear", AdminRequests, &FaultClear{ID: "a4"}},
 		{"fault_clear_result", AdminResponses, &FaultClearResult{ID: "a4", Cleared: false, Finding: "The daemon cannot write the audit log."}},
 		{"admin error", AdminResponses, &ErrorResponse{ID: "a2", Error: Error{Code: CodeNotFound, Message: "The grant does not exist."}}},
@@ -205,6 +210,9 @@ func TestEncodeRejects(t *testing.T) {
 		{"above the size limit", &RequestCredentials{ID: "r1", References: []Reference{ref}, Task: "t",
 			Reason: strings.Repeat("a", MaxClaimLength+1)}},
 		{"unknown code", &ErrorResponse{Error: Error{Code: "try_again", Message: "x"}}},
+		{"unknown backend state", &StatusResult{ID: "a3", Backend: &BackendStatus{State: "sleepy"}}},
+		{"control character in a fault finding", &StatusResult{ID: "a3",
+			Fault: &Fault{Code: CodeAuditFailed, Reason: "x", Finding: "a\x00b"}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

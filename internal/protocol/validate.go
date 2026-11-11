@@ -188,7 +188,10 @@ func (m *StatusResult) Validate() error {
 		if !m.Fault.Code.Valid() {
 			return invalid("the fault code is not a known code")
 		}
-		if err := checkText("reason", m.Fault.Reason, MaxClaimLength, true); err != nil {
+		if err := firstError(
+			checkText("reason", m.Fault.Reason, MaxClaimLength, true),
+			checkText("finding", m.Fault.Finding, MaxClaimLength, true),
+		); err != nil {
 			return err
 		}
 	}
@@ -198,6 +201,24 @@ func (m *StatusResult) Validate() error {
 			checkText("reason", p.Reason, MaxClaimLength, true),
 		)
 		if err != nil {
+			return err
+		}
+	}
+	if m.Backend != nil {
+		switch m.Backend.State {
+		case BackendOK, BackendLocked, BackendUnreachable:
+		default:
+			return invalid("the backend state is not a known state")
+		}
+		if err := checkText("backend reason", m.Backend.Reason, MaxClaimLength, true); err != nil {
+			return err
+		}
+	}
+	if m.UI != nil {
+		if err := firstError(
+			checkText("ui mode", m.UI.Mode, MaxClaimLength, false),
+			checkText("ui reason", m.UI.Reason, MaxClaimLength, true),
+		); err != nil {
 			return err
 		}
 	}

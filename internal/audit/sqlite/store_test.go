@@ -454,3 +454,53 @@ func TestNoSecretInEntry(t *testing.T) {
 		t.Error("the file contains the secret value")
 	}
 }
+
+// T28 (part), D48: Probe checks that the store can write without writing
+// an entry. A directory that is not writable makes each write fail; Probe
+// finds this, and the chain stays unchanged.
+func TestProbe(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores the file mode")
+	}
+	ctx := context.Background()
+	dir := filepath.Join(t.TempDir(), "audit")
+	path := filepath.Join(dir, "audit.db")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	if err := s.Probe(ctx); err != nil {
+		t.Fatalf("Probe on a writable store: %v", err)
+	}
+	if v, err := s.Verify(ctx); err != nil || v.Entries != 0 {
+		t.Fatalf("Probe wrote an entry: %+v, %v", v, err)
+	}
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+	if err := s.Probe(ctx); err == nil {
+		t.Fatal("Probe passed on a directory that is not writable")
+	}
+	if _, err := s.Append(ctx, event(audit.EventRequest, "beispielprojekt")); err == nil {
+		t.Fatal("Append passed on a directory that is not writable")
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Probe(ctx); err != nil {
+		t.Fatalf("Probe after the repair: %v", err)
+	}
+	if _, err := s.Append(ctx, event(audit.EventRequest, "beispielprojekt")); err != nil {
+		t.Fatalf("Append after the repair: %v", err)
+	}
+	ro, err := OpenReadOnly(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ro.Close() }()
+	if err := ro.Probe(ctx); err == nil {
+		t.Fatal("Probe passed on a read-only store")
+	}
+}
