@@ -155,6 +155,8 @@ depends = ["uv:sync"]
 run = """
 uv run --locked zensical build --clean --strict
 grep -q "$(git rev-parse --short HEAD)" site/index.html || { echo "site/index.html lacks the commit hash: macros not rendered" >&2; exit 1; }
+# A page that forgets render_macros shows its macro calls as text.
+if grep -rl --include='*.html' -F '{{ ref(' site >/dev/null; then echo "a built page shows a macro call as text; add render_macros: true to its front matter:" >&2; grep -rl --include='*.html' -F '{{ ref(' site >&2; exit 1; fi
 """
 
 [tasks.release]
