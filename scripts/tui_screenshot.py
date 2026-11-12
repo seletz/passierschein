@@ -19,6 +19,7 @@ The script sends ``q`` at the end and stops the program.
 from __future__ import annotations
 
 import argparse
+import copy
 import fcntl
 import html
 import os
@@ -84,7 +85,9 @@ def run(command: list[str], cols: int, rows: int, keys: list[str], wait: float) 
     stream = pyte.ByteStream(screen)
     master, slave = pty.openpty()
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
-    env = dict(os.environ, TERM="xterm-256color", COLUMNS=str(cols), LINES=str(rows))
+    # TERM=vt220 makes the renderer of Bubble Tea skip optimisations that
+    # pyte does not know (scroll up and down). The 16 colours stay.
+    env = dict(os.environ, TERM="vt220", COLORTERM="", COLUMNS=str(cols), LINES=str(rows))
     env.pop("NO_COLOR", None)
     proc = subprocess.Popen(command, stdin=slave, stdout=slave, stderr=slave, env=env, start_new_session=True)
     os.close(slave)
@@ -119,6 +122,9 @@ def run(command: list[str], cols: int, rows: int, keys: list[str], wait: float) 
         else:
             os.write(master, text.encode())
         pump(wait)
+    # The picture shows the screen before the program ends.
+    shot = pyte.Screen(cols, rows)
+    shot.buffer = copy.deepcopy(screen.buffer)
     os.write(master, b"q")
     pump(0.5)
     try:
@@ -127,7 +133,7 @@ def run(command: list[str], cols: int, rows: int, keys: list[str], wait: float) 
         proc.kill()
         proc.wait()
     os.close(master)
-    return screen
+    return shot
 
 
 def colour(name: str, palette: dict[str, str], default: str) -> str:
