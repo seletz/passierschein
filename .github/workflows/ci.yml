@@ -9,9 +9,22 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels its old run. Runs on develop never
+# cancel each other, so each commit on develop keeps its full check.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    # Fixed cache locations, so that the cache steps below and the tools
+    # agree on the paths. No cache holds a secret, dist/ or $RUNNER_TEMP.
+    env:
+      GOMODCACHE: /home/runner/go/pkg/mod
+      GOCACHE: /home/runner/.cache/go-build
+      GOLANGCI_LINT_CACHE: /home/runner/.cache/golangci-lint
+      UV_CACHE_DIR: /home/runner/.cache/uv
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -24,6 +37,38 @@ jobs:
       # mise task, so CI checks exactly what `mise run check` checks locally.
       - name: Set up mise
         uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+
+      # mise-action caches the tools of mise.toml itself (cache: true).
+
+      # Go modules and the Go build cache. The build cache serves the tests,
+      # the build and the goreleaser snapshot. The key changes with the
+      # modules and the Go version (go.mod, mise.toml).
+      - name: Cache Go
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            /home/runner/go/pkg/mod
+            /home/runner/.cache/go-build
+          key: go-linux-ci-${{ hashFiles('go.sum', 'go.mod', 'mise.toml') }}
+          restore-keys: |
+            go-linux-ci-
+
+      - name: Cache golangci-lint
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /home/runner/.cache/golangci-lint
+          key: golangci-lint-linux-${{ hashFiles('go.sum', 'mise.toml', '.golangci.yml') }}
+          restore-keys: |
+            golangci-lint-linux-
+
+      # The docs toolchain (Zensical) of uv.lock.
+      - name: Cache uv
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            /home/runner/.cache/uv
+            .venv
+          key: uv-linux-${{ hashFiles('uv.lock', 'pyproject.toml', 'mise.toml') }}
 
       - name: Check (fmt, vet, lint, test, vuln, secrets, tools:check)
         run: mise run check

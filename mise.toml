@@ -86,6 +86,10 @@ bash scripts/linux-deps-check.sh
 description = "macOS only, opt-in, not part of check: integration test T15 of the 1Password backend; reads only the vault passierschein.dev; needs A38_OP_TOKEN_FILE"
 run = "bash scripts/onepassword-integration.sh"
 
+[tasks."test:onepassword:ci"]
+description = "CI only (macOS workflow): integration test T15 with the CI service account; token from OP_SERVICE_ACCOUNT_TOKEN into a 0600 temp file; fails if the secret is missing"
+run = "bash scripts/onepassword-integration-ci.sh"
+
 [tasks.check]
 description = "All checks of CI: fmt, vet, lint, test, vuln, secrets, tools:check, deps:linux:check"
 depends = ["fmt", "vet", "lint", "test", "vuln", "secrets", "tools:check", "deps:linux:check"]

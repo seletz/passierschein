@@ -218,6 +218,32 @@ Bis zu dieser Version lag das Token in der Token-Datei `~/.config/a38/onepasswor
 `a38 token set < ~/.config/a38/onepassword-token` geht auch, denn der Befehl liest stdin.
 Die Anleitung empfiehlt das Einfügen aus 1Password: So prüfst du das Token in 1Password, und die Datei hat danach keinen Zweck mehr.
 
+## Service Account der CI
+
+Die CI führt denselben Integrationstest auf einem macOS-Runner aus ([CI](../reference/55-ci.md)).
+Sie nutzt einen zweiten Service Account, nur für die CI, mit Lesezugriff auf `passierschein.dev`.
+So kannst du ihn widerrufen, ohne den Service Account auf deinem Mac zu berühren.
+
+Lege ihn in deinem eigenen Terminal an und setze ihn direkt als Secret des Repositorys:
+
+```sh
+op service-account create passierschein-ci --vault passierschein.dev:read_items --raw \
+  | gh secret set OP_SERVICE_ACCOUNT_TOKEN --repo seletz/passierschein
+```
+
+Das Token erscheint dabei weder im Terminal noch auf der Platte.
+`gh secret set` liest den Wert ohne `--body` von der Standardeingabe.
+Füge das Token nie von Hand ein.
+
+Prüfe danach den Workflow „macOS“: Starte ihn in GitHub unter **Actions** von Hand und sieh dir den Schritt „1Password integration test“ an.
+Fehlt das Secret, scheitert der Schritt mit der Meldung `the repository secret OP_SERVICE_ACCOUNT_TOKEN is missing`.
+
+So rotierst du das Token der CI:
+
+1. Lege einen neuen Service Account an und setze das Secret mit dem Befehl oben, zum Beispiel mit dem Namen `passierschein-ci-2`.
+2. Starte den Workflow „macOS“ von Hand und prüfe den Schritt „1Password integration test“.
+3. Widerrufe den alten Service Account in 1Password.com unter **Developer**.
+
 ## Token rotieren
 
 Die offizielle Anleitung steht unter [Manage service accounts](https://www.1password.dev/service-accounts/manage-service-accounts).
