@@ -15,6 +15,11 @@ Kein Entwickler ändert die Datei eines anderen Teils.
 
 ## Bestandteile und Prozesse
 
+!!! note "Zielplattformen"
+    Der Daemon `a38 serve` und die Freigabe-App „Passierschein“ laufen nur auf macOS ({{ ref("D53") }}).
+    Linux ist nur Zielplattform für den Client `a38 mcp` in der VM des Agents.
+    Unter Linux startet `a38 serve` nur mit dem Fake-Backend, für die Entwicklung und die CI.
+
 `a38` ist ein Binary mit Unterbefehlen ({{ ref("D42") }}).
 Drei Arten von Prozessen entstehen daraus.
 
