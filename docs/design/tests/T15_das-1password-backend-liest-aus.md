@@ -3,12 +3,12 @@ render_macros: true
 id: 'T15'
 titel: 'Das 1Password-Backend liest aus einem Test-Vault und meldet den gesperrten Zustand'
 bereich: 'Backends'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 2
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F12, D39]
 ---
 # T15 — Das 1Password-Backend liest aus einem Test-Vault und meldet den gesperrten Zustand

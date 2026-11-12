@@ -29,6 +29,9 @@
 //	paths:
 //	  socket_dir: ~/.local/state/a38/run
 //	  audit_file: ~/.local/state/a38/audit.db
+//	backend:
+//	  onepassword:
+//	    token_file: ~/.config/a38/onepassword-token
 //
 // Only "version" is necessary. Each other value has a default.
 //
@@ -123,6 +126,22 @@ type Config struct {
 	SessionName SessionNameRules
 	// Paths holds the locations of the sockets and of the audit file.
 	Paths Paths
+	// Backend holds the settings of the real backends.
+	Backend Backend
+}
+
+// Backend holds the settings of the real backends.
+type Backend struct {
+	// OnePassword holds the settings of the 1Password backend.
+	OnePassword OnePassword
+}
+
+// OnePassword holds the settings of the 1Password backend (F12).
+type OnePassword struct {
+	// TokenFile is the file with the token of the service account. Only
+	// "a38 serve --backend 1password" reads it. The file must be a regular
+	// file of the user with the mode 0600 (G3, working assumption).
+	TokenFile string
 }
 
 // Vault is one vault of the vault list.

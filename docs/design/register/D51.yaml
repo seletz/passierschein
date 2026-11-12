@@ -1,0 +1,9 @@
+id: D51
+zustand: eingeloest
+titel: Das Token des Service Accounts liegt in einer Datei mit Modus 0600
+bezug: '#50'
+schluessel: '#50/token-datei'
+lauf: '2.0'
+branch: feat/50-onepassword-backend
+reserviert_am: '2026-11-12'
+eingeloest_am: '2026-11-12'

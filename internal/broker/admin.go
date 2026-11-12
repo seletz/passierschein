@@ -159,13 +159,14 @@ func (b *Broker) Status(ctx context.Context, req *protocol.Status) (res *protoco
 // state is ok, locked or unreachable.
 func (b *Broker) backendStatus(ctx context.Context) *protocol.BackendStatus {
 	_, err := b.be.Vaults(ctx)
+	kind := string(b.backendKind)
 	switch {
 	case err == nil:
-		return &protocol.BackendStatus{State: protocol.BackendOK}
+		return &protocol.BackendStatus{Kind: kind, State: protocol.BackendOK}
 	case backend.Code(err) == protocol.CodeBackendLocked:
-		return &protocol.BackendStatus{State: protocol.BackendLocked, Reason: "The backend is locked. Unlock it."}
+		return &protocol.BackendStatus{Kind: kind, State: protocol.BackendLocked, Reason: "The backend is locked. Unlock it."}
 	default:
-		return &protocol.BackendStatus{State: protocol.BackendUnreachable, Reason: "The backend does not answer."}
+		return &protocol.BackendStatus{Kind: kind, State: protocol.BackendUnreachable, Reason: "The backend does not answer."}
 	}
 }
 

@@ -24,7 +24,7 @@ Aufruf: `mise run <task>`.
 | `vuln` | Sucht mit govulncheck nach bekannten Schwachstellen. |
 | `secrets` | Durchsucht die Git-Historie mit gitleaks nach Secrets. |
 | `secrets:staged` | Durchsucht die vorgemerkten Änderungen nach Secrets. |
-| `deps:linux:check` | Prüft, dass der linux-Build kein Paket für 1Password enthält. |
+| `deps:linux:check` | Prüft, dass der linux-Build kein Paket für 1Password enthält. Der Selbsttest zeigt mit dem darwin-Build, dass die Prüfung das Backend und das SDK findet. |
 | `tools:check` | Prüft die Werkzeugversionen und die Form der Workflows. |
 | `check` | Führt alle Checks der CI aus. |
 | `hooks:install` | Richtet den Git-Hook `pre-commit` ein. |
@@ -41,6 +41,12 @@ Die Einzelheiten stehen in der [Referenz der Freigabe-App](85-freigabe-app.md).
 | `app:test` | Führt die Tests der Freigabe-App aus, ohne Fenster und ohne Touch ID. |
 | `app:run:sample` | Zeigt ein Beispiel aus `app/Samples` im Debug-Build mit gefälschter Authentifizierung. |
 | `app:e2e` | Baut den Debug-Build und startet `a38 serve --ui app` mit der App über echte Prozesse. Es öffnen sich zwei Fenster für je etwa zwei Sekunden. Touch ID erscheint nie. |
+
+## 1Password
+
+| Task | Zweck |
+|---|---|
+| `test:onepassword` | Nur macOS, nur von Hand, nicht Teil von `check`. Führt den Integrationstest des 1Password-Backends gegen den Vault `passierschein.dev` aus. Der Test liest nur. Er braucht `A38_OP_TOKEN_FILE` ([1Password-Backend einrichten](../how-to/30-1password-backend-einrichten.md#integrationstest)). |
 
 ## Pull Requests
 

@@ -170,7 +170,7 @@ func serve(ctx context.Context, args []string, _, stderr io.Writer) int {
 // audit file that cannot be opened does not stop it: the self-check of
 // the lock then locks delivery (D36, D48).
 func newBroker(f serveFlags, cfg *config.Config, log *slog.Logger) (*broker.Broker, *fault.Global, func(), error) {
-	be, err := newBackend(f)
+	be, err := newBackend(f, cfg, log)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -214,17 +214,22 @@ func newBroker(f serveFlags, cfg *config.Config, log *slog.Logger) (*broker.Brok
 	// the wait time (D30). A notice passes the queue at once.
 	q := queue.New(ui, clk, 0)
 	lock := fault.New(fault.Options{Store: store, UI: q, Clock: clk, Logger: log})
-	b := broker.New(cfg, be, q, store, clk, log, broker.WithUIMode(mode), broker.WithUIApp(appPath), broker.WithLock(lock))
+	b := broker.New(cfg, be, q, store, clk, log, broker.WithUIMode(mode), broker.WithUIApp(appPath), broker.WithLock(lock),
+		broker.WithBackendKind(backend.Kind(f.backend)))
 	return b, lock, closeAll, nil
 }
 
-// newBackend returns the backend of the flag --backend.
-func newBackend(f serveFlags) (backend.Backend, error) {
+// newBackend returns the backend of the flag --backend. The 1Password
+// backend is part of the macOS build only (D42): see
+// serve_onepassword_darwin.go and serve_onepassword_other.go.
+func newBackend(f serveFlags, cfg *config.Config, log *slog.Logger) (backend.Backend, error) {
 	switch backend.Kind(f.backend) {
 	case backend.KindFake:
 		return fake.Load(f.fakeFile)
+	case backend.KindOnePassword:
+		return newOnePassword(cfg, log)
 	default:
-		return nil, fmt.Errorf("--backend %s is not implemented in stage 1", f.backend)
+		return nil, fmt.Errorf("--backend %s is not implemented", f.backend)
 	}
 }
 
