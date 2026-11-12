@@ -61,17 +61,17 @@ func (s keychainSource) Token() (token.Token, error) {
 	select {
 	case r = <-done:
 	case <-time.After(s.timeout):
-		return token.Token{}, fmt.Errorf("the keychain item %s gave no token within %s; macOS may wait for a confirmation in a dialog. Confirm only a dialog that you caused yourself, or store the token again for this build with \"a38 token set --replace\"", store.Name(), s.timeout)
+		return token.Token{}, fmt.Errorf("the keychain item %s gave no token within %s; macOS may wait for a confirmation in a dialog. Confirm only a dialog that you caused yourself, or store the token again for this build with \"a38 config onepassword-token set --replace\"", store.Name(), s.timeout)
 	}
 	switch {
 	case r.err == nil && r.tok.Empty():
-		return token.Token{}, fmt.Errorf("the keychain item %s is empty; store the token with \"a38 token set --replace\"", store.Name())
+		return token.Token{}, fmt.Errorf("the keychain item %s is empty; store the token with \"a38 config onepassword-token set --replace\"", store.Name())
 	case r.err == nil:
 		return r.tok, nil
 	case errors.Is(r.err, token.ErrNotFound):
-		return token.Token{}, fmt.Errorf("the keychain has no item %s (backend.onepassword.token_source: keychain); store the token with \"a38 token set\", then start the daemon again", store.Name())
+		return token.Token{}, fmt.Errorf("the keychain has no item %s (backend.onepassword.token_source: keychain); store the token with \"a38 config onepassword-token set\", then start the daemon again", store.Name())
 	case errors.Is(r.err, token.ErrInteraction):
-		return token.Token{}, fmt.Errorf("the keychain refused the item %s or needs a confirmation (%w); check it with \"a38 token status\" and store the token again with \"a38 token set --replace\"", store.Name(), r.err)
+		return token.Token{}, fmt.Errorf("the keychain refused the item %s or needs a confirmation (%w); check it with \"a38 config onepassword-token status\" and store the token again with \"a38 config onepassword-token set --replace\"", store.Name(), r.err)
 	}
 	return token.Token{}, fmt.Errorf("the keychain item %s cannot be read: %w", store.Name(), r.err)
 }

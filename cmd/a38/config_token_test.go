@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,7 +17,6 @@ import (
 
 	"github.com/seletz/passierschein/internal/config"
 	"github.com/seletz/passierschein/internal/token"
-	"github.com/seletz/passierschein/internal/tokenfile"
 )
 
 // tokenMarker stands for a token. No output may contain it.
@@ -103,21 +104,21 @@ func (f *fakeStore) Describe() (token.StoreInfo, error) {
 }
 func (f *fakeStore) Signature() (token.Signature, error) { return f.sig, nil }
 
-// tokenEnv runs "a38 token" with a fake store, a configuration with the
-// given source and a token file in a temporary directory.
+// tokenEnv runs the token commands with a fake store, a configuration
+// with the given source and a token file in a temporary directory.
 type tokenEnv struct {
 	store    *fakeStore
 	cfgPath  string
 	file     string
-	stdin    string
 	terminal bool
 	typed    string
+	prompts  int
 }
 
 func newTokenEnv(t *testing.T, source config.TokenSource) *tokenEnv {
 	t.Helper()
 	dir := t.TempDir()
-	e := &tokenEnv{store: newFakeStore(), cfgPath: filepath.Join(dir, "config.yaml"), file: filepath.Join(dir, "onepassword-token")}
+	e := &tokenEnv{store: newFakeStore(), cfgPath: filepath.Join(dir, "config.yaml"), file: filepath.Join(dir, "onepassword-token"), terminal: true}
 	data := fmt.Sprintf("version: 1\nbackend:\n  onepassword:\n    token_source: %s\n    token_file: %s\n", source, e.file)
 	if err := os.WriteFile(e.cfgPath, []byte(data), 0o600); err != nil {
 		t.Fatal(err)
@@ -127,15 +128,13 @@ func newTokenEnv(t *testing.T, source config.TokenSource) *tokenEnv {
 
 func (e *tokenEnv) run(args ...string) (int, string, string) {
 	deps := tokenDeps{
-		stdin:    strings.NewReader(e.stdin),
 		terminal: e.terminal,
 		readSecret: func(string) ([]byte, error) {
+			e.prompts++
 			return []byte(e.typed), nil
 		},
 		newStore: func() (token.Store, error) { return e.store, nil },
 		lstat:    os.Lstat,
-		// The real check of the token file; the file is in a test directory.
-		readFile: tokenfile.Read,
 	}
 	if len(args) > 0 {
 		args = append(args, "--config", e.cfgPath)
@@ -155,39 +154,46 @@ func noToken(t *testing.T, outs ...string) {
 	}
 }
 
+// noDerived fails if an output shows a value derived from the token: its
+// length or its SHA-256 (Stefan, 2026-11-12: only metadata).
+func noDerived(t *testing.T, outs ...string) {
+	t.Helper()
+	sum := sha256.Sum256([]byte(tokenMarker))
+	fp := hex.EncodeToString(sum[:])
+	for _, out := range outs {
+		for _, bad := range []string{fp[:8], fmt.Sprintf("%d bytes", len(tokenMarker)), "fingerprint", "length"} {
+			if strings.Contains(strings.ToLower(out), bad) {
+				t.Errorf("output shows %q: %q", bad, out)
+			}
+		}
+	}
+}
+
 func TestTokenSet(t *testing.T) {
-	// Issue 59, D51: "a38 token set" reads stdin or the terminal, checks
-	// the form, stores, and prints the length and the fingerprint only.
-	fp := token.New(tokenMarker).Fingerprint()
-	long := strings.Repeat("a", maxTokenInput+1)
+	// Issue 59, D51: "set" reads the token only from the terminal, checks
+	// the form, stores, and prints that it stored, nothing derived.
 	tests := []struct {
 		name       string
 		existing   bool
-		stdin      string
-		terminal   string // typed on the terminal; used if not empty
+		typed      string
 		args       []string
 		wantCode   int
 		wantOut    string
 		wantErr    string
 		wantStored string
+		wantPrompt bool
 	}{
-		{"stdin with line end", false, tokenMarker + "\n", "", nil, 0, "length 30 bytes, fingerprint " + fp, "", tokenMarker},
-		{"stdin with CRLF", false, tokenMarker + "\r\n", "", nil, 0, fp, "", tokenMarker},
-		{"stdin without line end", false, tokenMarker, "", nil, 0, fp, "", tokenMarker},
-		{"terminal", false, "", tokenMarker, nil, 0, fp, "", tokenMarker},
-		{"empty", false, "", "", nil, 1, "", "the token is empty", ""},
-		{"only a line end", false, "\n", "", nil, 1, "", "the token is empty", ""},
-		{"too long", false, long, "", nil, 1, "", "longer than 4096 bytes", ""},
-		{"two lines", false, tokenMarker + "\n" + tokenMarker + "\n", "", nil, 1, "", "more than one line", ""},
-		{"inner space", false, "ops_beispiel token-marker-5c1e\n", "", nil, 1, "", "white space", ""},
-		{"leading space", false, " " + tokenMarker + "\n", "", nil, 1, "", "white space", ""},
-		{"control character", false, "ops_beispiel\x1btoken-marker-5c1e\n", "", nil, 1, "", "control character", ""},
-		{"too short", false, "ops_kurz\n", "", nil, 1, "", "too short", ""},
-		{"no prefix warns", false, "beispiel-token-marker-5c1e\n", "", nil, 0, "Stored", "warning", "beispiel-token-marker-5c1e"},
-		{"existing without replace", true, tokenMarker + "\n", "", nil, 1, "", "exists already; nothing changed", "ops_beispiel-alt-0000000000"},
-		{"existing with replace", true, tokenMarker + "\n", "", []string{"--replace"}, 0, fp, "", tokenMarker},
-		{"argument", false, tokenMarker + "\n", "", []string{tokenMarker}, 2, "", "never an argument", ""},
-		{"unknown flag", false, tokenMarker + "\n", "", []string{"--value"}, 2, "", "flag provided but not defined", ""},
+		{"terminal", false, tokenMarker, nil, 0, "Stored the token in the keychain item a38-test-fake/a38-test.", "", tokenMarker, true},
+		{"empty", false, "", nil, 1, "", "the token is empty", "", true},
+		{"inner space", false, "ops_beispiel token-marker-5c1e", nil, 1, "", "white space", "", true},
+		{"control character", false, "ops_beispiel\x1btoken-marker-5c1e", nil, 1, "", "control character", "", true},
+		{"too short", false, "ops_kurz", nil, 1, "", "too short", "", true},
+		{"too long", false, "ops_" + strings.Repeat("a", token.MaxLength), nil, 1, "", "too long", "", true},
+		{"no prefix warns", false, "beispiel-token-marker-5c1e", nil, 0, "Stored", "warning", "beispiel-token-marker-5c1e", true},
+		{"existing without replace", true, tokenMarker, nil, 1, "", "exists already; nothing changed", "ops_beispiel-alt-0000000000", false},
+		{"existing with replace", true, tokenMarker, []string{"--replace"}, 0, "Stored", "", tokenMarker, true},
+		{"argument", false, tokenMarker, []string{tokenMarker}, 2, "", "never an argument", "", false},
+		{"unknown flag", false, tokenMarker, []string{"--value"}, 2, "", "flag provided but not defined", "", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -196,10 +202,7 @@ func TestTokenSet(t *testing.T) {
 				old := "ops_beispiel-alt-0000000000"
 				e.store.value = &old
 			}
-			e.stdin = tt.stdin
-			if tt.terminal != "" {
-				e.terminal, e.typed = true, tt.terminal
-			}
+			e.typed = tt.typed
 			code, out, errOut := e.run(append([]string{"set"}, tt.args...)...)
 			if code != tt.wantCode {
 				t.Errorf("exit code = %d, want %d; stderr %q", code, tt.wantCode, errOut)
@@ -215,16 +218,34 @@ func TestTokenSet(t *testing.T) {
 				got = *e.store.value
 			}
 			if got != tt.wantStored {
-				t.Errorf("stored a value of length %d, want length %d", len(got), len(tt.wantStored))
+				t.Error("the stored value is not the expected one")
+			}
+			if (e.prompts > 0) != tt.wantPrompt {
+				t.Errorf("prompted %d times, want a prompt: %v", e.prompts, tt.wantPrompt)
 			}
 			noToken(t, out, errOut)
+			noDerived(t, out, errOut)
 		})
+	}
+}
+
+func TestTokenSetRefusesNonTerminal(t *testing.T) {
+	// Stefan, 2026-11-12: the token comes only from the terminal. Without
+	// a terminal the command reads nothing and ends with 2.
+	e := newTokenEnv(t, config.TokenSourceKeychain)
+	e.terminal, e.typed = false, tokenMarker
+	code, out, errOut := e.run("set")
+	if code != 2 || !strings.Contains(errOut, "standard input is not a terminal") || out != "" {
+		t.Errorf("code %d, stdout %q, stderr %q", code, out, errOut)
+	}
+	if e.prompts != 0 || e.store.value != nil {
+		t.Error("the command read or stored a token without a terminal")
 	}
 }
 
 func TestTokenSetNotesFileSource(t *testing.T) {
 	e := newTokenEnv(t, config.TokenSourceFile)
-	e.stdin = tokenMarker
+	e.typed = tokenMarker
 	code, out, errOut := e.run("set")
 	if code != 0 || !strings.Contains(errOut, "token_source: file") {
 		t.Errorf("code %d, stderr %q", code, errOut)
@@ -235,7 +256,7 @@ func TestTokenSetNotesFileSource(t *testing.T) {
 func TestTokenSetStoreError(t *testing.T) {
 	e := newTokenEnv(t, config.TokenSourceKeychain)
 	e.store.putErr = errors.New("keychain: SecItemAdd: status -25308 (User interaction is not allowed.)")
-	e.stdin = tokenMarker
+	e.typed = tokenMarker
 	code, out, errOut := e.run("set")
 	if code != 1 || !strings.Contains(errOut, "nothing stored") || !strings.Contains(errOut, "-25308") {
 		t.Errorf("code %d, stderr %q", code, errOut)
@@ -244,50 +265,47 @@ func TestTokenSetStoreError(t *testing.T) {
 }
 
 func TestTokenStatus(t *testing.T) {
-	// Issue 59: status shows the source, the item without its value, the
-	// signature and a token file that is left. It reads the value only if
-	// this build is sure to read it without a dialog.
-	fp := token.New(tokenMarker).Fingerprint()
+	// Issue 59, Stefan 2026-11-12: status shows only metadata: the source,
+	// the item without its value, the signature and a token file that is
+	// left. It never reads the token, so it never causes a dialog.
 	tests := []struct {
-		name      string
-		source    config.TokenSource
-		prepare   func(t *testing.T, e *tokenEnv)
-		wantCode  int
-		want      []string
-		wantReads int
+		name     string
+		source   config.TokenSource
+		prepare  func(t *testing.T, e *tokenEnv)
+		wantCode int
+		want     []string
 	}{
 		{"no item", config.TokenSourceKeychain, func(*testing.T, *tokenEnv) {}, 1,
-			[]string{"Source:      keychain", "no item a38-test-fake/a38-test", "a38 token set", "Signature:   ad-hoc", "each new build of a38 needs a confirmation", "does not exist"}, 0},
+			[]string{"Source:      keychain", "no item a38-test-fake/a38-test", "a38 config onepassword-token set", "Signature:   ad-hoc", "each new build of a38 needs a confirmation", "does not exist"}},
 		{"item of this build", config.TokenSourceKeychain, func(_ *testing.T, e *tokenEnv) { v := tokenMarker; e.store.value = &v }, 0,
-			[]string{"item a38-test-fake/a38-test exists", "2026-11-12T08:00:00Z", "Trusted:   /x/a38", "cdhash:abcd", "length 30 bytes, fingerprint " + fp}, 1},
+			[]string{"item a38-test-fake/a38-test exists (value not read)", "2026-11-12T08:00:00Z", "Trusted:   /x/a38", "cdhash:abcd"}},
 		{"item of another build", config.TokenSourceKeychain, func(_ *testing.T, e *tokenEnv) {
 			v := tokenMarker
 			e.store.value, e.store.readable = &v, false
-		}, 0, []string{"exists", "not read: this build of a38 did not store the item", "a38 token set --replace"}, 0},
+		}, 0, []string{"exists", "this build of a38 did not store the item", "set --replace"}},
 		{"item trusts another program", config.TokenSourceKeychain, func(_ *testing.T, e *tokenEnv) {
 			v := tokenMarker
 			e.store.value, e.store.readable, e.store.trusted = &v, false, []string{"/usr/bin/security"}
-		}, 0, []string{"trusts a program other than this a38: /usr/bin/security"}, 0},
+		}, 0, []string{"trusts a program other than this a38: /usr/bin/security"}},
 		{"developer id", config.TokenSourceKeychain, func(_ *testing.T, e *tokenEnv) {
 			e.store.sig = token.Signature{Path: "/x/a38", Kind: token.SignatureDeveloperID, TeamID: "ABCDE12345"}
-		}, 1, []string{"developer-id, team ABCDE12345"}, 0},
+		}, 1, []string{"developer-id, team ABCDE12345"}},
 		{"file left", config.TokenSourceKeychain, func(t *testing.T, e *tokenEnv) {
 			v := tokenMarker
 			e.store.value = &v
-			writeMode(t, e.file, 0o600)
 			if err := os.WriteFile(e.file, []byte(tokenMarker+"\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-		}, 0, []string{"exists: length 30 bytes, fingerprint " + fp, "left although the source is the keychain", "rm "}, 1},
+		}, 0, []string{"exists (content not read)", "left although the source is the keychain"}},
 		{"file source", config.TokenSourceFile, func(t *testing.T, e *tokenEnv) {
 			if err := os.WriteFile(e.file, []byte(tokenMarker+"\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-		}, 0, []string{"Source:      file", "no item", "fingerprint " + fp}, 0},
+		}, 0, []string{"Source:      file", "no item", "exists (content not read)"}},
 		{"file source with mode 0644", config.TokenSourceFile, func(t *testing.T, e *tokenEnv) {
 			writeMode(t, e.file, 0o644)
-		}, 1, []string{"Finding:", "0600"}, 0},
-		{"file source without file", config.TokenSourceFile, func(*testing.T, *tokenEnv) {}, 1, []string{"does not exist"}, 0},
+		}, 1, []string{"Finding:", "0600"}},
+		{"file source without file", config.TokenSourceFile, func(*testing.T, *tokenEnv) {}, 1, []string{"does not exist"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -302,13 +320,13 @@ func TestTokenStatus(t *testing.T) {
 					t.Errorf("stdout does not contain %q:\n%s", w, out)
 				}
 			}
-			if e.store.reads != tt.wantReads {
-				t.Errorf("status read the value %d times, want %d", e.store.reads, tt.wantReads)
+			if e.store.reads != 0 {
+				t.Errorf("status read the token %d times", e.store.reads)
 			}
 			noToken(t, out, errOut)
+			noDerived(t, out, errOut)
 
-			// --json gives the same facts.
-			e.store.reads = 0
+			// --json gives the same facts, also without a value.
 			code2, js, _ := e.run("status", "--json")
 			if code2 != code {
 				t.Errorf("--json: exit code %d, want %d", code2, code)
@@ -320,7 +338,11 @@ func TestTokenStatus(t *testing.T) {
 			if st.Source != tt.source || st.OK != (code == 0) {
 				t.Errorf("--json: %+v", st)
 			}
+			if e.store.reads != 0 {
+				t.Error("status --json read the token")
+			}
 			noToken(t, js)
+			noDerived(t, js)
 		})
 	}
 }
@@ -344,7 +366,7 @@ func TestTokenDelete(t *testing.T) {
 		wantOut  string
 		wantErr  string
 	}{
-		{"keychain source", config.TokenSourceKeychain, true, 0, "next start with the 1Password backend fails until you run \"a38 token set\"", ""},
+		{"keychain source", config.TokenSourceKeychain, true, 0, "next start with the 1Password backend fails until you run \"a38 config onepassword-token set\"", ""},
 		{"file source", config.TokenSourceFile, true, 0, "uses the token file", ""},
 		{"no item", config.TokenSourceKeychain, false, 1, "", "has no item"},
 	}
@@ -373,7 +395,7 @@ func TestTokenDelete(t *testing.T) {
 
 func TestTokenUsage(t *testing.T) {
 	e := newTokenEnv(t, config.TokenSourceKeychain)
-	if code, out, _ := e.run("--help"); code != 0 || !strings.Contains(out, "a38 token set") {
+	if code, out, _ := e.run("--help"); code != 0 || !strings.Contains(out, "a38 config onepassword-token set") {
 		t.Errorf("--help: %d %q", code, out)
 	}
 	var o, er bytes.Buffer
@@ -386,7 +408,7 @@ func TestTokenStoreUnavailable(t *testing.T) {
 	// D42, D53: without a store (linux) each command says so.
 	for _, sub := range []string{"set", "status", "delete"} {
 		deps := tokenDeps{
-			stdin:    strings.NewReader(tokenMarker),
+			terminal: true,
 			newStore: func() (token.Store, error) { return nil, fmt.Errorf("the keychain is %w", token.ErrUnavailable) },
 			lstat:    os.Lstat,
 		}
@@ -397,34 +419,9 @@ func TestTokenStoreUnavailable(t *testing.T) {
 	}
 }
 
-func TestReadTokenInput(t *testing.T) {
-	tests := []struct {
-		in, want, err string
-	}{
-		{"abc\n", "abc", ""},
-		{"abc\r\n", "abc", ""},
-		{"abc", "abc", ""},
-		{"abc\n\n", "", "more than one line"},
-		{strings.Repeat("x", maxTokenInput), strings.Repeat("x", maxTokenInput), ""},
-		{strings.Repeat("x", maxTokenInput+1), "", "longer than"},
-	}
-	for _, tt := range tests {
-		got, err := readTokenInput(strings.NewReader(tt.in))
-		if tt.err != "" {
-			if err == nil || !strings.Contains(err.Error(), tt.err) {
-				t.Errorf("%q: error %v, want %q", tt.in[:min(len(tt.in), 8)], err, tt.err)
-			}
-			continue
-		}
-		if err != nil || string(got) != tt.want {
-			t.Errorf("%q: got length %d, %v", tt.in[:min(len(tt.in), 8)], len(got), err)
-		}
-	}
-}
-
 func TestKeychainSource(t *testing.T) {
 	// D51, issue 59: the daemon reads the keychain item once at its
-	// start. A missing item stops the start and names "a38 token set".
+	// start. A missing item stops the start and names "a38 config onepassword-token set".
 	v := tokenMarker
 	tests := []struct {
 		name    string
@@ -433,12 +430,12 @@ func TestKeychainSource(t *testing.T) {
 		want    string
 	}{
 		{"item", func() *fakeStore { s := newFakeStore(); s.value = &v; return s }, time.Second, ""},
-		{"no item", newFakeStore, time.Second, `has no item a38-test-fake/a38-test (backend.onepassword.token_source: keychain); store the token with "a38 token set"`},
+		{"no item", newFakeStore, time.Second, `has no item a38-test-fake/a38-test (backend.onepassword.token_source: keychain); store the token with "a38 config onepassword-token set"`},
 		{"interaction", func() *fakeStore {
 			s := newFakeStore()
 			s.getErr = fmt.Errorf("keychain: %w", token.ErrInteraction)
 			return s
-		}, time.Second, "a38 token set --replace"},
+		}, time.Second, "a38 config onepassword-token set --replace"},
 		{"other error", func() *fakeStore { s := newFakeStore(); s.getErr = errors.New("keychain: status -50"); return s }, time.Second, "cannot be read: keychain: status -50"},
 		{"empty", func() *fakeStore { s := newFakeStore(); e := ""; s.value = &e; return s }, time.Second, "is empty"},
 		{"dialog", func() *fakeStore { s := newFakeStore(); s.value = &v; s.block = make(chan struct{}); return s }, 20 * time.Millisecond, "gave no token within"},

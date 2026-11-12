@@ -6,7 +6,7 @@ import (
 )
 
 func TestCheckShape(t *testing.T) {
-	// D51, issue 59: the form check of "a38 token set". No error and no
+	// D51, issue 59: the form check of "a38 config onepassword-token set". No error and no
 	// warning contains the token.
 	long := ExpectedPrefix + strings.Repeat("a", MaxLength)
 	tests := []struct {
@@ -48,26 +48,6 @@ func TestCheckShape(t *testing.T) {
 				t.Errorf("output contains the token: %q", text)
 			}
 		})
-	}
-}
-
-func TestFingerprint(t *testing.T) {
-	// Issue 59: 8 hex digits of SHA-256; stable; empty for no token.
-	fp := New(marker).Fingerprint()
-	if len(fp) != 8 || strings.Trim(fp, "0123456789abcdef") != "" {
-		t.Fatalf("fingerprint = %q", fp)
-	}
-	if New(marker).Fingerprint() != fp {
-		t.Error("the fingerprint is not stable")
-	}
-	if New(marker+"x").Fingerprint() == fp {
-		t.Error("two tokens have the same fingerprint")
-	}
-	if (Token{}).Fingerprint() != "" || New("").Fingerprint() != "" {
-		t.Error("an empty token has a fingerprint")
-	}
-	if New(marker).Length() != len(marker) {
-		t.Error("wrong length")
 	}
 }
 

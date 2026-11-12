@@ -84,11 +84,19 @@ func testStore(t *testing.T) Store {
 	return s
 }
 
-// put stores v. On a CI runner without a usable login keychain it skips
-// the test; locally a failure fails the test.
+// put stores v. On a CI runner whose login keychain does not accept a
+// new item without interaction (an error, or no answer within 30 s) it
+// skips the test; locally a failure fails the test.
 func put(t *testing.T, s Store, v string, replace bool) {
 	t.Helper()
-	err := s.Put(token.New(v), replace)
+	done := make(chan error, 1)
+	go func() { done <- s.Put(token.New(v), replace) }()
+	var err error
+	select {
+	case err = <-done:
+	case <-time.After(30 * time.Second):
+		err = errors.New("the keychain did not answer within 30 s")
+	}
 	if err == nil {
 		return
 	}
@@ -128,7 +136,7 @@ func TestStoreLifecycle(t *testing.T) {
 	put(t, s, dummy1, false)
 	got, err := s.Token()
 	if err != nil || got.Reveal() != dummy1 {
-		t.Fatalf("Token after Put: length %d, %v", got.Length(), err)
+		t.Fatalf("Token after Put: %v", err)
 	}
 
 	err = s.Put(token.New(dummy2), false)
@@ -142,7 +150,7 @@ func TestStoreLifecycle(t *testing.T) {
 
 	put(t, s, dummy2, true)
 	if got, err := s.Token(); err != nil || got.Reveal() != dummy2 {
-		t.Fatalf("Token after replace: length %d, %v", got.Length(), err)
+		t.Fatalf("Token after replace: %v", err)
 	}
 
 	info, err = s.Describe()

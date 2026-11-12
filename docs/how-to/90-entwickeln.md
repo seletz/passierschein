@@ -116,13 +116,13 @@ Ohne `security … -w` liest der Befehl nur die Attribute und zeigt keinen Dialo
 
 Für einen Versuch mit dem gebauten `bin/a38` nennt `A38_TEST_KEYCHAIN_SERVICE` einen Testeintrag statt `a38.onepassword`.
 Der Name muss mit `a38-test-` beginnen.
-Nutze nur einen Dummy-Wert:
+`set` liest nur vom Terminal; tippe oder füge einen Dummy-Wert ein, nie ein Token:
 
 ```sh
 export A38_TEST_KEYCHAIN_SERVICE=a38-test-versuch
-printf 'test-dummy-wert-1-versuch\n' | bin/a38 token set
-bin/a38 token status
-bin/a38 token delete
+bin/a38 config onepassword-token set
+bin/a38 config onepassword-token status
+bin/a38 config onepassword-token delete
 ```
 
 Ein neuer Build von `bin/a38` liest den Eintrag eines alten Builds nur nach einem Dialog.

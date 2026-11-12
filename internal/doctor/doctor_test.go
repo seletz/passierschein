@@ -287,7 +287,7 @@ func TestTokenSourceCheckKeychain(t *testing.T) {
 			{true, true, "each new build of a38 needs a confirmation"},
 		}},
 		{"no item, 1password daemon", "1password", fakeTokenStore{sig: adhoc}, false, []want{
-			{false, false, "run a38 token set"},
+			{false, false, "run a38 config onepassword-token set"},
 			{true, true, "ad-hoc"},
 		}},
 		{"item of this build", "1password", fakeTokenStore{info: item, sig: adhoc}, false, []want{
@@ -296,7 +296,7 @@ func TestTokenSourceCheckKeychain(t *testing.T) {
 		}},
 		{"item of another build", "1password", fakeTokenStore{info: func() token.StoreInfo { i := item; i.ReadableWithoutDialog = false; return i }(), sig: adhoc}, false, []want{
 			{true, false, "exists"},
-			{true, true, "a38 token set --replace instead of confirming the dialog"},
+			{true, true, "a38 config onepassword-token set --replace instead of confirming the dialog"},
 			{true, true, "ad-hoc"},
 		}},
 		{"item trusts security", "", fakeTokenStore{info: func() token.StoreInfo { i := item; i.Trusted = []string{"/usr/bin/security"}; return i }(), sig: adhoc}, false, []want{

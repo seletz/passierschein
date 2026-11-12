@@ -330,7 +330,7 @@ func writeMode(t *testing.T, path string, mode os.FileMode) {
 
 // TestServeKeychainSource: with the source keychain (the default) a
 // missing keychain item stops the start; the message names
-// "a38 token set" (D51, issue 59). The test uses a fake store; it never
+// "a38 config onepassword-token set" (D51, issue 59). The test uses a fake store; it never
 // touches the keychain.
 func TestServeKeychainSource(t *testing.T) {
 	cfgFile, socketDir, _ := writeConfig(t)
@@ -357,7 +357,7 @@ func TestServeKeychainSource(t *testing.T) {
 			if code := serve(context.Background(), args, &stdout, &stderr); code != exitFailure {
 				t.Errorf("exit code = %d, want %d", code, exitFailure)
 			}
-			want := `store the token with "a38 token set"`
+			want := `store the token with "a38 config onepassword-token set"`
 			if runtime.GOOS != "darwin" {
 				want = "not available on this platform"
 			}

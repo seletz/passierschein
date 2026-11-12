@@ -1,6 +1,6 @@
 ---
 title: 1Password-Backend einrichten
-description: "Einen Service Account mit Lesezugriff auf genau einen Vault anlegen, das Token mit a38 token set im Schlüsselbund ablegen, a38 serve mit dem 1Password-Backend starten, mit a38 doctor prüfen, das Token rotieren und den Integrationstest laufen lassen."
+description: "Einen Service Account mit Lesezugriff auf genau einen Vault anlegen, das Token mit a38 config onepassword-token set im Schlüsselbund ablegen, a38 serve mit dem 1Password-Backend starten, mit a38 doctor prüfen, das Token rotieren und den Integrationstest laufen lassen."
 render_macros: true
 tags:
   - Thema/Backend
@@ -14,7 +14,7 @@ Es gilt nur unter macOS ({{ ref("D42") }}, {{ ref("D53") }}).
 Den Aufbau erklärt die [Architektur](../explanation/architektur.md#1password-backend).
 
 Das Token liegt im Schlüsselbund von macOS ({{ ref("D51") }}).
-Du fügst es im Terminal in `a38 token set` ein, und `a38` legt es im Schlüsselbund ab.
+Du fügst es im Terminal in `a38 config onepassword-token set` ein, und `a38` legt es im Schlüsselbund ab.
 Die Token-Datei bleibt als Ausweichweg für Entwicklung und CI.
 
 !!! warning "Grenzen des Schlüsselbunds ohne Developer ID"
@@ -42,7 +42,7 @@ Die Token-Datei bleibt als Ausweichweg für Entwicklung und CI.
 Es gibt zwei Wege: die Weboberfläche oder die 1Password-CLI in deinem eigenen Terminal.
 Die offizielle Anleitung steht unter [Get started with 1Password Service Accounts](https://www.1password.dev/service-accounts/get-started).
 
-!!! danger "Das Token gehört nur in a38 token set"
+!!! danger "Das Token gehört nur in a38 config onepassword-token set"
     Füge das Token nirgends sonst ein: nicht in einen Chat, nicht in einen Agent, nicht in ein Issue, nicht in eine Shell-Variable, nicht als Argument eines Befehls.
     Ein Agent führt diese Schritte nie aus; du führst sie selbst in deinem Terminal aus.
 
@@ -65,21 +65,21 @@ Lege das Token danach im Schlüsselbund ab, wie im nächsten Abschnitt beschrieb
 ### Weg 2: 1Password-CLI
 
 Die CLI gibt das Token mit `--raw` auf stdout aus.
-Leite es direkt in `a38 token set`.
-Das Token erscheint so nie im Terminal und liegt nie in einer Datei:
+Leite es in die Zwischenablage, damit es nicht im Terminal erscheint:
 
 ```sh
 op service-account create a38-passierschein-dev \
   --vault passierschein.dev:read_items \
-  --raw | a38 token set
+  --raw | pbcopy
 ```
 
 `read_items` gibt nur das Recht zu lesen.
 Die [CLI-Referenz](https://www.1password.dev/cli/reference/management-commands/service-account) nennt die weiteren Schalter, zum Beispiel `--expires-in`.
-Speichere das Token zusätzlich in deinem eigenen Vault, falls du es noch einmal brauchst.
+Füge das Token zuerst in ein Item deines eigenen Vaults ein, dann in `a38 config onepassword-token set` (nächster Abschnitt).
+`a38 config onepassword-token set` liest das Token nur vom Terminal, nie aus einer Pipe.
 
 Geprüft am 2026-11-12: Ein Token aus `op service-account create … --raw`, damals in die Token-Datei geschrieben, funktioniert mit dem SDK v0.4.1.
-Der Weg über `a38 token set` ist noch nicht mit einem echten Token geprüft.
+Der Weg über `a38 config onepassword-token set` ist noch nicht mit einem echten Token geprüft.
 
 ## Token im Schlüsselbund ablegen
 
@@ -87,34 +87,35 @@ Der Weg über `a38 token set` ist noch nicht mit einem echten Token geprüft.
 2. Starte den Befehl in deinem Terminal:
 
     ```sh
-    a38 token set
+    a38 config onepassword-token set
     ```
 
 3. Füge das Token beim Prompt ein und drücke die Eingabetaste. Das Terminal zeigt das Token nicht an.
 4. Leere die Zwischenablage. Jeder Prozess deines Benutzers kann sie lesen, solange das Token dort steht.
 
-Die Ausgabe nennt den Eintrag, die Länge und den Fingerabdruck:
+Die Ausgabe nennt nur den Eintrag:
 
 ```text
-Stored the token in the keychain item a38.onepassword/service-account: length 852 bytes, fingerprint 1a2b3c4d.
+Stored the token in the keychain item a38.onepassword/service-account.
 ```
 
-Der Fingerabdruck sind die ersten 8 Hex-Zeichen von SHA-256 des Tokens.
-Er verrät das Token nicht.
-Mit ihm erkennst du später, welches Token im Schlüsselbund liegt.
+Kein Befehl zeigt das Token oder einen Wert, der daraus abgeleitet ist, auch nicht Länge oder Prüfsumme.
+Der Befehl liest das Token nur vom Terminal.
+Ist die Standardeingabe kein Terminal, zum Beispiel eine Pipe oder eine Datei, liest er nichts und endet mit dem Exit-Code 2.
+Ein zu kurzes Token, etwa nach einem abgeschnittenen Einfügen, lehnt er mit „too short“ ab.
 
-Gibt es den Eintrag schon, ändert `a38 token set` nichts und endet mit dem Exit-Code 1.
-Ersetze ihn mit `a38 token set --replace`.
+Gibt es den Eintrag schon, ändert `a38 config onepassword-token set` nichts und endet mit dem Exit-Code 1.
+Ersetze ihn mit `a38 config onepassword-token set --replace`.
 
 Prüfe den Eintrag:
 
 ```sh
-a38 token status
+a38 config onepassword-token status
 ```
 
-Der Befehl zeigt den Eintrag ohne Wert, die vertrauten Programme und die Signatur von `a38`.
-Hat genau dieser Build von `a38` den Eintrag angelegt, zeigt er auch Länge und Fingerabdruck.
-Sonst liest er den Wert nicht, denn das Lesen würde einen Dialog von macOS zeigen.
+Der Befehl zeigt nur Metadaten: ob der Eintrag existiert, Datum der Anlage und der letzten Änderung, die vertrauten Programme, die Partitionsliste und die Signatur von `a38`.
+Er liest das Token nie und zeigt deshalb nie einen Dialog von macOS.
+Ob das Token gilt, zeigt erst der Start des Daemons.
 
 `a38` legt den Eintrag selbst an, nicht über `/usr/bin/security`.
 Über `security` angelegt, könnte jeder Prozess deines Benutzers das Token still mit `security find-generic-password -w` lesen.
@@ -155,7 +156,7 @@ Danach hält er es nur im Arbeitsspeicher.
 Eine Änderung im Schlüsselbund wirkt erst nach einem Neustart.
 
 Fehlt der Eintrag, startet der Daemon nicht.
-Die Meldung nennt den Befehl `a38 token set`.
+Die Meldung nennt den Befehl `a38 config onepassword-token set`.
 
 Er verbindet sich erst beim ersten Aufruf mit 1Password.
 Das Log meldet kurz nach dem Start den Zustand:
@@ -175,10 +176,10 @@ Der Dialog fragt, ob `a38` den Eintrag `a38.onepassword` lesen darf.
 Der Daemon wartet höchstens zwei Minuten auf die Antwort; danach bricht der Start ab.
 
 - Hast du gerade selbst `a38` neu gebaut oder aktualisiert und den Daemon gestartet, ist der Dialog erwartet.
-- Statt den Dialog zu bestätigen, kannst du das Token für den neuen Build neu ablegen: `a38 token set --replace`. Ob macOS beim Ersetzen selbst nachfragt, klärt der Praxistest.
-- Kommt der Dialog ohne einen Grund, den du kennst, wähle „Verweigern“. Prüfe dann mit `a38 doctor` und `a38 token status`.
+- Statt den Dialog zu bestätigen, kannst du das Token für den neuen Build neu ablegen: `a38 config onepassword-token set --replace`. Ob macOS beim Ersetzen selbst nachfragt, klärt der Praxistest.
+- Kommt der Dialog ohne einen Grund, den du kennst, wähle „Verweigern“. Prüfe dann mit `a38 doctor` und `a38 config onepassword-token status`.
 
-`a38 doctor` und `a38 token status` sagen vorher, ob der laufende Build den Eintrag ohne Dialog liest.
+`a38 doctor` und `a38 config onepassword-token status` sagen vorher, ob der laufende Build den Eintrag ohne Dialog liest.
 
 ## Mit a38 doctor prüfen
 
@@ -197,17 +198,10 @@ a38 doctor
 
 Bis zu dieser Version lag das Token in der Token-Datei `~/.config/a38/onepassword-token`.
 
-1. Lege das Token mit `a38 token set` im Schlüsselbund ab. Füge es aus 1Password ein, wie oben beschrieben.
-2. Vergleiche die Fingerabdrücke:
-
-    ```sh
-    a38 token status
-    ```
-
-    Die Zeilen `Token` (Schlüsselbund) und `Token file` (Datei) zeigen denselben Fingerabdruck.
-
-3. Starte den Daemon neu und prüfe mit `a38 doctor`.
-4. Lösche die Token-Datei:
+1. Lege das Token mit `a38 config onepassword-token set` im Schlüsselbund ab. Füge es aus 1Password ein, wie oben beschrieben.
+2. Prüfe mit `a38 config onepassword-token status`, dass der Eintrag existiert.
+3. Starte den Daemon neu. Das Log meldet `the 1password backend works`. Prüfe mit `a38 doctor`.
+4. Lösche die Token-Datei erst danach:
 
     ```sh
     rm ~/.config/a38/onepassword-token
@@ -215,8 +209,7 @@ Bis zu dieser Version lag das Token in der Token-Datei `~/.config/a38/onepasswor
 
 5. Entferne `token_file` und `token_source: file` aus der Konfiguration, falls dort eingetragen.
 
-`a38 token set < ~/.config/a38/onepassword-token` geht auch, denn der Befehl liest stdin.
-Die Anleitung empfiehlt das Einfügen aus 1Password: So prüfst du das Token in 1Password, und die Datei hat danach keinen Zweck mehr.
+Der Befehl liest die Datei nicht; füge das Token aus 1Password ein.
 
 ## Service Account der CI
 
@@ -254,11 +247,11 @@ Die offizielle Anleitung steht unter [Manage service accounts](https://www.1pass
 4. Ersetze das Token im Schlüsselbund:
 
     ```sh
-    a38 token set --replace
+    a38 config onepassword-token set --replace
     ```
 
 5. Starte den Daemon neu. Er liest das Token nur beim Start. Der Neustart beendet alle Grants ({{ ref("D33") }}).
-6. Prüfe mit `a38 token status` den neuen Fingerabdruck und mit `a38 doctor` den Zustand des Backends.
+6. Prüfe mit `a38 config onepassword-token status` das Datum der Änderung und mit `a38 doctor` den Zustand des Backends. Das Log des Daemons meldet `the 1password backend works`.
 
 Ist das Token entwendet, widerrufe es sofort in 1Password.com.
 Der Widerruf wirkt sofort.
@@ -266,15 +259,17 @@ Der Widerruf wirkt sofort.
 ## Token löschen
 
 ```sh
-a38 token delete
+a38 config onepassword-token delete
 ```
 
 Der Befehl löscht den Eintrag im Schlüsselbund.
 Ein laufender Daemon behält das Token im Arbeitsspeicher, bis er endet.
-Sein nächster Start mit dem 1Password-Backend scheitert, bis du `a38 token set` ausführst.
+Sein nächster Start mit dem 1Password-Backend scheitert, bis du `a38 config onepassword-token set` ausführst.
 
 ## Token-Datei als Ausweichweg für die Entwicklung
 
+Die Token-Datei ist nicht der normale Weg.
+Sie bleibt für die Entwicklung und die CI.
 Für die Entwicklung ist die Token-Datei bequemer: Jeder Neubau von `a38` würde sonst einen Dialog auslösen.
 Ihre Schwäche: Jeder Prozess deines Benutzers kann die Datei lesen, auch ein Agent auf dem Mac ({{ ref("RI5") }}, {{ ref("G3") }}).
 Die Datei kann in eine Datensicherung gelangen.

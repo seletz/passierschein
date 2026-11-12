@@ -154,7 +154,7 @@ type TokenSource string
 // The sources of the token.
 const (
 	// TokenSourceKeychain: the item of the macOS keychain that
-	// "a38 token set" creates. It is the default.
+	// "a38 config onepassword-token set" creates. It is the default.
 	TokenSourceKeychain TokenSource = "keychain"
 	// TokenSourceFile: the token file (backend.onepassword.token_file),
 	// the fallback for development and CI.

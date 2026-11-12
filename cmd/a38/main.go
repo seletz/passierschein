@@ -42,7 +42,7 @@ var commands = []command{
 	{"grants", "List and revoke grants", runGrants},
 	{"fault", "Show and lift the global delivery lock", runFault},
 	{"audit", "List the audit log and verify its hash chain", runAudit},
-	{"token", "Store, show and delete the token of the 1Password service account (macOS keychain)", runToken},
+	{"config", "Manage the configuration: the token of the 1Password service account (onepassword-token)", runConfig},
 	{"doctor", "Check the state of a38 and name the next step for each finding", runDoctor},
 	{"llm", "Print the instructions for agents (--skill)", runLLM},
 	{"version", "Print the version", runVersion},

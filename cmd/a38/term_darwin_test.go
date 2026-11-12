@@ -11,6 +11,8 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/unix"
+
+	"github.com/seletz/passierschein/internal/token"
 )
 
 // openPTY opens a pseudo terminal: the controller side (the "keyboard"
@@ -44,7 +46,7 @@ func openPTY(t *testing.T) (controller, term *os.File) {
 }
 
 func TestReadSecretLineWithoutEcho(t *testing.T) {
-	// Issue 59: "a38 token set" reads the token from the terminal without
+	// Issue 59: "a38 config onepassword-token set" reads the token from the terminal without
 	// echo and restores the terminal. The real terminal of the human is
 	// part of the practice test.
 	controller, term := openPTY(t)
@@ -192,4 +194,52 @@ func TestIsTerminalPipe(t *testing.T) {
 	if isTerminal(r) {
 		t.Error("a pipe is a terminal")
 	}
+}
+
+func TestTokenSetFromPseudoTerminal(t *testing.T) {
+	// Stefan, 2026-11-12: "set" reads the token from a terminal. The whole
+	// command runs with a pseudo terminal as standard input and a fake
+	// store; the output names the item only.
+	controller, term := openPTY(t)
+	store := newFakeStore()
+	oldStore, oldStdin := newTokenStore, os.Stdin
+	newTokenStore = func() (token.Store, error) { return store, nil }
+	os.Stdin = term
+	t.Cleanup(func() { newTokenStore, os.Stdin = oldStore, oldStdin })
+
+	var stdout, stderr bytes.Buffer
+	done := make(chan int, 1)
+	go func() {
+		done <- runConfig([]string{"onepassword-token", "set", "--config", "/tmp/a38-missing/config.yaml"}, &stdout, &stderr)
+	}()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		st, _ := unix.IoctlGetTermios(int(term.Fd()), unix.TIOCGETA)
+		if st != nil && st.Lflag&unix.ECHO == 0 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the echo is still on")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if _, err := controller.Write([]byte(tokenMarker + "\r")); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case code := <-done:
+		if code != 0 {
+			t.Fatalf("exit code %d; stderr %q", code, stderr.String())
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("set does not return")
+	}
+	if store.value == nil || *store.value != tokenMarker {
+		t.Error("the token is not stored")
+	}
+	if stdout.String() != "Stored the token in the keychain item a38-test-fake/a38-test.\n" {
+		t.Errorf("stdout = %q", stdout.String())
+	}
+	noToken(t, stdout.String(), stderr.String())
+	noDerived(t, stdout.String(), stderr.String())
 }

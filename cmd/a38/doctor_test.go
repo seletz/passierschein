@@ -157,7 +157,7 @@ func TestDoctor(t *testing.T) {
 		// Issue 59, D51: the keychain is the default source of the token.
 		{"keychain item missing with 1password daemon", func(e *fakeEnv) {
 			e.status.Backend = &protocol.BackendStatus{Kind: "1password", State: protocol.BackendOK}
-		}, 1, []string{"the keychain has no token of the 1Password backend", "no item a38-test-fake/a38-test", "run a38 token set"}},
+		}, 1, []string{"the keychain has no token of the 1Password backend", "no item a38-test-fake/a38-test", "run a38 config onepassword-token set"}},
 		{"keychain item present with 1password daemon", func(e *fakeEnv) {
 			e.status.Backend = &protocol.BackendStatus{Kind: "1password", State: protocol.BackendOK}
 			v := markerValue

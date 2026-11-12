@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,24 +14,27 @@ import (
 	"github.com/seletz/passierschein/internal/tokenfile"
 )
 
+// tokenCmd is the command line of the token commands.
+const tokenCmd = "a38 config onepassword-token"
+
 const tokenUsage = `Usage:
-  a38 token set    [--replace] [--config FILE]
-  a38 token status [--config FILE] [--json]
-  a38 token delete [--config FILE]
+  a38 config onepassword-token set    [--replace] [--config FILE]
+  a38 config onepassword-token status [--config FILE] [--json]
+  a38 config onepassword-token delete [--config FILE]
 
 The token of the 1Password service account lives in the macOS keychain
 (D51). Only the macOS build has these commands.
 
-"set" reads the token from the terminal without echo, or from stdin if
-stdin is not a terminal (one line, at most 4 KiB). The token is never an
-argument and never an environment variable. An existing item is replaced
-only with --replace. The command prints the length and a fingerprint (the
-first 8 hex digits of SHA-256), never the token.
+"set" reads the token from the terminal without echo. Standard input must
+be a terminal: the command never reads the token from a pipe, a file, an
+argument or an environment variable. An existing item is replaced only
+with --replace. The command never shows the token or a value derived from
+it.
 
-"status" shows the configured source, the keychain item without its value,
-the signature of a38 and a token file that is left. It reads the value
-only if this build of a38 stored it, so that macOS shows no dialog. It
-exits with 1 if the configured source has no token.
+"status" shows the configured source, the metadata of the keychain item
+(never its value), the signature of a38 and a token file that is left. It
+never reads the token, so it never causes a macOS dialog. It exits with 1
+if the configured source has no token.
 
 "delete" removes the keychain item.
 
@@ -40,42 +42,37 @@ The daemon reads the token once at its start. After "set" or "delete",
 restart the daemon.
 `
 
-// maxTokenInput is the largest input of "a38 token set" in bytes.
-const maxTokenInput = 4 << 10
+// maxTokenInput is the longest line that "set" reads from the terminal.
+const maxTokenInput = token.MaxLength
 
 // newTokenStore returns the store of the token. A test replaces it, so
 // that no test touches the keychain item of the human.
 var newTokenStore = systemTokenStore
 
-// tokenDeps are the parts of the world that "a38 token" uses. A test
-// replaces them.
+// tokenDeps are the parts of the world that the token commands use. A
+// test replaces them.
 type tokenDeps struct {
-	// stdin is the input of "set" if it is not a terminal.
-	stdin io.Reader
-	// terminal is true if stdin is a terminal.
+	// terminal is true if standard input is a terminal.
 	terminal bool
 	// readSecret reads one line from the terminal without echo.
 	readSecret func(prompt string) ([]byte, error)
 	// newStore returns the store of the token.
 	newStore func() (token.Store, error)
-	// lstat reads the file information of the token file.
+	// lstat reads the file information of the token file. The commands
+	// never read the content of the token file.
 	lstat func(path string) (os.FileInfo, error)
-	// readFile reads the token file with its checks.
-	readFile func(path string) (token.Token, error)
 }
 
-// runToken stores, shows and deletes the token of the service account in
-// the macOS keychain (D51, issue 59).
-func runToken(args []string, stdout, stderr io.Writer) int {
+// runOnePasswordToken stores, shows and deletes the token of the service
+// account in the macOS keychain (D51, issue 59).
+func runOnePasswordToken(args []string, stdout, stderr io.Writer) int {
 	deps := tokenDeps{
-		stdin:    os.Stdin,
 		terminal: isTerminal(os.Stdin),
 		readSecret: func(prompt string) ([]byte, error) {
 			return readSecretLine(os.Stdin, stderr, prompt, maxTokenInput)
 		},
 		newStore: newTokenStore,
 		lstat:    os.Lstat,
-		readFile: tokenfile.Read,
 	}
 	return runTokenWith(args, stdout, stderr, deps)
 }
@@ -97,14 +94,15 @@ func runTokenWith(args []string, stdout, stderr io.Writer, deps tokenDeps) int {
 		_, _ = fmt.Fprint(stdout, tokenUsage)
 		return exitOK
 	default:
-		_, _ = fmt.Fprintf(stderr, "a38 token: unknown subcommand %q\n\n%s", args[0], tokenUsage)
+		_, _ = fmt.Fprintf(stderr, "%s: unknown subcommand %q\n\n%s", tokenCmd, args[0], tokenUsage)
 		return exitUsage
 	}
 	return run(args[1:], stdout, stderr, deps)
 }
 
-// tokenConfig loads the configuration for "a38 token". The commands work
-// also without a configuration file: the source is then the default.
+// tokenConfig loads the configuration for the token commands. The
+// commands work also without a configuration file: the source is then the
+// default.
 func tokenConfig(path string) (*config.Config, error) {
 	if path == "" {
 		var err error
@@ -135,7 +133,7 @@ func tokenFileOf(cfg *config.Config) string {
 func runTokenSet(args []string, stdout, stderr io.Writer, deps tokenDeps) int {
 	var configPath string
 	var replace bool
-	fs := newFlagSet("token set", stderr)
+	fs := newFlagSet("config onepassword-token set", stderr)
 	fs.StringVar(&configPath, "config", "", "configuration file (default: the standard location)")
 	fs.BoolVar(&replace, "replace", false, "replace an existing keychain item")
 	pos, err := parseInterspersed(fs, args)
@@ -144,78 +142,60 @@ func runTokenSet(args []string, stdout, stderr io.Writer, deps tokenDeps) int {
 	}
 	if len(pos) != 0 {
 		// Never echo the argument: it can be a token.
-		_, _ = fmt.Fprintln(stderr, "a38 token set: unexpected argument; the token is never an argument: paste it at the prompt or give it on stdin")
+		_, _ = fmt.Fprintf(stderr, "%s set: unexpected argument; the token is never an argument: run the command in a terminal and paste the token at the prompt\n", tokenCmd)
+		return exitUsage
+	}
+	if !deps.terminal {
+		// Read nothing: the token comes only from the terminal (decision
+		// of Stefan, 2026-11-12), never from a pipe or a file.
+		_, _ = fmt.Fprintf(stderr, "%s set: standard input is not a terminal; run the command in a terminal and paste the token at the prompt. The command does not read the token from a pipe or a file\n", tokenCmd)
 		return exitUsage
 	}
 	store, err := deps.newStore()
 	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "a38 token set: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "%s set: %v\n", tokenCmd, err)
 		return exitFailure
 	}
 	// Refuse before the human pastes the token. Put checks again.
 	if info, err := store.Describe(); err == nil && info.Exists && !replace {
-		_, _ = fmt.Fprintf(stderr, "a38 token set: the keychain item %s exists already; nothing changed. To replace it, run \"a38 token set --replace\"\n", store.Name())
+		_, _ = fmt.Fprintf(stderr, "%s set: the keychain item %s exists already; nothing changed. To replace it, run \"%s set --replace\"\n", tokenCmd, store.Name(), tokenCmd)
 		return exitFailure
 	}
 
-	var raw []byte
-	if deps.terminal {
-		raw, err = deps.readSecret("Paste the token of the 1Password service account (no echo), then press Return: ")
-	} else {
-		raw, err = readTokenInput(deps.stdin)
-	}
+	raw, err := deps.readSecret("Paste the token of the 1Password service account (no echo), then press Return: ")
 	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "a38 token set: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "%s set: %v; nothing stored\n", tokenCmd, err)
 		return exitFailure
 	}
 	tok := token.New(string(raw))
 	clear(raw)
 	warnings, err := token.CheckShape(tok.Reveal())
 	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "a38 token set: %v; nothing stored\n", err)
+		_, _ = fmt.Fprintf(stderr, "%s set: %v; nothing stored\n", tokenCmd, err)
 		return exitFailure
 	}
 	for _, w := range warnings {
-		_, _ = fmt.Fprintf(stderr, "a38 token set: warning: %s\n", w)
+		_, _ = fmt.Fprintf(stderr, "%s set: warning: %s\n", tokenCmd, w)
 	}
 
 	if err := store.Put(tok, replace); err != nil {
 		if errors.Is(err, token.ErrExists) {
-			_, _ = fmt.Fprintf(stderr, "a38 token set: the keychain item %s exists already; nothing changed. To replace it, run \"a38 token set --replace\"\n", store.Name())
+			_, _ = fmt.Fprintf(stderr, "%s set: the keychain item %s exists already; nothing changed. To replace it, run \"%s set --replace\"\n", tokenCmd, store.Name(), tokenCmd)
 			return exitFailure
 		}
-		_, _ = fmt.Fprintf(stderr, "a38 token set: %v; nothing stored\n", err)
+		_, _ = fmt.Fprintf(stderr, "%s set: %v; nothing stored\n", tokenCmd, err)
 		return exitFailure
 	}
-	_, _ = fmt.Fprintf(stdout, "Stored the token in the keychain item %s: length %d bytes, fingerprint %s.\n", store.Name(), tok.Length(), tok.Fingerprint())
+	_, _ = fmt.Fprintf(stdout, "Stored the token in the keychain item %s.\n", store.Name())
 
 	if cfg, err := tokenConfig(configPath); err == nil && sourceOf(cfg) == config.TokenSourceFile {
-		_, _ = fmt.Fprintln(stderr, "a38 token set: note: the configuration uses the token file (backend.onepassword.token_source: file); the daemon does not read the keychain")
+		_, _ = fmt.Fprintf(stderr, "%s set: note: the configuration uses the token file (backend.onepassword.token_source: file); the daemon does not read the keychain\n", tokenCmd)
 	}
 	return exitOK
 }
 
-// readTokenInput reads the token from a pipe or a file: one line, at most
-// maxTokenInput bytes. It removes one line end only.
-func readTokenInput(r io.Reader) ([]byte, error) {
-	data, err := io.ReadAll(io.LimitReader(r, maxTokenInput+1))
-	if err != nil {
-		return nil, errors.New("cannot read stdin")
-	}
-	if len(data) > maxTokenInput {
-		clear(data)
-		return nil, fmt.Errorf("the input is longer than %d bytes; nothing stored", maxTokenInput)
-	}
-	data = bytes.TrimSuffix(data, []byte("\n"))
-	data = bytes.TrimSuffix(data, []byte("\r"))
-	if bytes.ContainsAny(data, "\r\n") {
-		clear(data)
-		return nil, errors.New("the input has more than one line; give only the token")
-	}
-	return data, nil
-}
-
-// tokenStatus is the output of "a38 token status".
+// tokenStatus is the output of the status command. It holds metadata
+// only, never the token or a value derived from it.
 type tokenStatus struct {
 	// Source is the configured source of the token.
 	Source config.TokenSource `json:"source"`
@@ -239,55 +219,44 @@ type keychainStatus struct {
 	token.StoreInfo
 	// Error says why the item cannot be described.
 	Error string `json:"error,omitempty"`
-	// ValueRead is true if the command read the value for the length and
-	// the fingerprint.
-	ValueRead bool `json:"value_read"`
-	// ValueNote says why the command did not read the value.
-	ValueNote string `json:"value_note,omitempty"`
-	// Length is the length of the token in bytes.
-	Length int `json:"length,omitempty"`
-	// Fingerprint is the first 8 hex digits of the SHA-256 of the token.
-	Fingerprint string `json:"fingerprint,omitempty"`
+	// DialogNote says that the next read by this build shows a dialog.
+	DialogNote string `json:"dialog_note,omitempty"`
 	// OtherPrograms lists the trusted programs that are not this a38.
 	OtherPrograms []string `json:"other_programs,omitempty"`
 }
 
-// tokenFileStatus describes the token file.
+// tokenFileStatus describes the token file by its metadata only.
 type tokenFileStatus struct {
 	Path   string `json:"path"`
 	Exists bool   `json:"exists"`
 	// Finding is a problem of the file; empty if none.
 	Finding string `json:"finding,omitempty"`
-	// Length and Fingerprint are set if the file is the configured
-	// source or a file that is left, and the file passes its checks.
-	Length      int    `json:"length,omitempty"`
-	Fingerprint string `json:"fingerprint,omitempty"`
 }
 
-// notReadNote explains why status does not read the value.
-const notReadNote = "not read: this build of a38 did not store the item, so reading it could show a macOS dialog; store the token again with \"a38 token set --replace\" if the daemon must start without a dialog"
+// dialogNote explains that this build did not store the item.
+const dialogNote = "this build of a38 did not store the item; the next start of the daemon shows a macOS dialog. Store the token again with \"" + tokenCmd + " set --replace\" instead of confirming the dialog"
 
 func runTokenStatus(args []string, stdout, stderr io.Writer, deps tokenDeps) int {
 	var af adminFlags
-	fs := newFlagSet("token status", stderr)
+	fs := newFlagSet("config onepassword-token status", stderr)
 	af.register(fs)
 	pos, err := parseInterspersed(fs, args)
 	if err != nil {
 		return exitUsage
 	}
 	if len(pos) != 0 {
-		_, _ = fmt.Fprintln(stderr, "a38 token status: unexpected argument")
+		_, _ = fmt.Fprintf(stderr, "%s status: unexpected argument\n", tokenCmd)
 		return exitUsage
 	}
 	store, err := deps.newStore()
 	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "a38 token status: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "%s status: %v\n", tokenCmd, err)
 		return exitFailure
 	}
 	st := collectTokenStatus(store, af.configPath, deps)
 	if af.asJSON {
 		if err := json.NewEncoder(stdout).Encode(st); err != nil {
-			_, _ = fmt.Fprintf(stderr, "a38 token status: %v\n", err)
+			_, _ = fmt.Fprintf(stderr, "%s status: %v\n", tokenCmd, err)
 			return exitFailure
 		}
 	} else {
@@ -299,12 +268,9 @@ func runTokenStatus(args []string, stdout, stderr io.Writer, deps tokenDeps) int
 	return exitOK
 }
 
-// collectTokenStatus gathers the status. It reads the value of the
-// keychain item only if the item is sure to give it to this build without
-// a dialog (token.StoreInfo.ReadableWithoutDialog). Decision: macOS cannot
-// be asked to fail instead of showing the dialog of the access list
-// (spike, V4: kSecUseAuthenticationUIFail does not stop it), so the
-// command decides from the access list, which it reads without a dialog.
+// collectTokenStatus gathers the status. It never reads the token: the
+// keychain gives the metadata and the access list without a dialog; the
+// token file is checked by its metadata (owner, mode) only.
 func collectTokenStatus(store token.Store, configPath string, deps tokenDeps) tokenStatus {
 	var st tokenStatus
 	cfg, err := tokenConfig(configPath)
@@ -331,38 +297,28 @@ func collectTokenStatus(store token.Store, configPath string, deps tokenDeps) to
 			}
 		}
 	}
-	if info.Exists {
-		if info.ReadableWithoutDialog {
-			if tok, err := store.Token(); err == nil {
-				st.Keychain.ValueRead = true
-				st.Keychain.Length, st.Keychain.Fingerprint = tok.Length(), tok.Fingerprint()
-			} else {
-				st.Keychain.ValueNote = "not read: " + err.Error()
-			}
-		} else {
-			st.Keychain.ValueNote = notReadNote
-		}
+	if info.Exists && info.AccessListError == "" && len(st.Keychain.OtherPrograms) == 0 && !info.ReadableWithoutDialog {
+		st.Keychain.DialogNote = dialogNote
 	}
 
 	st.TokenFile.Path = tokenFileOf(cfg)
-	if _, err := deps.lstat(st.TokenFile.Path); err == nil {
+	fi, err := deps.lstat(st.TokenFile.Path)
+	switch {
+	case err == nil:
 		st.TokenFile.Exists = true
-		if tok, err := deps.readFile(st.TokenFile.Path); err != nil {
+		if err := tokenfile.CheckInfo(fi, os.Getuid()); err != nil {
 			st.TokenFile.Finding = err.Error()
-		} else {
-			st.TokenFile.Length, st.TokenFile.Fingerprint = tok.Length(), tok.Fingerprint()
-			if st.Source == config.TokenSourceKeychain {
-				st.TokenFile.Finding = "the token file is left although the source is the keychain; any process of the user can read it"
-			}
+		} else if st.Source == config.TokenSourceKeychain {
+			st.TokenFile.Finding = "the token file is left although the source is the keychain; any process of the user can read it"
 		}
-	} else if !errors.Is(err, os.ErrNotExist) {
+	case !errors.Is(err, os.ErrNotExist):
 		st.TokenFile.Exists = true
 		st.TokenFile.Finding = err.Error()
 	}
 
 	switch st.Source {
 	case config.TokenSourceFile:
-		st.OK = st.TokenFile.Exists && st.TokenFile.Fingerprint != ""
+		st.OK = st.TokenFile.Exists && st.TokenFile.Finding == ""
 	default:
 		st.OK = info.Exists && st.Keychain.Error == ""
 	}
@@ -382,10 +338,10 @@ func renderTokenStatus(w io.Writer, st tokenStatus) {
 	case !k.Exists:
 		p("Keychain:    no item %s", k.Name)
 		if st.Source == config.TokenSourceKeychain {
-			p("             Next step: store the token with \"a38 token set\".")
+			p("             Next step: store the token with \"%s set\".", tokenCmd)
 		}
 	default:
-		p("Keychain:    item %s exists", k.Name)
+		p("Keychain:    item %s exists (value not read)", k.Name)
 		p("  Created:   %s", stamp(k.Created))
 		p("  Changed:   %s", stamp(k.Modified))
 		if k.AccessListError != "" {
@@ -395,12 +351,10 @@ func renderTokenStatus(w io.Writer, st tokenStatus) {
 			p("  Partition: %s", orNone(k.Partitions))
 		}
 		if len(k.OtherPrograms) > 0 {
-			p("  Warning:   the item trusts a program other than this a38: %s. Run \"a38 token delete\" and \"a38 token set\".", strings.Join(k.OtherPrograms, ", "))
+			p("  Warning:   the item trusts a program other than this a38: %s. Run \"%s delete\" and \"%s set\".", strings.Join(k.OtherPrograms, ", "), tokenCmd, tokenCmd)
 		}
-		if k.ValueRead {
-			p("  Token:     length %d bytes, fingerprint %s", k.Length, k.Fingerprint)
-		} else {
-			p("  Token:     %s", k.ValueNote)
+		if k.DialogNote != "" {
+			p("  Note:      %s.", k.DialogNote)
 		}
 	}
 	if s := st.Signature; s != nil {
@@ -417,19 +371,13 @@ func renderTokenStatus(w io.Writer, st tokenStatus) {
 		p("  Warning:   %s.", st.SignatureWarning)
 	}
 	f := st.TokenFile
-	switch {
-	case !f.Exists:
+	if f.Exists {
+		p("Token file:  %s exists (content not read)", f.Path)
+	} else {
 		p("Token file:  %s does not exist", f.Path)
-	case f.Fingerprint != "":
-		p("Token file:  %s exists: length %d bytes, fingerprint %s", f.Path, f.Length, f.Fingerprint)
-	default:
-		p("Token file:  %s exists", f.Path)
 	}
 	if f.Finding != "" {
 		p("  Finding:   %s", f.Finding)
-		if st.Source == config.TokenSourceKeychain && f.Fingerprint != "" {
-			p("  Next step: check that the item above exists, then delete the file: rm %s", f.Path)
-		}
 	}
 	p("The daemon reads the token once at its start; restart it after a change.")
 }
@@ -453,27 +401,27 @@ func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
 
 func runTokenDelete(args []string, stdout, stderr io.Writer, deps tokenDeps) int {
 	var configPath string
-	fs := newFlagSet("token delete", stderr)
+	fs := newFlagSet("config onepassword-token delete", stderr)
 	fs.StringVar(&configPath, "config", "", "configuration file (default: the standard location)")
 	pos, err := parseInterspersed(fs, args)
 	if err != nil {
 		return exitUsage
 	}
 	if len(pos) != 0 {
-		_, _ = fmt.Fprintln(stderr, "a38 token delete: unexpected argument")
+		_, _ = fmt.Fprintf(stderr, "%s delete: unexpected argument\n", tokenCmd)
 		return exitUsage
 	}
 	store, err := deps.newStore()
 	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "a38 token delete: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "%s delete: %v\n", tokenCmd, err)
 		return exitFailure
 	}
 	if err := store.Delete(); err != nil {
 		if errors.Is(err, token.ErrNotFound) {
-			_, _ = fmt.Fprintf(stderr, "a38 token delete: the keychain has no item %s; nothing changed\n", store.Name())
+			_, _ = fmt.Fprintf(stderr, "%s delete: the keychain has no item %s; nothing changed\n", tokenCmd, store.Name())
 			return exitFailure
 		}
-		_, _ = fmt.Fprintf(stderr, "a38 token delete: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "%s delete: %v\n", tokenCmd, err)
 		return exitFailure
 	}
 	_, _ = fmt.Fprintf(stdout, "Deleted the keychain item %s.\n", store.Name())
@@ -485,6 +433,6 @@ func runTokenDelete(args []string, stdout, stderr io.Writer, deps tokenDeps) int
 		_, _ = fmt.Fprintln(stdout, "The daemon uses the token file (backend.onepassword.token_source: file); the keychain item does not change it.")
 		return exitOK
 	}
-	_, _ = fmt.Fprintln(stdout, "A running daemon keeps its token in memory until it stops. Its next start with the 1Password backend fails until you run \"a38 token set\".")
+	_, _ = fmt.Fprintf(stdout, "A running daemon keeps its token in memory until it stops. Its next start with the 1Password backend fails until you run \"%s set\".\n", tokenCmd)
 	return exitOK
 }

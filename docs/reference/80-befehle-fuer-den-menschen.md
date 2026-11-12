@@ -1,6 +1,6 @@
 ---
 title: Befehle für den Menschen
-description: "a38 grants, fault, token, doctor und audit: Argumente, Ausgabe und Exit-Codes."
+description: "a38 grants, fault, config, doctor und audit: Argumente, Ausgabe und Exit-Codes."
 tags:
   - Thema/Betrieb
 ---
@@ -13,7 +13,7 @@ Ein Befehl zeigt nie einen Secret-Wert.
 
 Alle Befehle lesen die Konfigurationsdatei mit `--config <datei>`.
 Ohne das Argument gilt `A38_CONFIG`, danach der Standardort.
-Die Befehle `grants`, `fault`, `doctor` und `token status` kennen `--json`.
+Die Befehle `grants`, `fault`, `doctor` und `config onepassword-token status` kennen `--json`.
 
 Die Schalter dürfen vor und nach den Argumenten stehen.
 `a38 grants revoke <grant-id> --config <datei>` und `a38 grants revoke --config <datei> <grant-id>` sind gleich.
@@ -52,9 +52,9 @@ Der Mensch startet ihn, nicht der Agent.
 
 Die Quelle `keychain` ist der Standard ({{ ref("D51") }}).
 Der Daemon liest dann den Eintrag `a38.onepassword` (Konto `service-account`) im Anmelde-Schlüsselbund.
-`a38 token set` legt ihn an (siehe [a38 token](#a38-token)).
+`a38 config onepassword-token set` legt ihn an (siehe [a38 config](#a38-config)).
 Fehlt der Eintrag, startet der Daemon mit `--backend 1password` nicht.
-Die Meldung nennt den Befund und den Befehl `a38 token set`.
+Die Meldung nennt den Befund und den Befehl `a38 config onepassword-token set`.
 Wartet der Schlüsselbund länger als zwei Minuten, zum Beispiel auf einen Dialog von macOS, bricht der Start ebenfalls ab.
 
 Die Quelle `file` ist der Ausweichweg für Entwicklung und CI.
@@ -150,7 +150,13 @@ Der Befehl bedient die globale Sperre der Auslieferung (siehe [Störung finden u
 
 Die Namen sind eine Wahl von Issue 25 und warten auf die Bestätigung durch Stefan.
 
-## a38 token
+## a38 config
+
+`a38 config` fasst die Befehle für die Konfiguration zusammen.
+`a38 config --help` listet die Unterbefehle.
+Heute gibt es einen Unterbefehl: `onepassword-token`.
+
+### a38 config onepassword-token
 
 Der Befehl verwaltet das Token des 1Password-Service-Accounts im Schlüsselbund von macOS ({{ ref("D51") }}).
 Nur der macOS-Build kennt ihn.
@@ -158,30 +164,31 @@ Unter Linux endet jeder Unterbefehl mit „not available on this platform“ und
 
 | Aufruf | Wirkung |
 |---|---|
-| `a38 token set [--replace]` | Liest das Token und legt es im Eintrag `a38.onepassword` ab. Ein vorhandener Eintrag bleibt ohne `--replace` unverändert; der Befehl endet dann mit 1. |
-| `a38 token status [--json]` | Zeigt die Quelle, den Eintrag ohne Wert, die Signatur von `a38` und eine übrige Token-Datei. Exit-Code 1, wenn die konfigurierte Quelle kein Token hat. |
-| `a38 token delete` | Löscht den Eintrag. Die Ausgabe nennt, was der Daemon beim nächsten Start tut. |
+| `a38 config onepassword-token set [--replace]` | Liest das Token vom Terminal und legt es im Eintrag `a38.onepassword` ab. Ein vorhandener Eintrag bleibt ohne `--replace` unverändert; der Befehl endet dann mit 1. |
+| `a38 config onepassword-token status [--json]` | Zeigt die Quelle, die Metadaten des Eintrags, die Signatur von `a38` und eine übrige Token-Datei. Exit-Code 1, wenn die konfigurierte Quelle kein Token hat. |
+| `a38 config onepassword-token delete` | Löscht den Eintrag. Die Ausgabe nennt, was der Daemon beim nächsten Start tut. |
 
 Alle drei kennen `--config <datei>`.
 Ohne Konfigurationsdatei gilt die Quelle `keychain`.
+Kein Unterbefehl zeigt das Token oder einen Wert, der daraus abgeleitet ist (Länge, Prüfsumme).
 
-`a38 token set`:
+`set`:
 
-- Ist stdin ein Terminal, fragt der Befehl auf stderr nach dem Token und liest ohne Echo.
-- Ist stdin kein Terminal, liest der Befehl stdin: eine Zeile, höchstens 4 KiB. Er entfernt nur ein abschließendes Zeilenende.
+- Die Standardeingabe muss ein Terminal sein. Der Befehl fragt auf stderr nach dem Token und liest ohne Echo.
+- Ist die Standardeingabe kein Terminal, zum Beispiel eine Pipe oder eine Datei, liest der Befehl nichts und endet mit dem Exit-Code 2.
 - Das Token ist nie ein Argument und nie eine Umgebungsvariable. Ein Argument ist ein Aufruffehler (Exit-Code 2); der Befehl wiederholt es nicht.
-- Die Prüfung der Form: nicht leer, 16 bis 4096 Bytes, kein Leerzeichen, kein Steuerzeichen. Ein Token ohne den Anfang `ops_` ergibt nur eine Warnung, denn dieser Anfang ist eine Annahme.
-- Die Ausgabe nennt nur den Eintrag, die Länge und den Fingerabdruck: die ersten 8 Hex-Zeichen von SHA-256. Sie nennt nie das Token.
+- Die Prüfung der Form: nicht leer, mindestens 16 und höchstens 4096 Bytes, kein Leerzeichen, kein Steuerzeichen. Ein zu kurzes Token endet mit „too short“. Ein Token ohne den Anfang `ops_` ergibt nur eine Warnung, denn dieser Anfang ist eine Annahme.
+- Die Ausgabe nennt nur den Eintrag.
 - `a38` legt den Eintrag selbst an, nicht über `/usr/bin/security`. Der Schlüsselbund vertraut dann nur diesem Build von `a38`.
 - `--replace` löscht den alten Eintrag und legt ihn neu an. Danach vertraut der Eintrag dem neuen Build.
 
-`a38 token status`:
+`status`:
 
+- Der Befehl liest das Token nie. Er zeigt deshalb nie einen Dialog von macOS.
 - Die Zeile `Keychain` nennt den Eintrag, das Datum der Anlage und der letzten Änderung, die vertrauten Programme und die Partitionsliste.
-- Der Befehl liest den Wert nur, wenn die Zugriffsliste den Pfad dieses `a38` nennt und die Partitionsliste den Hash genau dieses Builds (`cdhash:`). Dann zeigt er Länge und Fingerabdruck.
-- Sonst liest er den Wert nicht, denn das Lesen würde einen Dialog von macOS zeigen. macOS kann diesen Dialog nicht sicher unterdrücken ([Spike](../explanation/spikes/50-token-im-schluesselbund.md)). Die Zeile `Token` nennt dann den Grund.
+- Nennt die Partitionsliste nicht den Hash dieses Builds (`cdhash:`), folgt ein Hinweis: Der nächste Start des Daemons zeigt einen Dialog.
 - Die Zeile `Signature` nennt die Art der Signatur von `a38`: `unsigned`, `ad-hoc`, `developer-id` oder `other-certificate`. Ohne Developer ID folgt eine Warnung ({{ ref("G5") }}).
-- Die Zeile `Token file` nennt die Token-Datei. Besteht sie die Prüfung, zeigt der Befehl ihre Länge und ihren Fingerabdruck. Ist die Quelle der Schlüsselbund, ist eine übrige Datei ein Befund.
+- Die Zeile `Token file` nennt die Token-Datei. Der Befehl prüft nur Besitzer und Rechte und liest den Inhalt nicht. Ist die Quelle der Schlüsselbund, ist eine übrige Datei ein Befund.
 
 ## a38 doctor
 

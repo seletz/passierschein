@@ -22,7 +22,7 @@ liest über das Go-SDK mit dem Token eines Service Accounts
 (`a38 serve --backend 1password --ui app`, nur macOS). Der Integrationstest
 gegen den Test-Vault und der Praxistest mit der echten App sind am
 2026-11-12 bestanden. Das Token liegt im Schlüsselbund von macOS
-(`a38 token set`); die Token-Datei bleibt als Ausweichweg für die Entwicklung.
+(`a38 config onepassword-token set`); die Token-Datei bleibt als Ausweichweg für die Entwicklung.
 Die Anleitung [1Password-Backend einrichten](docs/how-to/30-1password-backend-einrichten.md)
 beschreibt Service Account, Schlüsselbund, Token-Datei und Test.
 
@@ -37,7 +37,7 @@ Was in Stufe 1 funktioniert:
   Hash-Kette prüfen
 - `a38 doctor`, `a38 fault status` und `a38 fault clear`: Fehlersuche und
   Aufheben der Sperre
-- `a38 token set`, `a38 token status` und `a38 token delete`: das Token des
+- `a38 config onepassword-token set`, `status` und `delete`: das Token des
   Service Accounts im Schlüsselbund von macOS (nur macOS)
 - `a38 llm --skill`: die Anleitung für Agents
 - Backend aus einer YAML-Datei (`--backend fake`) und Freigabe ohne Mensch

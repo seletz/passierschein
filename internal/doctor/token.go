@@ -56,7 +56,7 @@ func (c tokenSourceCheck) file(path string, needed bool) []Result {
 	case isMissing(err) && needed:
 		return []Result{finding(c.Name(), "the token file of the 1Password backend does not exist",
 			path+" does not exist (token_source: file); the running daemon holds the token in memory, but its next start fails",
-			"write the token of the service account to "+path+" with the mode 0600, or use the keychain: remove token_source: file and run a38 token set (how-to: 1Password-Backend einrichten)")}
+			"write the token of the service account to "+path+" with the mode 0600, or use the keychain: remove token_source: file and run a38 config onepassword-token set (how-to: 1Password-Backend einrichten)")}
 	case isMissing(err):
 		return []Result{ok(c.Name(), "source file: %s does not exist; only a38 serve --backend 1password needs it", path)}
 	case err != nil:
@@ -80,7 +80,7 @@ func (c tokenSourceCheck) keychain(path string, needed bool) []Result {
 	info, err := store.Describe()
 	if err != nil {
 		return []Result{finding(c.Name(), "the keychain item cannot be read", errText(err),
-			"run a38 token status; if the login keychain is locked, unlock it")}
+			"run a38 config onepassword-token status; if the login keychain is locked, unlock it")}
 	}
 	var out []Result
 	sig, sigErr := store.Signature()
@@ -88,9 +88,9 @@ func (c tokenSourceCheck) keychain(path string, needed bool) []Result {
 	case !info.Exists && needed:
 		out = append(out, finding(c.Name(), "the keychain has no token of the 1Password backend",
 			"no item "+store.Name()+" (token_source: keychain); the running daemon holds the token in memory, but its next start fails",
-			"run a38 token set and paste the token of the service account (how-to: 1Password-Backend einrichten)"))
+			"run a38 config onepassword-token set and paste the token of the service account (how-to: 1Password-Backend einrichten)"))
 	case !info.Exists:
-		out = append(out, ok(c.Name(), "source keychain: no item %s; only a38 serve --backend 1password needs it; store the token with a38 token set", store.Name()))
+		out = append(out, ok(c.Name(), "source keychain: no item %s; only a38 serve --backend 1password needs it; store the token with a38 config onepassword-token set", store.Name()))
 	default:
 		out = append(out, ok(c.Name(), "source keychain: item %s exists, changed %s, trusted: %s (value not read)",
 			store.Name(), stampOf(info.Modified), strings.Join(info.Trusted, ", ")))
@@ -107,9 +107,9 @@ func (c tokenSourceCheck) keychain(path string, needed bool) []Result {
 			if len(others) > 0 {
 				out = append(out, finding(c.Name(), "the keychain item trusts a program other than this a38",
 					"trusted: "+strings.Join(others, ", ")+"; that program reads the token without a dialog",
-					"run a38 token delete, then a38 token set; never confirm a macOS dialog for the a38 item that you did not cause yourself"))
+					"run a38 config onepassword-token delete, then a38 config onepassword-token set; never confirm a macOS dialog for the a38 item that you did not cause yourself"))
 			} else if info.AccessListError == "" && !info.ReadableWithoutDialog {
-				out = append(out, note(c.Name(), "this build of a38 did not store the item; the next start of the daemon shows a macOS dialog. Store the token again with a38 token set --replace instead of confirming the dialog"))
+				out = append(out, note(c.Name(), "this build of a38 did not store the item; the next start of the daemon shows a macOS dialog. Store the token again with a38 config onepassword-token set --replace instead of confirming the dialog"))
 			}
 		}
 	}
@@ -124,7 +124,7 @@ func (c tokenSourceCheck) keychain(path string, needed bool) []Result {
 	if _, err := c.env.Lstat(path); err == nil {
 		out = append(out, finding(c.Name(), "a token file is left although the source is the keychain",
 			path+" exists; any process of the user can read it",
-			"check with a38 token status that the keychain item exists and has the same fingerprint, then delete the file: rm "+path))
+			"check with a38 config onepassword-token status that the keychain item exists and that the daemon starts with it, then delete the file: rm "+path))
 	}
 	return out
 }

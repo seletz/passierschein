@@ -1,8 +1,6 @@
 package token
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -28,7 +26,7 @@ var (
 
 // Store keeps the token for the daemon, for example the macOS keychain
 // (D51). The daemon reads it through [Source]; the human changes it with
-// "a38 token".
+// "a38 config onepassword-token".
 type Store interface {
 	Source
 	// Name names the place of the token for an output line, for example
@@ -65,8 +63,8 @@ type StoreInfo struct {
 	// Partitions lists the partition list of the keychain item, for
 	// example "cdhash:…" or "teamid:…".
 	Partitions []string `json:"partitions,omitempty"`
-	// ReadableWithoutDialog is true only if the store is sure that the
-	// running program reads the token without a dialog: the item trusts
+	// ReadableWithoutDialog is true only if the access list shows that
+	// the running program reads the token without a dialog: the item trusts
 	// the path of this program and its partition list names the hash of
 	// exactly this build.
 	ReadableWithoutDialog bool `json:"readable_without_dialog"`
@@ -139,36 +137,24 @@ func CheckShape(s string) (warnings []string, err error) {
 	case !utf8.ValidString(s):
 		return nil, errors.New("the token is not valid UTF-8")
 	case len(s) < MinLength:
-		return nil, fmt.Errorf("the token is too short (%d bytes; at least %d)", len(s), MinLength)
+		// No length in the text: only metadata are shown, never a value
+		// derived from the token (Stefan, 2026-11-12).
+		return nil, errors.New("the token is too short; check that the paste is complete")
 	case len(s) > MaxLength:
-		return nil, fmt.Errorf("the token is too long (%d bytes; at most %d)", len(s), MaxLength)
+		return nil, fmt.Errorf("the token is too long (more than %d bytes)", MaxLength)
 	}
-	for i, r := range s {
+	for _, r := range s {
 		if unicode.IsSpace(r) {
-			return nil, fmt.Errorf("the token contains white space at byte %d", i)
+			return nil, errors.New("the token contains white space")
 		}
 		if unicode.IsControl(r) || !unicode.IsPrint(r) {
-			return nil, fmt.Errorf("the token contains a control character at byte %d", i)
+			return nil, errors.New("the token contains a control character")
 		}
 	}
 	if !strings.HasPrefix(s, ExpectedPrefix) {
 		warnings = append(warnings, fmt.Sprintf("the token does not start with %q; a token of a 1Password service account usually does", ExpectedPrefix))
 	}
 	return warnings, nil
-}
-
-// Length returns the length of the token in bytes.
-func (t Token) Length() int { return len(t.Reveal()) }
-
-// Fingerprint returns the first 8 hex digits of the SHA-256 of the token.
-// A human compares it after a change (rotation); it does not reveal the
-// token. An empty token has the empty fingerprint.
-func (t Token) Fingerprint() string {
-	if t.Empty() {
-		return ""
-	}
-	sum := sha256.Sum256([]byte(t.Reveal()))
-	return hex.EncodeToString(sum[:4])
 }
 
 // UnstableSignatureWarning explains the limit of a keychain item for a
