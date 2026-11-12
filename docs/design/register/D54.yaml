@@ -1,0 +1,9 @@
+id: D54
+zustand: eingeloest
+titel: Das Release liefert Passierschein.app mit a38 als eigenes ZIP, gebaut nach goreleaser
+bezug: '#68'
+schluessel: '#68/app-im-release'
+lauf: '2.0'
+branch: feat/68-release-app-signatur
+reserviert_am: '2026-11-12'
+eingeloest_am: '2026-11-12'

@@ -14,6 +14,7 @@ Eine Anleitung löst eine bestimmte Aufgabe.
 - [1Password-Backend einrichten](30-1password-backend-einrichten.md)
 - [Freigabe-App lokal ausprobieren](40-freigabe-app-ausprobieren.md)
 - [Demo vorführen](50-demo-vorfuehren.md)
+- [Release signieren und prüfen](60-release-signieren-und-pruefen.md)
 - [Entwicklungsumgebung einrichten](90-entwickeln.md)
 - [Doku schreiben und bauen](92-doku-schreiben.md)
 - [Design-Artefakt anlegen](94-design-artefakt-anlegen.md)

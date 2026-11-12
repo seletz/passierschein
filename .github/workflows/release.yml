@@ -1,11 +1,27 @@
 name: Release
 
-# Runs on a pushed v* tag (`mise run release` creates it). Builds archives,
-# CycloneDX SBOMs and checksums for darwin and linux (amd64, arm64), creates
-# the GitHub release and publishes the documentation of the tag on GitHub
-# Pages. Every build step is a mise task: Go, goreleaser and cyclonedx-gomod
-# come pinned from mise.toml, and mise checks the cosign signature and the SLSA
+# Runs on a pushed v* tag (`mise run release` creates it). Every build step
+# is a mise task: Go, goreleaser, cyclonedx-gomod, Swift, jq and gh come
+# pinned from mise.toml, and mise checks the cosign signature and the SLSA
 # provenance of the goreleaser download.
+#
+# Jobs (docs/reference/50-release.md):
+#
+# 1. release (Linux): all checks, the five signing secrets must be set,
+#    goreleaser builds archives, SBOMs and checksums for darwin and linux
+#    (amd64, arm64), signs and notarizes the darwin a38 with quill and
+#    uploads everything into a DRAFT release. The darwin archives and the
+#    checksum file go to the next job as a workflow artifact.
+# 2. app (macOS): builds Passierschein.app with the darwin a38 of job 1
+#    inside, signs it with the Developer ID from a temporary keychain,
+#    notarizes it, staples the ticket, checks it and adds the zip, its SBOM
+#    and the extended checksum file to the draft.
+# 3. publish (Linux): checks that the draft has every asset, attests the
+#    build provenance (public repository only) and publishes the draft.
+# 4. docs, pages: the documentation of the tag on GitHub Pages.
+#
+# A failure in any job leaves the draft unpublished; nothing reaches the
+# users half finished.
 
 on:
   push:
@@ -15,13 +31,16 @@ on:
 permissions:
   contents: read
 
+# One run per tag; a second run waits and does not cancel the first.
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      id-token: write
-      attestations: write
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -34,12 +53,25 @@ jobs:
       - name: Check
         run: mise run check
 
-      - name: Release
+      # A release without the secrets would ship an unsigned app and
+      # unsigned darwin binaries: stop here and name the missing secrets.
+      - name: Check that the signing secrets are set
+        run: mise run release:secrets:check
+        env:
+          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
+          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+
+      # goreleaser creates the draft release (release.draft in
+      # .goreleaser.yml).
+      - name: Release (draft)
         run: mise run release:publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS signing and notarization (notarize.macos in .goreleaser.yml).
-          # Without MACOS_SIGN_P12 the darwin binaries ship unsigned.
+          # macOS signing and notarization of a38 (notarize.macos in
+          # .goreleaser.yml).
           MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
           MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
           MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
@@ -49,18 +81,118 @@ jobs:
       - name: Check the SBOMs
         run: mise run release:sbom:check
 
-      # Build provenance (SLSA) for every file that the checksum file lists.
-      # GitHub offers artifact attestations for private repositories only on
-      # GitHub Enterprise Cloud, so the step runs only when the repository is
-      # public.
+      - name: Check the signatures of a38
+        run: mise run release:signatures:check
+
+      # tar.gz keeps the file modes; the app job checks the archives
+      # against the checksum file. The SBOMs come along for the SBOM check
+      # of the app job.
+      - name: Hand the darwin archives to the app job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-darwin
+          path: |
+            dist/*-darwin-*.tar.gz
+            dist/*-darwin-*.cdx.json
+            dist/checksums-*.txt
+          if-no-files-found: error
+          retention-days: 3
+
+  app:
+    needs: release
+    # Image with Xcode 27.2, as in macos.yml (docs/reference/55-ci.md).
+    runs-on: xcode-27
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up mise
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+        with:
+          cache_save_post: true
+          cache_key_prefix: mise-macos-swift-v1
+
+      - name: Get the darwin archives
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-darwin
+          path: dist
+
+      - name: Assemble Passierschein.app
+        run: mise run release:app
+
+      # Temporary keychain under $RUNNER_TEMP, deleted at the end of the
+      # step; the secrets reach only this step.
+      - name: Sign Passierschein.app (Developer ID)
+        run: mise run release:app:sign
+        env:
+          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
+
+      - name: Notarize and staple
+        run: mise run release:app:notarize
+        env:
+          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+
+      - name: Check Passierschein.app
+        run: mise run release:app:check
+
+      - name: Pack Passierschein.app
+        run: mise run release:app:package
+
+      - name: Check the SBOMs
+        run: mise run release:sbom:check
+
+      - name: Add the app to the draft release
+        run: mise run release:app:upload
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    needs: app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up mise
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+
+      - name: Check the assets of the draft
+        run: mise run release:assets:check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build provenance (SLSA) for every file that the checksum file
+      # lists, the app zip included. GitHub offers artifact attestations
+      # for private repositories only on GitHub Enterprise Cloud, so the
+      # step runs only when the repository is public.
       - name: Attest the build provenance
         if: github.event.repository.visibility == 'public'
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-checksums: dist/checksums-${{ github.ref_name }}.txt
 
+      - name: Publish the release
+        run: mise run release:finalize
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   docs:
-    needs: release
+    needs: publish
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

@@ -272,3 +272,31 @@ func executablePathOf(p string) string {
 	}
 	return r
 }
+
+// G5 (part): the layout of the release bundle. The human unpacks
+// Passierschein.app into an Applications folder and links
+// Contents/MacOS/a38 into a folder of the PATH. The daemon finds the app
+// next to the real a38 inside the bundle (D50), before any other place.
+func TestResolveUIAppReleaseBundle(t *testing.T) {
+	root, err := os.MkdirTemp("/tmp", "a38-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(root) })
+	macos := filepath.Join(root, "Applications", appBundle, "Contents", "MacOS")
+	a38 := writeExe(t, filepath.Join(macos, "a38"))
+	app := executablePathOf(writeExe(t, filepath.Join(macos, appName)))
+	link := filepath.Join(root, "home", ".local", "bin", "a38")
+	if err := os.MkdirAll(filepath.Dir(link), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(a38, link); err != nil {
+		t.Fatal(err)
+	}
+	// Another app in the home Applications folder must not win.
+	writeExe(t, filepath.Join(root, "home", "Applications", appInBundle))
+	got := resolveUIApp("", "", func() string { return executablePathOf(link) }, func() string { return filepath.Join(root, "home") })
+	if got != app {
+		t.Errorf("got %q, want %q", got, app)
+	}
+}

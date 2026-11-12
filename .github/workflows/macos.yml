@@ -8,6 +8,9 @@ name: macOS
 #   its wiring, the peer data of the socket),
 # - the approval app: build, Swift tests and the end-to-end run with real
 #   processes (fake authentication, no Touch ID),
+# - the release bundle Passierschein.app with a38 inside, ad-hoc signed
+#   (the Developer ID signature needs the secrets: release.yml,
+#   signed-snapshot.yml),
 # - the 1Password integration test T15 with the CI service account (vault
 #   passierschein.dev, read only).
 #
@@ -35,8 +38,11 @@ on:
       - "go.mod"
       - "go.sum"
       - "mise.toml"
+      - ".goreleaser.yml"
       - "scripts/**"
       - ".github/workflows/macos.yml"
+      - ".github/workflows/release.yml"
+      - ".github/workflows/signed-snapshot.yml"
 
 permissions:
   contents: read
@@ -115,6 +121,35 @@ jobs:
 
       - name: Test the approval app
         run: mise run app:test
+
+      # The release bundle as the release workflow builds it, but ad-hoc
+      # signed: the darwin a38 of a goreleaser snapshot inside a universal
+      # Passierschein.app, signed inside out, checked, zipped, with SBOM
+      # and checksums. The Developer ID and the notarization need the
+      # secrets and run only in release.yml and signed-snapshot.yml.
+      - name: Snapshot for the release bundle
+        run: mise run release:snapshot
+
+      - name: Assemble the release bundle
+        run: mise run release:app
+
+      - name: Sign the release bundle (ad-hoc)
+        run: mise run release:app:sign
+        env:
+          APP_SIGN_ADHOC: "1"
+
+      - name: Check the release bundle (ad-hoc)
+        run: mise run release:app:check
+        env:
+          APP_CHECK: adhoc
+
+      - name: Pack the release bundle (ad-hoc)
+        run: mise run release:app:package
+        env:
+          APP_CHECK: adhoc
+
+      - name: Check the SBOMs of the snapshot and the bundle
+        run: mise run release:sbom:check
 
       # Real processes: a38 serve --ui app with the debug app. Two short
       # windows open in the GUI session of the runner; no Touch ID.
