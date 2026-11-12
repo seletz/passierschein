@@ -18,6 +18,8 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # Warm about 2 minutes, cold about 6; the limit stops a hanging job.
+    timeout-minutes: 20
     # Fixed cache locations, so that the cache steps below and the tools
     # agree on the paths. No cache holds a secret, dist/ or $RUNNER_TEMP.
     env:

@@ -114,6 +114,7 @@ Die Socket-Schicht setzt {{ ref("D43") }}, {{ ref("D25") }} und {{ ref("D44") }}
 
 - **Start:** Der Daemon legt das Verzeichnis der Sockets mit `0700` an. Hat das Verzeichnis andere Rechte, gehört es einem anderen Benutzer oder ist es ein symbolischer Link, startet der Daemon nicht. Der Daemon korrigiert die Rechte nicht.
 - **Ein Daemon je Verzeichnis:** Der Daemon sperrt das Verzeichnis mit `flock`. Ein zweiter Daemon mit demselben Verzeichnis startet nicht.
+- **Bereitschaft:** Der Daemon bindet jeden Socket unter einem temporären Namen im selben Verzeichnis, setzt den Modus `0600` und benennt die Datei erst um, wenn der Socket lauscht. Die Datei am endgültigen Pfad existiert also nur bei einem Socket, der Verbindungen annimmt. Ein Client, der die Datei sieht und sofort verbindet, wird nie abgewiesen. `removeStale` und die Sperre des Verzeichnisses bleiben unverändert.
 - **Alter Socket:** Der Daemon entfernt einen Socket nur, wenn kein Prozess eine Verbindung annimmt. Eine Datei, die kein Socket ist, entfernt er nie.
 - **Peer-Daten:** Der Kernel liefert Benutzer und Prozess-ID. Unter macOS liest der Daemon Programmpfad und Arbeitsverzeichnis mit dem Systemaufruf `proc_info`, unter Linux aus `/proc`. Beides geht ohne cgo. Ein Wert, den der Daemon nicht lesen kann, bleibt leer. Ohne Arbeitsverzeichnis hat die Sitzung kein Projekt.
 - **Benutzer:** Der Daemon bedient nur Prozesse desselben Benutzers. Er schließt jede andere Verbindung ohne Antwort.
@@ -710,7 +711,9 @@ Der Test liegt hinter den Build-Tags `darwin opintegration` und läuft nur, wenn
 Regeln für einen Test mit Prozessen:
 
 - Die Konfiguration nennt `paths.socket_dir` und `paths.audit_file` in einem temporären Verzeichnis. Der Pfad eines Sockets bleibt unter 103 Byte; unter macOS ist `t.TempDir()` dafür oft zu lang. Der Test legt das Verzeichnis dann unter `/tmp` an.
-- Der Test wartet auf den Socket und nicht auf eine feste Zeit.
+- Der Test wartet auf die Bereitschaft des Daemons und nicht auf eine feste Zeit. Das Signal ist die Logzeile `daemon started`: Der Daemon schreibt sie, nachdem beide Sockets lauschen. Alle Tests in `cmd/a38` nutzen dafür den einen Helfer `waitDaemonStarted` (`ready_test.go`), im Prozess wie als Kindprozess. Der Test wartet nicht auf die Socket-Datei und fragt sie nicht in Schleifen ab: Bei einem Socket, der unter dem endgültigen Namen gebunden wird, existiert die Datei ab `bind` und damit vor `listen`, und ein `connect` dazwischen scheitert mit „connection refused“ (Ursache von [#77](https://github.com/seletz/passierschein/issues/77)).
+- Ein Test, der den Daemon im Testprozess mit `Listen` und `Serve` startet, braucht kein Warten: `Listen` kehrt erst zurück, wenn beide Sockets lauschen.
+- Eine Wartezeit hat immer eine Obergrenze (30 Sekunden für den Start eines Daemons), aber nie eine feste Pause als Bedingung. Ein Test, der eine Reihenfolge braucht, wartet auf ein Ereignis (ein Kanal, eine Logzeile, ein Zählerstand) und nicht auf `time.Sleep`. Ein Test, der prüft, dass etwas *nicht* geschieht, darf eine kurze Zeit warten; er prüft dann nur eine Richtung, die auf einem langsamen Runner nicht zu falschen Fehlern führt.
 - Der Test beendet die Kindprozesse in `t.Cleanup`.
 - Ein Kennwert im Fake-Backend zeigt, ob ein Secret-Wert in eine Ausgabe gelangt ({{ ref("T8") }}).
 

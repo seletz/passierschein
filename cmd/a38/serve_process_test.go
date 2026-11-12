@@ -37,7 +37,7 @@ type daemonProc struct {
 }
 
 // startDaemon starts "a38 serve" with the fake backend and automatic
-// approval and waits for the agent socket.
+// approval and waits for the line "daemon started" (waitDaemonStarted).
 func startDaemon(t *testing.T, bin, cfgPath, socketDir, fakeFile string) *daemonProc {
 	t.Helper()
 	p := &daemonProc{stderr: &syncBuffer{}}
@@ -47,16 +47,8 @@ func startDaemon(t *testing.T, bin, cfgPath, socketDir, fakeFile string) *daemon
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = p.cmd.Process.Kill(); _ = p.cmd.Wait() })
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		if _, err := os.Stat(filepath.Join(socketDir, "agent.sock")); err == nil {
-			return p
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("no agent socket; stderr:\n%s", p.stderr.String())
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	waitDaemonStarted(t, p.stderr, nil)
+	return p
 }
 
 // signalAndWait sends sig and waits for the end. It returns the exit code.
