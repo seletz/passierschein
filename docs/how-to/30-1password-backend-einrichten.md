@@ -215,6 +215,17 @@ op service-account create passierschein-ci --vault passierschein.dev:read_items 
 ```
 
 Das Token erscheint dabei weder im Terminal noch auf der Platte.
+`gh secret set` liest den Wert ohne `--body` von der Standardeingabe.
+Füge das Token nie von Hand ein.
+
+Prüfe danach den Workflow „macOS“: Starte ihn in GitHub unter **Actions** von Hand und sieh dir den Schritt „1Password integration test (T15)“ an.
+Fehlt das Secret, scheitert der Schritt mit der Meldung `the repository secret OP_SERVICE_ACCOUNT_TOKEN is missing`.
+
+So rotierst du das Token der CI:
+
+1. Lege einen neuen Service Account an und setze das Secret mit dem Befehl oben, zum Beispiel mit dem Namen `passierschein-ci-2`.
+2. Starte den Workflow „macOS“ von Hand und prüfe den Schritt „1Password integration test (T15)“.
+3. Widerrufe den alten Service Account in 1Password.com unter **Developer**.
 
 ## Token rotieren
 

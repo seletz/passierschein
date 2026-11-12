@@ -41,11 +41,12 @@ on:
 permissions:
   contents: read
 
-# One run per branch at a time: a new push cancels the old run. This saves
-# macOS minutes and keeps the requests to 1Password low (rate limits).
+# A new push to a pull request cancels its old run: this saves macOS
+# minutes and requests to 1Password (rate limits). Runs on develop and the
+# nightly runs never cancel each other.
 concurrency:
-  group: macos-${{ github.ref }}
-  cancel-in-progress: true
+  group: macos-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   macos:
@@ -59,6 +60,10 @@ jobs:
       # The macOS SDK for the swift.org toolchain of mise. A fixed path:
       # when GitHub replaces Xcode 27.2, the job fails loudly here.
       DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+      # Fixed cache locations for the cache steps. No cache holds a secret:
+      # the token file of T15 lives in $RUNNER_TEMP, which is not cached.
+      GOMODCACHE: /Users/runner/go/pkg/mod
+      GOCACHE: /Users/runner/Library/Caches/go-build
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -67,8 +72,33 @@ jobs:
         with:
           fetch-depth: 0
 
+      # cache_save_post: the cache also holds the Swift toolchain, which the
+      # app tasks install after this step.
       - name: Set up mise
         uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+        with:
+          cache_save_post: true
+
+      - name: Cache Go
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            /Users/runner/go/pkg/mod
+            /Users/runner/Library/Caches/go-build
+          key: go-macos-${{ hashFiles('go.sum', 'go.mod', 'mise.toml') }}
+          restore-keys: |
+            go-macos-
+
+      # The SwiftPM build directory. swift build rebuilds what changed;
+      # app:build makes a new bundle and runs the release check on the new
+      # binary each time. The key follows the package and the Swift pin.
+      - name: Cache SwiftPM build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: app/.build
+          key: swiftpm-macos-${{ hashFiles('app/Package.swift', 'app/Package.resolved', 'mise.toml') }}-${{ hashFiles('app/Sources/**', 'app/Tests/**') }}
+          restore-keys: |
+            swiftpm-macos-${{ hashFiles('app/Package.swift', 'app/Package.resolved', 'mise.toml') }}-
 
       - name: Build a38
         run: mise run build
