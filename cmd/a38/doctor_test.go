@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -177,6 +178,9 @@ func TestDoctor(t *testing.T) {
 				args = append(args, "--json")
 			}
 			t.Run(name, func(t *testing.T) {
+				if strings.HasPrefix(tt.name, "keychain") && runtime.GOOS != "darwin" {
+					t.Skip("the token check is part of the macOS build only")
+				}
 				e := healthyEnv(t)
 				tt.change(e)
 				var stdout, stderr bytes.Buffer
@@ -217,6 +221,9 @@ func TestDoctor(t *testing.T) {
 
 func TestDoctorTokenNote(t *testing.T) {
 	// Issue 59: the ad-hoc signature of a38 is a note, not a finding (G5).
+	if runtime.GOOS != "darwin" {
+		t.Skip("the token check is part of the macOS build only")
+	}
 	e := healthyEnv(t)
 	v := markerValue
 	e.tokenStore = newFakeStore()
