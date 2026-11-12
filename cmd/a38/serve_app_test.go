@@ -74,9 +74,12 @@ func startServeApp(t *testing.T, appPath string) (socketDir string, log *syncBuf
 		cancel()
 		<-done
 	})
+	// Wait for the log line after Listen, not for the socket file: the file
+	// exists from bind(2) on, and a connect before listen(2) is refused (a
+	// flake seen in CI on 2026-11-12).
 	deadline := time.Now().Add(10 * time.Second)
 	for {
-		if _, err := os.Stat(filepath.Join(socketDir, "agent.sock")); err == nil {
+		if strings.Contains(log.String(), "daemon started") {
 			return socketDir, log
 		}
 		if time.Now().After(deadline) {

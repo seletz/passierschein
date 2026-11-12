@@ -116,7 +116,9 @@ func newIntegrationBackend(t *testing.T, tok token.Token) (*Backend, *vaultGuard
 		g.inner = a
 		return g, nil
 	}
-	be, err := newBackend(Options{Vaults: []string{testVault}, Token: tok, Version: "integration-test", CallTimeout: 30 * time.Second}, connect)
+	// 60 seconds: the first call builds the client of the SDK (WebAssembly
+	// core and sign-in); on a CI runner this took more than 30 seconds once.
+	be, err := newBackend(Options{Vaults: []string{testVault}, Token: tok, Version: "integration-test", CallTimeout: 60 * time.Second}, connect)
 	if err != nil {
 		t.Fatalf("FAIL: build the backend: %v", err)
 	}

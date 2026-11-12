@@ -1,0 +1,128 @@
+name: macOS
+
+# The macOS part of CI: what the Linux runner cannot do. The Linux workflow
+# (ci.yml) runs `mise run check` with every portable test; this workflow
+# does not repeat it.
+#
+# - the Go tests on macOS (the darwin-only files: the 1Password backend and
+#   its wiring, the peer data of the socket),
+# - the approval app: build, Swift tests and the end-to-end run with real
+#   processes (fake authentication, no Touch ID),
+# - the 1Password integration test T15 with the CI service account (vault
+#   passierschein.dev, read only).
+#
+# Cost: in a private repository a macOS minute counts ten times a Linux
+# minute. So pull requests run this workflow only when they touch a path
+# that matters for it; develop, the nightly run and a manual start always
+# run it.
+on:
+  push:
+    branches:
+      - develop
+  schedule:
+    # Nightly, so that a change of the runner image, of 1Password or of
+    # the SDK shows without a push.
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "app/**"
+      - "internal/backend/onepassword/**"
+      - "internal/approval/**"
+      - "internal/token/**"
+      - "internal/tokenfile/**"
+      - "cmd/a38/**"
+      - "go.mod"
+      - "go.sum"
+      - "mise.toml"
+      - "scripts/**"
+      - ".github/workflows/macos.yml"
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its old run: this saves macOS
+# minutes and requests to 1Password (rate limits). Runs on develop and the
+# nightly runs never cancel each other.
+concurrency:
+  group: macos-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  macos:
+    # Image with Xcode 27 (macOS 27, arm64). Xcode 27.2 is the SDK that the
+    # pinned Swift 6.4.2 of the app tasks is built for; macos-26 has Xcode
+    # 26.6 only. The label is a public preview of GitHub; see
+    # docs/reference/55-ci.md for the risk.
+    runs-on: xcode-27
+    timeout-minutes: 60
+    env:
+      # The macOS SDK for the swift.org toolchain of mise. A fixed path:
+      # when GitHub replaces Xcode 27.2, the job fails loudly here.
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+      # Fixed cache locations for the cache steps. No cache holds a secret:
+      # the token file of T15 lives in $RUNNER_TEMP, which is not cached.
+      GOMODCACHE: /Users/runner/go/pkg/mod
+      GOCACHE: /Users/runner/Library/Caches/go-build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        # Full history: the build numbers come from git describe and
+        # git rev-list.
+        with:
+          fetch-depth: 0
+
+      # cache_save_post: the cache also holds the Swift toolchain, which the
+      # app tasks install after this step. The action saves only on a cache
+      # miss, so this job has its own key prefix.
+      - name: Set up mise
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+        with:
+          cache_save_post: true
+          cache_key_prefix: mise-macos-swift-v1
+
+      - name: Cache Go
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            /Users/runner/go/pkg/mod
+            /Users/runner/Library/Caches/go-build
+          key: go-macos-${{ hashFiles('go.sum', 'go.mod', 'mise.toml') }}
+          restore-keys: |
+            go-macos-
+
+      # The SwiftPM build directory. swift build rebuilds what changed;
+      # app:build makes a new bundle and runs the release check on the new
+      # binary each time. The key follows the package and the Swift pin.
+      - name: Cache SwiftPM build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: app/.build
+          key: swiftpm-macos-${{ hashFiles('app/Package.swift', 'app/Package.resolved', 'mise.toml') }}-${{ hashFiles('app/Sources/**', 'app/Tests/**') }}
+          restore-keys: |
+            swiftpm-macos-${{ hashFiles('app/Package.swift', 'app/Package.resolved', 'mise.toml') }}-
+
+      - name: Build a38
+        run: mise run build
+
+      # All Go tests on macOS with the race detector; this covers the
+      # files with a darwin build constraint.
+      - name: Go tests on macOS
+        run: mise run test
+
+      - name: Build the approval app
+        run: mise run app:build
+
+      - name: Test the approval app
+        run: mise run app:test
+
+      # Real processes: a38 serve --ui app with the debug app. Two short
+      # windows open in the GUI session of the runner; no Touch ID.
+      - name: End-to-end run with the approval app
+        run: mise run app:e2e
+
+      # Last step, so that a missing secret does not hide the other results.
+      - name: 1Password integration test (T15)
+        run: mise run test:onepassword:ci
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}

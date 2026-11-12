@@ -674,10 +674,10 @@ Es gibt drei Ebenen von Tests:
 2. **Test im Prozess:** Der Test baut den Daemon im Testprozess zusammen: Socket in einem temporären Verzeichnis, Fake-Backend, Skript-UI, gefälschte Uhr. Die meisten Testfälle des Design-Sets laufen auf dieser Ebene, weil sie die gefälschte Uhr brauchen.
 3. **Test mit Prozessen:** Der Test baut das Binary einmal je Testlauf in ein temporäres Verzeichnis. Er startet `a38 serve --backend fake --fake-file <datei> --ui auto-approve` mit einer eigenen Konfigurationsdatei und danach `a38 mcp` als Kindprozesse. Er spricht MCP über stdin und stdout von `a38 mcp` ({{ ref("T1") }}). Diese Ebene nutzt die echte Uhr und deshalb kurze Werte in der Konfiguration, zum Beispiel ein Bündelfenster von 50 Millisekunden.
 
-Eine vierte Art läuft nur auf macOS und nur von Hand: `mise run app:e2e` startet `a38 serve --ui app` mit der echten App im Debug-Build ({{ ref("T14") }}).
+Eine vierte Art läuft nur auf macOS, von Hand oder im macOS-Workflow der CI ([CI](../reference/55-ci.md)): `mise run app:e2e` startet `a38 serve --ui app` mit der echten App im Debug-Build ({{ ref("T14") }}).
 Der Test liegt in `cmd/a38/app_e2e_test.go` hinter den Build-Tags `darwin appe2e`; `go test ./...` öffnet deshalb nie ein Fenster.
 
-Eine fünfte Art läuft nur auf macOS, nur von Hand und nur mit dem Token des Menschen: `mise run test:onepassword` prüft das 1Password-Backend gegen den Vault `passierschein.dev` ({{ ref("T15") }}).
+Eine fünfte Art läuft nur auf macOS und nur mit einem Token: `mise run test:onepassword` (von Hand, Token des Macs) und `mise run test:onepassword:ci` (macOS-Workflow, Service Account der CI) prüfen das 1Password-Backend gegen den Vault `passierschein.dev` ({{ ref("T15") }}).
 Der Test liegt hinter den Build-Tags `darwin opintegration` und läuft nur, wenn `A38_OP_TOKEN_FILE` gesetzt ist.
 
 Regeln für einen Test mit Prozessen:
