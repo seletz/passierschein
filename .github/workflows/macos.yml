@@ -73,11 +73,13 @@ jobs:
           fetch-depth: 0
 
       # cache_save_post: the cache also holds the Swift toolchain, which the
-      # app tasks install after this step.
+      # app tasks install after this step. The action saves only on a cache
+      # miss, so this job has its own key prefix.
       - name: Set up mise
         uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           cache_save_post: true
+          cache_key_prefix: mise-macos-swift-v1
 
       - name: Cache Go
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
