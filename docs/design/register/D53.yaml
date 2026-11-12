@@ -1,0 +1,9 @@
+id: D53
+zustand: eingeloest
+titel: Daemon und Freigabe-App laufen nur auf macOS, Linux ist nur Ziel für den Client
+bezug: '#49'
+schluessel: '#49/zielplattformen'
+lauf: '2.0'
+branch: docs/49-zielplattformen
+reserviert_am: '2026-11-12'
+eingeloest_am: '2026-11-12'

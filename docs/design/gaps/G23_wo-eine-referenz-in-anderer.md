@@ -26,4 +26,6 @@ Offene Fragen:
 - Gilt die andere Schreibweise nur für Item und Feld?
 - Darf ein Agent ein Item über seine Kennung statt über seinen Namen nennen?
 
+Stand 2026-11-12: {{ ref("D52") }} beantwortet beide Fragen für das 1Password-Backend: Das Backend vergleicht Vault, Item und Feld genau, ohne Angleichung, und das Segment des Items ist nie eine Kennung. {{ ref("D52") }} ist eine Annahme der Entwicklung. Offen bleibt die Bestätigung durch Stefan. Damit gibt es auch für Item und Feld keine andere Schreibweise mehr; der Fall aus {{ ref("T24") }} tritt mit dem echten Backend nicht auf.
+
 **Quelle:** Entwicklung von Stufe 1, Issue 16 (Architektur und Paketgerüst), 2026-11-11.

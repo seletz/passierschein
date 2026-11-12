@@ -3,13 +3,19 @@ render_macros: true
 id: 'G1'
 titel: 'Wie der Daemon Sitzungen und VMs erkennt und welcher Transport in die VM führt, ist offen'
 bereich: 'Grenzen und Identität'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 1
 headless: true
 type: Gap
 kind: design
-status: offen
+status: vertagt
+beleg:
+  wer: Koordinator
+  fuer: Stefan
+  datum: '2026-11-12'
+  quelle: ['#11', '#58']
+  notiz: Stufe 5 (Transport in die VM); wartet auf die Entscheidung über die Empfehlung des Spikes 40 (Tailscale) und den Praxistest; nichts in den Stufen 1 bis 3 hängt davon ab (D23, D24)
 register:
   owner: Stefan
 ---

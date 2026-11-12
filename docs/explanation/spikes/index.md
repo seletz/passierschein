@@ -15,3 +15,4 @@ Wegwerfcode.
 | [Freigabe-UI](20-freigabe-ui.md) | Aufbau des Popups und Verhalten unter OmniWM | Entwurf des Popups für das MVP abgenommen; Praxistest offen |
 | [Signatur der Swift-App](30-signatur-swift-app.md) | quill oder `codesign` und `notarytool`? | ohne Developer ID; Praxistest offen |
 | [Zugang der VMs über Tailscale](40-tailscale-vm-zugang.md) | Identität der VM und Beschränkung des Zugriffs | aus der Doku; Entscheidung und Praxistest offen |
+| [Token im Schlüsselbund](50-token-im-schluesselbund.md) | Wie schützt der Schlüsselbund das Token des Service Accounts vor anderen Prozessen? | gemessen ohne Developer ID; Entscheidung und Praxistest offen |

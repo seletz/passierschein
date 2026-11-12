@@ -25,4 +25,6 @@ Offene Frage:
 
 - Bestätigt Stefan diese Annahme, oder braucht der Fall einen eigenen Code ohne Sperre?
 
+Stand 2026-11-12: Der Code setzt die Annahme um. Ein Absturz im Broker endet mit `daemon_faulted` und sperrt die Auslieferung (Tests `TestPanicLocksDelivery`, `TestPanicInHandlerLocks`). {{ ref("D48") }} gilt nach seinem Text für jede Störung, die der Daemon an sich selbst erkennt. Offen bleibt nur die Bestätigung durch Stefan, dass ein interner Fehler eine solche Störung ist.
+
 **Quelle:** Entwicklung von Stufe 1, Issue 16 (Architektur und Paketgerüst), 2026-11-11.
