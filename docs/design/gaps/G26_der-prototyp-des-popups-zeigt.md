@@ -4,12 +4,18 @@ id: 'G26'
 titel: 'Der Prototyp des Popups zeigt Fälle, die das Design ausschließt'
 bereich: 'Freigabe'
 lauf: '2.0'
-stand: '2026-11-11'
+stand: '2026-11-12'
 order: 4
 headless: true
 type: Gap
 kind: design
-status: offen
+status: geschlossen
+beleg:
+  wer: Stefan
+  datum: '2026-11-12'
+  durch: [D32, D24]
+  quelle: ['#46', '#39']
+  notiz: Text zum Umfang mit der Abnahme der Oberfläche der Freigabe-App festgelegt (PR 46, Issue 39, 2026-11-12)
 register:
   owner: Stefan
 ---

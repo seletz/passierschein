@@ -3,13 +3,20 @@ render_macros: true
 id: 'G11'
 titel: 'Der Ablauf der Auslieferung als Datei auf einem tmpfs ist nicht entworfen'
 bereich: 'Grants und Auslieferung'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 2
 headless: true
 type: Gap
 kind: design
-status: offen
+status: vertagt
+beleg:
+  wer: Koordinator
+  fuer: Stefan
+  datum: '2026-11-12'
+  durch: [D24]
+  quelle: ['#58']
+  notiz: 'Stufe 5: die Auslieferung als Datei entsteht mit der VM (D24); bis dahin lehnt der Daemon jede Anfrage außerhalb von dev ab; nichts in den Stufen 1 bis 3 hängt davon ab'
 register:
   owner: Stefan
 ---
