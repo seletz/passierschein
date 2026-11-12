@@ -570,6 +570,14 @@ Eine Bibliothek für die Kommandozeile bringt für sieben Unterbefehle keinen Vo
 
 Der Besitzer eines Unterbefehls ändert nur seine Datei.
 
+### Befehle für die Konfigurationsdatei
+
+`a38 config path|show|init|validate|vault|project` ändern und zeigen die Datei, ohne den Daemon ({{ ref("D55") }}).
+`internal/config` hält die Logik: `Locate` (Ort und Grund), `Inspect` (Herkunft der Werte), `Template` (Datei von `init`), `AddVault`, `RemoveVault`, `AddProject`, `RemoveProject` (Änderung der Zeilen) und `WriteNew` und `Replace` (atomar schreiben, Sperrdatei, kein Symlink).
+Die Änderung nutzt den YAML-Baum nur, um die Zeilen zu finden; ein Neuschreiben des Baums verliert die Leerzeilen.
+Jede Änderung läuft vor dem Schreiben durch `Parse`.
+`a38 config validate` nutzt `doctor.ConfigResults`, dieselbe Prüfung wie `a38 doctor`.
+
 ## 1Password-Backend
 
 Das Paket `internal/backend/onepassword` setzt {{ ref("F12") }} um.
@@ -662,7 +670,7 @@ Es gibt keine Umgebungsvariable für das Token, denn jeder Kindprozess erbt die 
 - `Describe` liest nur die Attribute und die Zugriffsliste. Das zeigte im Spike nie einen Dialog. `a38 doctor` nutzt nur `Describe` und die Signatur.
 - `a38 config onepassword-token status` liest den Wert nie; er zeigt nur Metadaten. Kein Befehl zeigt das Token oder einen daraus abgeleiteten Wert.
 - `a38 config onepassword-token set` liest das Token nur vom Terminal, ohne Echo; eine Pipe oder Datei lehnt er mit dem Exit-Code 2 ab.
-- `a38 config` ist eine Gruppe mit einer Tabelle von Unterbefehlen (`cmd/a38/config.go`); weitere Unterbefehle für die Konfiguration kommen dort hinzu.
+- `a38 config` ist eine Gruppe mit einer Tabelle von Unterbefehlen (`cmd/a38/config.go`).
 - Die Signatur von `a38` liest das Paket mit `SecCodeCopySelf` und `SecCodeCopySigningInformation`, ohne Dialog und ohne Kindprozess.
 - Es gibt damit zwei Leser von Signaturen: `keychain` liest die eigene Signatur von `a38` über die Security-API für Anzeige und Partitionsliste, `appui` prüft die Datei der Freigabe-App mit `/usr/bin/codesign` gegen das Team von `a38`; die Zwecke und Build-Grenzen sind verschieden, eine Zusammenlegung ist offen.
 - Ein Test legt nur Einträge `a38-test-…` an. In einem Test-Binary verweigert `keychain.Store` den Eintrag des Produkts. Die Tests von `cmd/a38` nutzen eine Fälschung des Eintrags.
