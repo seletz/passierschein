@@ -1,0 +1,4 @@
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"demo-handaufruf","version":"1"}}}
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"request_credentials","arguments":{"references":["op://passierschein.dev/datenbank-dev/username","op://passierschein.dev/datenbank-dev/password"],"task":"Run the database migration of demo-projekt","reason":"migrate.sh needs the database user and password"}}}
+# wait Show 'a38 audit list' and 'a38 grants list' in terminal 3. Press Enter to end the session.

@@ -1,0 +1,6 @@
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"demo-handaufruf","version":"1"}}}
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"request_credentials","arguments":{"references":["op://passierschein.dev/datenbank-dev/username","op://passierschein.dev/datenbank-dev/password"],"task":"Run the database migration of demo-projekt","reason":"migrate.sh needs the database user and password"}}}
+# wait Approved. Revoke the grant in terminal 3 (a38 grants list, a38 grants revoke <id>), then press Enter to ask again.
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"request_credentials","arguments":{"references":["op://passierschein.dev/datenbank-dev/username","op://passierschein.dev/datenbank-dev/password"],"task":"Run the database migration of demo-projekt","reason":"migrate.sh needs the database user and password"}}}
+# wait Press Enter to end the session.

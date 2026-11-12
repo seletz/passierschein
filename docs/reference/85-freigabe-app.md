@@ -32,7 +32,7 @@ Die Nachricht enthält je Zugangsdatum nur Kennung, Vault, Titel und Feld.
 
 !!! warning "Nicht geprüft"
     - Vollbild-App, Wechsel des Arbeitsbereichs, Zeitablauf und die Meldungen am Bildschirm ({{ ref("G33") }}).
-    - Das App-Bundle trägt nur eine Ad-hoc-Signatur. Developer ID und Notarisierung fehlen ({{ ref("G5") }}).
+    - Der Entwicklungsbau trägt nur eine Ad-hoc-Signatur. Das Release signiert und notarisiert das Bundle mit der Developer ID ([Release](50-release.md#signatur-und-notarisierung)). Der signierte Snapshot ist am 2026-11-12 mit der echten Developer ID grün ([Lauf 43208639784](https://github.com/seletz/passierschein/actions/runs/43208639784)). Der Praxistest eines echten Release auf dem Mac steht aus ({{ ref("G5") }}).
 
 ## Aufbau des Codes
 
@@ -279,12 +279,11 @@ Passierschein.app/
     Info.plist
     MacOS/
       Passierschein   die Freigabe-App
-      a38             vorgesehen für das Go-Programm, fehlt noch
+      a38             nur im Release-Bundle
 ```
 
-Der Platz `Contents/MacOS/a38` ist für das Go-Programm vorgesehen.
-`app:build` kopiert `a38` nicht in das Bundle.
-Das Packen gehört zur Arbeit am Release ({{ ref("G5") }}).
+`app:build` ist der Entwicklungsbau und kopiert `a38` nicht in das Bundle.
+Das Release-Bundle mit `a38` baut `mise run release:app` aus den darwin-Archiven von goreleaser ([Release](50-release.md#app-im-release)).
 Der Daemon sucht die App als `Passierschein.app/Contents/MacOS/Passierschein` oder als `Passierschein` neben `a38`, im Bundle neben `Contents/MacOS/a38` und in `/Applications` und `~/Applications`.
 
 Die `Info.plist` enthält die Bundle-ID `io.github.seletz.passierschein`, den Namen „Passierschein“ (`CFBundleName`, `CFBundleDisplayName`) und `LSUIElement`.
@@ -297,8 +296,29 @@ Danach prüft `scripts/app-release-check.sh` den Release-Build und das Bundle:
 - `--help` schreibt nichts auf die Standardausgabe.
 
 Die Tasks der App gehören nicht zu `mise run check`.
-Die CI läuft auf Linux und kann die App nicht bauen.
-Ein Job auf einem macOS-Runner ist eine spätere Entscheidung.
+Der Workflow `macos.yml` führt sie auf einem macOS-Runner aus ([CI](55-ci.md)).
+
+## Signatur der App
+
+Der Daemon prüft vor jedem Start der App deren Code-Signatur ({{ ref("G5") }}, Erweiterungspunkt `appui.Verifier`).
+Die Prüfung hängt von der Signatur von `a38` selbst ab.
+`a38 serve` liest sie einmal beim Start und schreibt eine Zeile ins Log.
+
+| Signatur von `a38` | Prüfung der App | Zeile im Log |
+|---|---|---|
+| Developer ID mit Team-ID (Release) | Die App muss die Anforderung „Developer ID des Teams“ erfüllen und die Hardened Runtime tragen. | `the approval app must carry a Developer ID signature of the team of a38` mit `team=` |
+| ad-hoc oder keine (Entwicklung, CI, Demo) | aus | `the signature check of the approval app is off: a38 has no Developer ID signature` |
+| nicht lesbar | Jeder Start der App scheitert (fail closed). | `the approval app is refused: cannot read the signature of a38` |
+
+Die Anforderung lautet: Kette bis zu einer Wurzel von Apple, Zwischenzertifikat „Developer ID Certification Authority“, Blattzertifikat „Developer ID Application“, Organisationseinheit gleich der Team-ID.
+Ein selbst signiertes Zertifikat mit derselben Team-ID im Namen erfüllt sie nicht.
+Der Daemon ruft dafür `/usr/bin/codesign --verify --strict --deep -R …` und `/usr/bin/codesign -d` auf, mit festem Pfad und einer Zeitgrenze von zehn Sekunden je Aufruf.
+Er braucht kein CGO.
+
+Eine App, die die Prüfung nicht besteht, startet der Daemon nicht.
+Die Anfrage endet mit `ui_failed`, das Log nennt den Befund.
+Mit einem signierten `a38` startet eine Debug-App oder ein Entwicklungsbau also nie.
+Zum Entwickeln nutzt du ein selbst gebautes `a38` (`mise run build`).
 
 ## Beispiele
 

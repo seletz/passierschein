@@ -181,7 +181,7 @@ tools = { "github:CycloneDX/cyclonedx-gomod" = "1.12.0" }
 run = "goreleaser release --clean"
 
 [tasks."release:secrets:check"]
-description = "CI only (signed snapshot): fail unless the macOS signing and notarization secrets are set; values are never printed"
+description = "CI only (release, signed snapshot): fail and name each missing macOS signing or notarization secret; values are never printed"
 run = "bash scripts/signing-secrets-check.sh"
 
 [tasks."release:signatures:check"]
@@ -189,3 +189,86 @@ description = "Check that every darwin binary in dist/ carries a Developer ID si
 # renovate: datasource=go depName=github.com/anchore/quill
 tools = { "go:github.com/anchore/quill/cmd/quill" = "0.7.1", jq = "1.8.2" }
 run = "bash scripts/signatures-check.sh"
+
+[tasks."release:app"]
+description = "macOS only: assemble the release bundle build/release-app/Passierschein.app from the universal Swift release build and the darwin a38 of dist/ (checksums, same version and commit); not signed"
+# renovate: datasource=github-releases depName=swiftlang/swift extractVersion=^swift-(?<version>.+)-RELEASE$
+tools = { "swift" = "6.4.2" }
+run = "bash scripts/release-app-bundle.sh"
+
+[tasks."release:app:sign"]
+description = "macOS only: sign a38 in the bundle, then the bundle (hardened runtime, timestamp, fixed identifiers) with the Developer ID of MACOS_SIGN_P12 from a temporary keychain; APP_SIGN_ADHOC=1 signs ad-hoc (never on a tag)"
+run = "bash scripts/release-app-sign.sh"
+
+[tasks."release:app:notarize"]
+description = "CI only (macOS): submit the signed bundle to the Apple notary service with the API key MACOS_NOTARY_*, wait, staple the ticket, validate it"
+# renovate: datasource=github-releases depName=jqlang/jq extractVersion=^jq-(?<version>.+)$
+tools = { jq = "1.8.2" }
+run = "bash scripts/release-app-notarize.sh"
+
+[tasks."release:app:check"]
+description = "macOS only: check the bundle: strict signature, identifiers, hardened runtime, Developer ID chain, same team for app and a38, Gatekeeper (notarized), stapled ticket; APP_CHECK=adhoc checks an ad-hoc bundle"
+run = "bash scripts/release-app-check.sh"
+
+[tasks."release:app:package"]
+description = "macOS only: zip the bundle with ditto into dist/passierschein-app-<tag>-darwin-universal.zip, check the unpacked copy, write its CycloneDX SBOM and add both to the checksum file"
+# renovate: datasource=github-releases depName=CycloneDX/cyclonedx-gomod extractVersion=^v(?<version>.+)$
+tools = { "github:CycloneDX/cyclonedx-gomod" = "1.12.0", jq = "1.8.2" }
+run = "bash scripts/release-app-package.sh"
+
+[tasks."release:app:upload"]
+description = "CI only (release workflow): add the app zip, its SBOM and the extended checksum file to the draft release of GITHUB_REF_NAME"
+# renovate: datasource=github-releases depName=cli/cli extractVersion=^v(?<version>.+)$
+tools = { gh = "2.103.3" }
+run = "bash scripts/release-app-upload.sh"
+
+[tasks."release:assets:check"]
+description = "CI only (release workflow): check that the draft release has every archive, SBOM, the app zip and a complete checksum file; saves the checksum file to dist/"
+# renovate: datasource=github-releases depName=cli/cli extractVersion=^v(?<version>.+)$
+tools = { gh = "2.103.3" }
+run = "bash scripts/release-finalize.sh check"
+
+[tasks."release:finalize"]
+description = "CI only (release workflow): publish the draft release of GITHUB_REF_NAME after release:assets:check"
+# renovate: datasource=github-releases depName=cli/cli extractVersion=^v(?<version>.+)$
+tools = { gh = "2.103.3" }
+run = "bash scripts/release-finalize.sh publish"
+
+# Demo kit (examples/demo/, docs/how-to/50-demo-vorfuehren.md). macOS only,
+# by hand, never in CI. Default: the real demo, installed into the home
+# directory (~/.local/bin/a38, ~/Applications/Passierschein.app,
+# ~/.config/a38/config.yaml, ~/develop/demo-projekt). DEMO_BACKEND=fake on
+# each task: the rehearsal in /tmp/a38-probe, which touches nothing else.
+[tasks."demo:setup"]
+description = "macOS only: build and install the demo (a38, app, config, demo project with .mcp.json and skill); never overwrites what it did not install; DEMO_BACKEND=fake for the rehearsal in /tmp"
+run = "bash scripts/demo.sh setup"
+
+[tasks."demo:preflight"]
+description = "Check the demo with PASS/FAIL lines; starts nothing and reads no token"
+run = "bash scripts/demo.sh preflight"
+
+[tasks."demo:start"]
+description = "macOS only: preflight, then run the daemon of the demo in the foreground (rehearsal: DEMO_UI=auto-approve|auto-deny|debug-app)"
+run = "bash scripts/demo.sh start"
+
+[tasks."demo:status"]
+description = "Show a38 doctor, grants, fault status, the last audit entries and a38 audit verify of the demo"
+run = "bash scripts/demo.sh status"
+
+[tasks."demo:request"]
+description = "Send one act of examples/demo/requests to a38 mcp without an agent; values are masked: mise run demo:request -- akt2"
+# renovate: datasource=github-releases depName=jqlang/jq extractVersion=^jq-(?<version>.+)$
+tools = { jq = "1.8.2" }
+run = "bash scripts/demo.sh request"
+
+[tasks."demo:fault"]
+description = "Make the audit directory of the demo read-only: the next request raises the global lock"
+run = "bash scripts/demo.sh fault"
+
+[tasks."demo:fault:fix"]
+description = "Restore the mode of the audit directory of the demo; then run a38 fault clear"
+run = "bash scripts/demo.sh fault-fix"
+
+[tasks."demo:teardown"]
+description = "Remove what demo:setup installed; keeps the config and the audit log (DEMO_PURGE=1 moves the config to .bak and removes the state directory)"
+run = "bash scripts/demo.sh teardown"

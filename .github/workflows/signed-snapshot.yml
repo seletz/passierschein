@@ -1,11 +1,21 @@
 name: Signed snapshot
 
-# Manual test of the macOS signing and notarization (notarize.macos in
-# .goreleaser.yml) without a release, as in total-recall. Builds a goreleaser
-# snapshot with the signing secrets, checks the darwin signatures and uploads
-# the darwin archives, their SBOMs and the checksums as a short-lived workflow
-# artifact. Nothing is published: --snapshot skips publishing, no tag is
-# created and the job only gets read access.
+# Manual test of the macOS signing and notarization without a release, as
+# in total-recall. Nothing is published: --snapshot skips publishing, no
+# tag is created and the jobs only get read access.
+#
+# 1. snapshot (Linux): the five secrets must be set (the step names each
+#    missing one); goreleaser builds a snapshot and signs and notarizes the
+#    darwin a38 with quill (notarize.macos); the signatures are checked.
+# 2. app (macOS): the same steps as the app job of release.yml: assemble
+#    Passierschein.app with these darwin a38 binaries, sign it with the
+#    Developer ID, notarize it, staple the ticket, check it (Developer ID
+#    authority, hardened runtime, timestamp, same team for the app and a38,
+#    Gatekeeper accepts it as notarized, staple valid) and pack it.
+#
+# Both jobs upload their results as short-lived workflow artifacts:
+# signed-snapshot-darwin (archives, SBOMs, checksums) and
+# signed-snapshot-app (app zip, its SBOM, the extended checksum file).
 
 on:
   workflow_dispatch:
@@ -47,6 +57,67 @@ jobs:
           path: |
             dist/*-darwin-*.tar.gz
             dist/*-darwin-*.cdx.json
+            dist/checksums-*.txt
+          if-no-files-found: error
+          retention-days: 7
+
+  app:
+    needs: snapshot
+    # Image with Xcode 27.2, as in macos.yml (docs/reference/55-ci.md).
+    runs-on: xcode-27
+    timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up mise
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+        with:
+          cache_save_post: true
+          cache_key_prefix: mise-macos-swift-v1
+
+      - name: Get the darwin archives
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: signed-snapshot-darwin
+          path: dist
+
+      - name: Assemble Passierschein.app
+        run: mise run release:app
+
+      - name: Sign Passierschein.app (Developer ID)
+        run: mise run release:app:sign
+        env:
+          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
+
+      - name: Notarize and staple
+        run: mise run release:app:notarize
+        env:
+          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+
+      - name: Check Passierschein.app
+        run: mise run release:app:check
+
+      - name: Pack Passierschein.app
+        run: mise run release:app:package
+
+      - name: Check the SBOMs
+        run: mise run release:sbom:check
+
+      - name: Upload the app
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: signed-snapshot-app
+          path: |
+            dist/passierschein-app-*.zip
+            dist/passierschein-app-*.cdx.json
             dist/checksums-*.txt
           if-no-files-found: error
           retention-days: 7

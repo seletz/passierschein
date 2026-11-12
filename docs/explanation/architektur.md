@@ -439,7 +439,9 @@ Die Schnittstelle `appui.Verifier` hat die Methode `Verify(ctx, path) error`.
 Der Daemon ruft sie nach der Prüfung der Datei vor jedem Start auf.
 Ein Fehler stoppt den Start.
 Der Standard `appui.NoopVerifier` tut nichts.
-Die Prüfung der Code-Signatur und der Team-ID gehört nicht zu Issue 40 und bleibt offen, bis {{ ref("G5") }} geschlossen ist.
+`a38 serve` setzt `appui.NewSignatureVerifier` ein (Issue 68): Ist `a38` mit einer Developer ID signiert, muss die App die Developer ID desselben Teams und die Hardened Runtime tragen; sonst ist die Prüfung aus.
+Die Schnittstelle `appui.CodeSigner` kapselt `/usr/bin/codesign` (nur darwin); die Tests nutzen Fälschungen und ad-hoc signierte Wegwerfdateien.
+Einzelheiten stehen in der [Referenz der Freigabe-App](../reference/85-freigabe-app.md#signatur-der-app).
 
 **Ort der App.**
 Der Schalter `--ui-app`, der Schlüssel `paths.ui_app` der Konfiguration und die Suche (Bundle von `a38`, neben `a38`, `/Applications`, `~/Applications`) stehen in der [Referenz der Befehle](../reference/80-befehle-fuer-den-menschen.md).

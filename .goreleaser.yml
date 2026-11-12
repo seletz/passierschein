@@ -30,8 +30,12 @@ builds:
 # (release.yml and signed-snapshot.yml pass them through); otherwise the darwin
 # binaries ship unsigned. The step rewrites the binaries in dist/ before
 # archives, SBOMs and checksums are made, so all three describe the signed
-# binary. The Swift approval app is not part of this file yet: quill signs
-# single binaries, not app bundles (see the spike on app signing).
+# binary. The release workflow fails before goreleaser when a secret is
+# missing (release:secrets:check), so a release never ships unsigned darwin
+# binaries. The approval app is not built here: quill signs single
+# binaries, not app bundles (spike on app signing). The macOS job of the
+# release workflow builds Passierschein.app with these darwin a38 binaries,
+# signs it with codesign, notarizes it and adds its zip to the draft.
 notarize:
   macos:
     - enabled: '{{ isEnvSet "MACOS_SIGN_P12" }}'
@@ -99,7 +103,13 @@ changelog:
       - "^test:"
       - "^ci:"
 
-# The repository is private, so is the release.
+# The repository is private, so is the release. goreleaser creates a
+# draft: the macOS job adds the signed app, and the last job of the
+# release workflow publishes the draft only when every asset is there
+# (release:assets:check, release:finalize). A run again replaces the old
+# draft of the tag instead of adding a second one.
 release:
   name_template: "Passierschein {{ .Tag }}"
   prerelease: auto
+  draft: true
+  replace_existing_draft: true

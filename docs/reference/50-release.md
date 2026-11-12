@@ -1,6 +1,7 @@
 ---
 title: Release
-description: "Ablauf eines Release, Artefakte, SBOM, Prüfsummen, Signatur, Provenienz und Veröffentlichung der Doku."
+description: "Ablauf eines Release, Jobs, Artefakte mit der App Passierschein, SBOM, Prüfsummen, Signatur und Notarisierung, Provenienz und Veröffentlichung der Doku."
+render_macros: true
 tags:
   - Thema/Release
 ---
@@ -12,8 +13,8 @@ tags:
 2. Der Task fragt nach der Art der Erhöhung: Patch, Minor oder Major.
 3. Der Task legt den Tag `vX.Y.Z` an und schiebt ihn zu GitHub.
 4. Der Workflow `release.yml` startet mit dem Tag.
-5. Der Workflow führt alle Checks aus.
-6. goreleaser baut die Artefakte und legt das GitHub-Release an.
+5. Die Jobs bauen, signieren und prüfen alle Dateien in einen Entwurf des Release.
+6. Der letzte Job veröffentlicht den Entwurf, wenn jede Datei da ist.
 7. Der Workflow baut die Doku des Tags und veröffentlicht sie auf GitHub
    Pages.
 
@@ -21,47 +22,125 @@ Die Versionen folgen [SemVer](https://semver.org/lang/de/). Der Text des
 Release entsteht aus den Commits seit dem letzten Tag. Die Commits folgen
 [Conventional Commits](https://www.conventionalcommits.org/de/).
 
+## Jobs des Release-Workflows
+
+| Job | Runner | Inhalt |
+|---|---|---|
+| `release` | `ubuntu-latest` | `mise run check`, `release:secrets:check`, goreleaser (`release:publish`) mit quill für das darwin-`a38`, `release:sbom:check`, `release:signatures:check`. goreleaser legt das Release als Entwurf an. Die darwin-Archive, ihre SBOMs und die Prüfsummendatei gehen als Workflow-Artefakt an den nächsten Job. |
+| `app` | `xcode-27` (macOS) | `release:app`, `release:app:sign`, `release:app:notarize`, `release:app:check`, `release:app:package`, `release:sbom:check`, `release:app:upload`. Das ZIP der App, seine SBOM und die erweiterte Prüfsummendatei kommen in den Entwurf. |
+| `publish` | `ubuntu-latest` | `release:assets:check` prüft, dass der Entwurf jede Datei hat und die Prüfsummendatei jede Datei nennt. Danach folgen die Build-Provenienz und `release:finalize`. Erst dieser Task veröffentlicht den Entwurf. |
+| `docs`, `pages` | `ubuntu-latest` | Doku des Tags auf GitHub Pages |
+
+Gründe für diese Reihenfolge ({{ ref("D54") }}):
+
+- Das Bundle enthält `a38` ({{ ref("D50") }}). Der macOS-Job braucht deshalb das `a38` aus goreleaser und läuft danach.
+- Der Entwurf verhindert ein halb fertiges Release. Scheitert ein Job, bleibt der Entwurf unveröffentlicht. Ein neuer Lauf ersetzt den Entwurf (`replace_existing_draft`).
+- goreleaser und quill bleiben auf Linux. Nur Bau, Signatur und Notarisierung der App kosten macOS-Minuten.
+
+Fehlt eines der fünf Secrets, scheitert der Job `release` vor goreleaser.
+Die Meldung nennt jedes fehlende Secret.
+Pull Requests und `develop` bauen das Bundle im Workflow `macos.yml` mit einer Ad-hoc-Signatur.
+
 ## Artefakte
 
-Ein Release enthält für jede Plattform diese Dateien:
+Ein Release enthält diese Dateien:
 
 | Datei | Inhalt |
 |---|---|
 | `passierschein-<tag>-<os>-<arch>.tar.gz` | Binary `a38`, `LICENSE`, `README.md` |
 | `passierschein-<tag>-<os>-<arch>.cdx.json` | SBOM des Binarys |
+| `passierschein-app-<tag>-darwin-universal.zip` | `Passierschein.app` mit der Freigabe-App und `a38`, signiert, notarisiert, mit angeheftetem Ticket |
+| `passierschein-app-<tag>-darwin-universal.cdx.json` | SBOM des Bundles |
 | `checksums-<tag>.txt` | SHA-256-Prüfsummen aller Archive und SBOMs |
 
-Plattformen: `darwin` und `linux`, je `amd64` und `arm64`.
+Plattformen der tar-Archive: `darwin` und `linux`, je `amd64` und `arm64`.
+Linux erhält nur `a38` ({{ ref("D53") }}).
+
+## App im Release
+
+Aufbau des Bundles:
+
+```text
+Passierschein.app/
+  Contents/
+    Info.plist
+    MacOS/
+      Passierschein   Freigabe-App, Universal-Binary (arm64, x86_64)
+      a38             Go-Programm, Universal-Binary (arm64, x86_64)
+    _CodeSignature/
+      CodeResources
+    CodeResources     angeheftetes Ticket
+```
+
+- `Info.plist`: Bundle-ID `io.github.seletz.passierschein`, Version `X.Y.Z` aus dem Tag, Build-Nummer aus der Zahl der Commits, `LSUIElement`, mindestens macOS 15.
+- `Passierschein` entsteht mit `swift build -c release --arch arm64 --arch x86_64`. Die tar-Archive liefern `a38` für beide Architekturen; ein Bundle für beide passt zu jedem Mac.
+- `a38` entsteht mit `lipo -create` aus den beiden darwin-Binaries desselben goreleaser-Laufs. Der Task prüft die Prüfsummen der Archive, die Version und den Commit beider Binaries.
+- Der Task `release:app:check` prüft auch, dass `Contents/MacOS` nur diese zwei Dateien enthält.
 
 ## SBOM
 
 Eine SBOM (Software Bill of Materials) ist die Stückliste einer Software.
-Jedes Release hat je Plattform eine SBOM im Format CycloneDX.
-`cyclonedx-gomod` erzeugt die SBOM aus dem ausgelieferten Binary. Der Task
-`release:sbom:check` bricht ab, wenn eine SBOM fehlt.
+Jedes Archiv hat eine SBOM im Format CycloneDX ({{ ref("D18") }}).
+`cyclonedx-gomod` erzeugt die SBOM der tar-Archive aus dem ausgelieferten Binary.
+Die SBOM des App-ZIP nennt das Bundle als Hauptkomponente.
+Ihre Komponenten sind die Freigabe-App und `a38` mit SHA-256 und die Go-Module von `a38`.
+Die Freigabe-App hat keine fremden Swift-Pakete.
+Der Task `release:sbom:check` bricht ab, wenn eine SBOM fehlt.
 
 ## Signatur und Notarisierung
 
-goreleaser signiert die darwin-Binaries mit einer Developer ID und lässt sie
-von Apple notarisieren. goreleaser nutzt dafür quill. Der Schritt läuft auf
-dem Linux-Runner.
+Zwei Wege signieren mit derselben Developer ID und denselben fünf Secrets:
 
-Der Schritt braucht diese Secrets im Repo:
+| Datei | Werkzeug | Runner | Ticket |
+|---|---|---|---|
+| `a38` in den darwin-tar-Archiven | quill in goreleaser (`notarize.macos`) | Linux | nicht anheftbar, macOS holt es online |
+| `Passierschein.app` mit `a38` | `codesign`, `notarytool`, `stapler` | macOS | angeheftet |
 
-| Secret | Inhalt |
-|---|---|
-| `MACOS_SIGN_P12` | Zertifikat „Developer ID Application“ als P12, Base64-kodiert |
-| `MACOS_SIGN_PASSWORD` | Passwort der P12-Datei |
-| `MACOS_NOTARY_ISSUER_ID` | Issuer-ID des App-Store-Connect-Schlüssels |
-| `MACOS_NOTARY_KEY_ID` | Key-ID des App-Store-Connect-Schlüssels |
-| `MACOS_NOTARY_KEY` | Privater Schlüssel (`.p8`), Base64-kodiert |
+Signatur des Bundles (`release:app:sign`):
 
-Ohne `MACOS_SIGN_P12` liefert das Release unsignierte darwin-Binaries.
+1. Der Task dekodiert `MACOS_SIGN_P12` in eine Datei mit Modus `0600` unter `$RUNNER_TEMP`.
+2. Er legt einen temporären Schlüsselbund mit einem Zufallspasswort an und importiert das Zertifikat. Nur `codesign` darf den Schlüssel nutzen. Der Schlüsselbund der Anmeldung bleibt unberührt.
+3. Er signiert zuerst `Contents/MacOS/a38`, dann das Bundle. Beide mit `--options runtime`, `--timestamp` und festem Bezeichner: `io.github.seletz.passierschein.a38` und `io.github.seletz.passierschein`. Es gibt keine Berechtigungen (entitlements), also auch kein `get-task-allow`.
+4. `codesign --verify --deep --strict` prüft das Ergebnis.
+5. Ein `trap` löscht Schlüsselbund und Dateien und stellt die Suchliste der Schlüsselbunde wieder her.
 
-Der Workflow `signed-snapshot.yml` testet die Signatur ohne Release. Ein
-Mensch startet den Workflow von Hand. Der Workflow veröffentlicht nichts.
+`codesign` signiert `a38` im Bundle neu, auch wenn quill es schon signiert hat.
+Gründe: ein Werkzeug und ein Bezeichner für das ganze Bundle, eine Signatur über beide Teile des Universal-Binarys, und derselbe Weg für die Ad-hoc-Signatur in Pull Requests.
+Das `a38` im Bundle ist deshalb nicht byte-gleich mit dem `a38` im tar-Archiv.
+Die SBOM des ZIP nennt den SHA-256 des Bundle-`a38`.
 
-Die Signatur der Swift-App ist offen. Ein Spike klärt sie.
+Notarisierung (`release:app:notarize`):
+
+1. Der Task dekodiert `MACOS_NOTARY_KEY` in eine Datei mit Modus `0600`.
+2. `ditto -c -k --keepParent` packt das Bundle.
+3. `xcrun notarytool submit --wait --timeout 30m` reicht es ein und wartet.
+4. Der Task gibt nur die Kennung der Einreichung, den Status und die Befunde des Protokolls aus.
+5. `xcrun stapler staple` heftet das Ticket an, `xcrun stapler validate` prüft es.
+
+`release:app:check` prüft danach: Developer-ID-Kette bis `Apple Root CA`, Hardened Runtime, Zeitstempel, dieselbe Team-ID für App und `a38`, die Anforderung „Developer ID des Teams“, das Urteil `source=Notarized Developer ID` von `spctl -t exec` und das Ticket.
+`release:app:package` packt das ZIP, packt es zur Probe aus und prüft die Kopie noch einmal.
+
+Kein Skript nutzt `set -x`.
+Die Secrets gehen nur über Umgebungsvariablen in den Schritt, der sie braucht.
+
+Secrets einrichten, mit dem signierten Snapshot testen und ein Release prüfen: Anleitung [Release signieren und prüfen](../how-to/60-release-signieren-und-pruefen.md).
+
+## Signierter Snapshot
+
+Der Workflow `signed-snapshot.yml` startet nur von Hand.
+Er veröffentlicht nichts und hat nur Leserechte.
+
+- Job `snapshot` (Linux): `release:secrets:check`, ein signierter goreleaser-Snapshot, `release:signatures:check`.
+- Job `app` (macOS): dieselben Schritte wie der Job `app` des Release, ohne Upload in ein Release.
+
+Die Ergebnisse hängen sieben Tage als Workflow-Artefakte am Lauf: `signed-snapshot-darwin` und `signed-snapshot-app`.
+
+## Prüfung im Daemon
+
+Ist `a38` selbst mit einer Developer ID signiert, prüft `a38 serve` die Signatur der App vor jedem Start.
+Die App muss die Developer ID desselben Teams und die Hardened Runtime tragen.
+Ist `a38` ad-hoc signiert oder unsigniert, ist die Prüfung aus.
+Einzelheiten: [Freigabe-App](85-freigabe-app.md#signatur-der-app).
 
 ## Build-Provenienz
 
@@ -74,8 +153,17 @@ Der Schritt läuft deshalb nur, wenn das Repo öffentlich ist.
 
 ## Doku auf GitHub Pages
 
-Der Workflow veröffentlicht die Doku bei jedem Release. Die Startseite zeigt
-die Version, das Build-Datum und den Commit-Hash.
+Die Doku steht unter <https://seletz.github.io/passierschein/>.
+
+Zwei Workflows veröffentlichen sie:
+
+- Der Workflow `pages.yml` veröffentlicht den Stand von `develop` nach jedem
+  Push (Stefan, 2026-11-12).
+- Der Release-Workflow veröffentlicht die Doku eines Tags.
+
+Online ist immer die jüngste Veröffentlichung. Die Startseite zeigt die
+Version, das Build-Datum und den Commit-Hash. Nach einem Release zeigt die
+Site deshalb die Doku des Tags, bis der nächste Push auf `develop` folgt.
 
 Voraussetzung: GitHub Pages ist im Repo aktiviert, mit der Quelle „GitHub
 Actions“. Eine Site auf GitHub Pages ist öffentlich, auch wenn das Repo
@@ -83,6 +171,16 @@ privat ist.
 
 ## Installation
 
-Die Verteilung läuft zunächst über `mise` mit dem Backend `github:`. Das
-Backend lädt die Artefakte des GitHub-Release. Homebrew folgt, wenn das Repo
-öffentlich ist.
+Die App installierst du aus dem ZIP nach `/Applications`.
+`a38` legst du als symbolischen Link aus dem Bundle in den `PATH`:
+
+```sh
+ln -s /Applications/Passierschein.app/Contents/MacOS/a38 ~/.local/bin/a38
+```
+
+Der Daemon findet die App dann im eigenen Bundle ({{ ref("D50") }}).
+Die Schritte stehen in [Release signieren und prüfen](../how-to/60-release-signieren-und-pruefen.md#app-installieren).
+
+Für Linux und für `a38` allein gibt es das tar-Archiv.
+Die Verteilung läuft dafür zunächst über `mise` mit dem Backend `github:`.
+Homebrew folgt, wenn das Repo öffentlich ist.
