@@ -74,8 +74,17 @@ Der Schritt läuft deshalb nur, wenn das Repo öffentlich ist.
 
 ## Doku auf GitHub Pages
 
-Der Workflow veröffentlicht die Doku bei jedem Release. Die Startseite zeigt
-die Version, das Build-Datum und den Commit-Hash.
+Die Doku steht unter <https://seletz.github.io/passierschein/>.
+
+Zwei Workflows veröffentlichen sie:
+
+- Der Workflow `pages.yml` veröffentlicht den Stand von `develop` nach jedem
+  Push (Stefan, 2026-11-12).
+- Der Release-Workflow veröffentlicht die Doku eines Tags.
+
+Online ist immer die jüngste Veröffentlichung. Die Startseite zeigt die
+Version, das Build-Datum und den Commit-Hash. Nach einem Release zeigt die
+Site deshalb die Doku des Tags, bis der nächste Push auf `develop` folgt.
 
 Voraussetzung: GitHub Pages ist im Repo aktiviert, mit der Quelle „GitHub
 Actions“. Eine Site auf GitHub Pages ist öffentlich, auch wenn das Repo
