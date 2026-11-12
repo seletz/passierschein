@@ -1,0 +1,9 @@
+id: G33
+zustand: eingeloest
+titel: Vollbild, Wechsel des Arbeitsbereichs, Zeitablauf und Meldung sind am Bildschirm nicht geprüft
+bezug: '#39'
+schluessel: '#39/praxistest-rest'
+lauf: '2.0'
+branch: docs/39-praxistest-g4
+reserviert_am: '2026-11-12'
+eingeloest_am: '2026-11-12'

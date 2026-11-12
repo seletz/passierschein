@@ -18,7 +18,7 @@ public final class TouchIDAuthenticator: Authenticator {
         let context = LAContext()
         // An empty title hides the button "Use Password".
         context.localizedFallbackTitle = ""
-        context.localizedCancelTitle = UIText.authCancelTitle
+        context.localizedCancelTitle = UIText.authCancelTitle()
         // Do not accept an earlier match, for example from the unlock.
         context.touchIDAuthenticationAllowableReuseDuration = 0
         self.context = context

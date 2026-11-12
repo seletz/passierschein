@@ -190,7 +190,26 @@ struct ApprovalViewModelTests {
         m.setSelected("c1", true)
         m.setSelected("c2", true)
         await m.confirm()
-        #expect(auth.calls == ["approve 2 credentials for project beispielprojekt"])
+        #expect(auth.calls == [UIText.authReason(count: 2, project: "beispielprojekt")])
+    }
+
+    @Test("The Touch ID texts follow the language of the system")
+    func authTextsFollowSystemLanguage() {
+        #expect(UIText.authReason(count: 2, project: "beispielprojekt", language: .english)
+            == "approve 2 credentials for project beispielprojekt")
+        #expect(UIText.authReason(count: 1, project: "beispielprojekt", language: .english)
+            == "approve 1 credential for project beispielprojekt")
+        #expect(UIText.authReason(count: 2, project: "beispielprojekt", language: .german)
+            == "2 Zugangsdaten für das Projekt beispielprojekt freigeben")
+        #expect(UIText.authReason(count: 1, project: "beispielprojekt", language: .german)
+            == "1 Zugangsdatum für das Projekt beispielprojekt freigeben")
+        #expect(UIText.authCancelTitle(language: .german) == "Zurück")
+        #expect(UIText.authCancelTitle(language: .english) == "Back")
+        #expect(SystemLanguage.from(preferredLanguages: ["de-DE", "en-US"]) == .german)
+        #expect(SystemLanguage.from(preferredLanguages: ["de"]) == .german)
+        #expect(SystemLanguage.from(preferredLanguages: ["en-DE", "de-DE"]) == .english)
+        #expect(SystemLanguage.from(preferredLanguages: ["fr-FR"]) == .english)
+        #expect(SystemLanguage.from(preferredLanguages: []) == .english)
     }
 
     // MARK: Lifetime (D32)
