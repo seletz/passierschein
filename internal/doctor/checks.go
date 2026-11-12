@@ -9,7 +9,9 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/seletz/passierschein/internal/backend"
 	"github.com/seletz/passierschein/internal/config"
+	"github.com/seletz/passierschein/internal/tokenfile"
 )
 
 // configCheck checks that the configuration loads, and each project.
@@ -251,7 +253,64 @@ func (c backendCheck) Run(_ context.Context, st *State) []Result {
 	if st.Status == nil {
 		return nil
 	}
-	return component(c.Name(), c.env.Backend(st.Status), "unlock the vault app of the backend (for 1Password: unlock it) and check that it runs")
+	comp := c.env.Backend(st.Status)
+	next := "unlock the vault app of the backend (for 1Password: unlock it) and check that it runs"
+	if st.Status.Backend != nil && st.Status.Backend.Kind == string(backend.KindOnePassword) {
+		// F12: the service account has no lock. Locked means: 1Password
+		// rejects the token.
+		switch comp.State {
+		case StateLocked:
+			comp.Detail = "1Password rejects the token of the service account (revoked, expired or wrong)"
+			next = "create a new token for the service account, write it to the token file (mode 0600) and restart the daemon"
+		case StateUnreachable:
+			comp.Detail = "1Password does not answer (network, rate limit or time limit); the daemon log names the class of the error"
+			next = "check the network connection; the daemon tries again by itself; each request ends with backend_unavailable until then"
+		}
+	}
+	return component(c.Name(), comp, next)
+}
+
+// tokenFileCheck checks the token file of the 1Password backend: it exists,
+// it is a regular file of the user, and its mode is 0600 (G3, working
+// assumption of stage 3). It never reads the content.
+type tokenFileCheck struct {
+	env  Env
+	goos string
+}
+
+func (tokenFileCheck) Name() string { return "1password token" }
+
+func (c tokenFileCheck) Run(_ context.Context, st *State) []Result {
+	if st.Config == nil {
+		return nil
+	}
+	if c.goos != "darwin" {
+		return []Result{ok(c.Name(), "not used: the 1Password backend is part of the macOS build only")}
+	}
+	kind := ""
+	if st.Status != nil && st.Status.Backend != nil {
+		kind = st.Status.Backend.Kind
+	}
+	if kind == string(backend.KindFake) {
+		return []Result{ok(c.Name(), "not used: the daemon runs with the backend fake")}
+	}
+	path := st.Config.Backend.OnePassword.TokenFile
+	fi, err := c.env.Lstat(path)
+	switch {
+	case isMissing(err) && kind == string(backend.KindOnePassword):
+		return []Result{finding(c.Name(), "the token file of the 1Password backend does not exist",
+			path+" does not exist; the running daemon holds the token in memory, but its next start fails",
+			"write the token of the service account to "+path+" with the mode 0600 (how-to: 1Password-Backend einrichten)")}
+	case isMissing(err):
+		return []Result{ok(c.Name(), "%s does not exist; only a38 serve --backend 1password needs it", path)}
+	case err != nil:
+		return []Result{finding(c.Name(), "the token file cannot be read", errText(err), "check the path "+path)}
+	}
+	if err := tokenfile.CheckInfo(fi, os.Getuid()); err != nil {
+		return []Result{finding(c.Name(), "the token file is not safe", path+": "+errText(err),
+			"make it a regular file of your user and run: chmod 600 "+path+"; then restart the daemon")}
+	}
+	return []Result{ok(c.Name(), "%s: regular file of the user, mode 0600 (content not read)", path)}
 }
 
 // uiCheck reports the approval UI state as far as it is known.

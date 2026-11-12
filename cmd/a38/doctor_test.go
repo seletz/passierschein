@@ -59,6 +59,9 @@ projects:
 paths:
   socket_dir: /tmp/a38-doctor/run
   audit_file: /tmp/a38-doctor/audit.db
+backend:
+  onepassword:
+    token_file: /tmp/a38-doctor/onepassword-token
 `))
 	if err != nil {
 		t.Fatal(err)
@@ -80,6 +83,8 @@ func (e *fakeEnv) Lstat(path string) (fs.FileInfo, error) {
 	switch {
 	case strings.HasSuffix(path, ".sock"):
 		return fakeInfo{mode: fs.ModeSocket | 0o600}, nil
+	case strings.HasSuffix(path, "onepassword-token"):
+		return nil, fs.ErrNotExist
 	case strings.HasSuffix(path, "audit.db"):
 		if !e.auditExist {
 			return nil, fs.ErrNotExist

@@ -82,6 +82,10 @@ bash scripts/linux-deps-check.sh --self-test
 bash scripts/linux-deps-check.sh
 """
 
+[tasks."test:onepassword"]
+description = "macOS only, opt-in, not part of check: integration test T15 of the 1Password backend; reads only the vault passierschein.dev; needs A38_OP_TOKEN_FILE"
+run = "bash scripts/onepassword-integration.sh"
+
 [tasks.check]
 description = "All checks of CI: fmt, vet, lint, test, vuln, secrets, tools:check, deps:linux:check"
 depends = ["fmt", "vet", "lint", "test", "vuln", "secrets", "tools:check", "deps:linux:check"]

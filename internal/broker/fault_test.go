@@ -3,6 +3,7 @@ package broker
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"slices"
 	"strings"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"github.com/seletz/passierschein/internal/approval"
 	"github.com/seletz/passierschein/internal/approval/fakeui"
 	"github.com/seletz/passierschein/internal/audit"
+	"github.com/seletz/passierschein/internal/backend"
 	"github.com/seletz/passierschein/internal/clock"
 	"github.com/seletz/passierschein/internal/protocol"
 	"github.com/seletz/passierschein/internal/session"
@@ -475,5 +477,16 @@ func TestStatusBackendAndUI(t *testing.T) {
 				t.Errorf("status is not valid: %v", err)
 			}
 		})
+	}
+}
+
+// F12, F20: the status names the backend kind, so that a38 doctor checks
+// the token file only for the 1Password backend.
+func TestStatusBackendKind(t *testing.T) {
+	h := newHarness(t)
+	h.b = New(h.cfg, h.be, h.rec, h.store, h.clk, slog.New(slog.DiscardHandler), WithBackendKind(backend.KindOnePassword))
+	st, e := h.b.Status(context.Background(), &protocol.Status{ID: "st"})
+	if e != nil || st.Backend == nil || st.Backend.Kind != string(backend.KindOnePassword) {
+		t.Fatalf("status = %+v, %v", st, e)
 	}
 }
