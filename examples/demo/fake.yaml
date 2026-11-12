@@ -1,0 +1,16 @@
+# Fake backend of the demo rehearsal (DEMO_BACKEND=fake). Same vault,
+# items and fields as the test vault passierschein.dev. All values are
+# obviously fake.
+vaults:
+  - name: passierschein.dev
+    items:
+      - name: datenbank-dev
+        fields:
+          - name: username
+            value: demo-benutzer
+          - name: password
+            value: fake-passwort-nur-fuer-die-probe
+      - name: objektspeicher-dev
+        fields:
+          - name: access-key
+            value: fake-zugriffsschluessel-nur-fuer-die-probe

@@ -49,6 +49,25 @@ Die Einzelheiten stehen in der [Referenz der Freigabe-App](85-freigabe-app.md).
 | `test:onepassword:ci` | Nur in der CI (Workflow `macos.yml`). Schreibt das Token aus `OP_SERVICE_ACCOUNT_TOKEN` in eine temporäre Datei mit `0600` und führt denselben Test aus. Scheitert, wenn das Secret fehlt ([CI](55-ci.md)). |
 | `test:onepassword` | Nur macOS, nur von Hand, nicht Teil von `check`. Führt den Integrationstest des 1Password-Backends gegen den Vault `passierschein.dev` aus. Der Test liest nur. Er braucht `A38_OP_TOKEN_FILE` ([1Password-Backend einrichten](../how-to/30-1password-backend-einrichten.md#integrationstest)). |
 
+## Demo
+
+Die Tasks laufen nur auf macOS und nur von Hand.
+Sie gehören nicht zu `check` und laufen nie in der CI.
+Den Ablauf beschreibt [Demo vorführen](../how-to/50-demo-vorfuehren.md).
+Ohne Variable gilt die echte Demo: Der Aufbau installiert `~/.local/bin/a38`, `~/Applications/Passierschein.app`, `~/.config/a38/config.yaml` und `~/develop/demo-projekt`.
+Mit `DEMO_BACKEND=fake` bei jedem Task gilt die Probe in `/tmp/a38-probe`; sie berührt nichts anderes.
+
+| Task | Zweck |
+|---|---|
+| `demo:setup` | Baut `a38` und die Freigabe-App und installiert die Demo. Überschreibt nie, was er nicht selbst installiert hat. Eine andere Konfiguration verschiebt er nur mit `DEMO_FORCE_CONFIG=1`. |
+| `demo:preflight` | Prüft die Demo mit Zeilen `PASS` und `FAIL`. Startet nichts und liest kein Token. |
+| `demo:start` | Führt die Prüfung aus und startet den Daemon der Demo im Vordergrund. In der Probe wählt `DEMO_UI` die Freigabe: `auto-approve`, `auto-deny` oder `debug-app`. |
+| `demo:status` | Zeigt `a38 doctor`, die Grants, `a38 fault status`, die letzten Einträge des Audit-Logs und `a38 audit verify`. |
+| `demo:request` | Schickt einen Akt aus `examples/demo/requests` an `a38 mcp`, ohne Agent. Die Ausgabe maskiert jeden Wert. Aufruf: `mise run demo:request -- akt2`. |
+| `demo:fault` | Entzieht dem Verzeichnis des Audit-Logs das Schreibrecht. Die nächste Anfrage löst die globale Sperre aus. |
+| `demo:fault:fix` | Stellt den alten Modus des Verzeichnisses wieder her und nennt den nächsten Schritt `a38 fault clear`. |
+| `demo:teardown` | Entfernt, was `demo:setup` installiert hat. Behält Konfiguration und Audit-Log; `DEMO_PURGE=1` verschiebt die Konfiguration nach `.bak` und löscht `~/.local/state/a38`. |
+
 ## Pull Requests
 
 | Task | Zweck |
