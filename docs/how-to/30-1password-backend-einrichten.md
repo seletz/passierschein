@@ -26,6 +26,9 @@ Die Token-Datei bleibt als Ausweichweg für Entwicklung und CI.
 
     Die Messungen dazu stehen im [Spike zum Schlüsselbund](../explanation/spikes/50-token-im-schluesselbund.md).
 
+Die Konfigurationsdatei mit den Vaults und Projekten legst du vorher an: [Konfiguration anlegen und ändern](26-konfiguration-anlegen-und-aendern.md).
+`a38 config init` schreibt `token_source: keychain` ausdrücklich in die Datei.
+
 ## Was der Service Account kann und was nicht
 
 - Er liest die Items der Vaults, die du beim Anlegen wählst. Diese Anleitung wählt genau einen Vault.
