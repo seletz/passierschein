@@ -101,9 +101,17 @@ Erwartet: eine Zeile mit der Version des Release, dem Commit und der Bauzeit, zu
 ## Konfiguration anlegen
 
 `a38` liest die Konfiguration aus `~/.config/a38/config.yaml` ({{ ref("D49") }}).
-Sie nennt die Vaults und die Projekte.
-Ein Beispiel und den Aufbau zeigt [1Password-Backend einrichten](30-1password-backend-einrichten.md#konfiguration); den Aufbau erklärt die [Architektur](../explanation/architektur.md).
-Die Datei legst du heute von Hand an.
+Du legst sie mit Befehlen an, nicht von Hand:
+
+```sh
+a38 config init
+a38 config vault add passierschein.dev --environment dev
+a38 config project add beispielprojekt --path ~/develop/beispielprojekt --vault passierschein.dev
+a38 config validate
+```
+
+Ersetze die Namen durch deine Vaults und Projekte.
+Alle Schritte, die Optionen und die Fehlermeldungen stehen in [Konfiguration anlegen und ändern](26-konfiguration-anlegen-und-aendern.md).
 
 ## Token ablegen
 

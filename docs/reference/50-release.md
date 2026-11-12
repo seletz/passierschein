@@ -155,6 +155,9 @@ Levels for Software Artifacts).
 GitHub bietet Atteste für private Repos nur in GitHub Enterprise Cloud an.
 Der Schritt läuft deshalb nur, wenn das Repo öffentlich ist.
 
+Eine Signatur der Prüfsummendatei mit cosign gibt es nicht: Eine schlüssellose Signatur schreibt den Namen des Repos in ein öffentliches Log.
+Die Developer ID signiert die Programme ([Grundgerüst, PR 6](https://github.com/seletz/passierschein/pull/6), Punkte 3 und 4).
+
 ## Doku auf GitHub Pages
 
 Die Doku steht unter <https://seletz.github.io/passierschein/>.
