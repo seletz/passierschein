@@ -62,7 +62,7 @@ func TestRun(t *testing.T) {
 func TestUsageListsEachCommand(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	run([]string{"--help"}, &stdout, &stderr)
-	for _, name := range []string{"serve", "mcp", "audit", "grants", "fault", "config", "doctor", "llm", "version"} {
+	for _, name := range []string{"serve", "mcp", "grants", "fault", "audit", "tui", "config", "doctor", "llm", "version"} {
 		if !strings.Contains(stdout.String(), "\n  "+name+" ") {
 			t.Errorf("the usage text does not list the command %q", name)
 		}

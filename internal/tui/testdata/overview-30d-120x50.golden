@@ -1,0 +1,50 @@
+ a38 tui   1 Overview   2 Events   3 Sessions                                                            ? help  q quit 
+ Range: 30 days, 2026-10-14 to 2026-11-12  (t changes it)
+ POPUPS         108   3.6 per day, busiest day 2026-11-02 with 8
+  approved       80   74% (partial 4)
+  denied         20   19% denial share
+  timed out       7   6% (UI failed 1, session ended 1)
+  deviations     43   40% went beyond a live grant
+  size            2   median entries per popup, largest 3
+ DELIVERIES     291   73% under a grant without popup (211), 80 after a popup
+ DENIED EARLY    21   by the policy, an unknown item or a full bundle
+ REVOCATIONS 1 · ERRORS 3 · LOCKS 1 (ended 1)
+
+ POPUPS PER DAY (largest 8)
+   8 ┤                                                         ██          ██       ▃▃ ██       
+     │▆▆ ▆▆ ▁▁       ▆▆                   ▁▁    ▆▆             ██          ██       ██ ██       
+     │██ ██ ██       ██ ▄▄       ▄▄       ██    ██             ██    ▄▄ ▄▄ ██    ▄▄ ██ ██    ▄▄ 
+     │██ ██ ██       ██ ██ ▂▂ ▇▇ ██       ██    ██ ▇▇    ▇▇    ██ ▇▇ ██ ██ ██ ▇▇ ██ ██ ██    ██ 
+     │██ ██ ██       ██ ██ ██ ██ ██       ██    ██ ██ ▅▅ ██    ██ ██ ██ ██ ██ ██ ██ ██ ██ ▅▅ ██ 
+   0 └──────────────────────────────────────────────────────────────────────────────────────────
+      10-14                                                                              11-12
+
+ ERRORS BY CODE  backend_unavailable 1, daemon_faulted 1, ui_failed 1
+
+ BUSIEST SESSIONS                            REQ  POP  DEL │  BUSIEST PROJECTS                            REQ  POP  DEL
+  demo-review                                151   42  130 │   demo-projekt                               210   62  178
+  beispiel-koordinator                        81   27   69 │   beispielprojekt                            132   46  113
+  demo-migration                              59   20   48 │ 
+  beispiel-tests                              51   19   44 │ 
+
+ MOST REQUESTED CREDENTIALS                                                                             REQ  DEL  DENY
+  op://demo.app.k8s-dev/api-token-dev/credential                                                         99   91     7
+  op://demo.app.k8s-dev/datenbank-dev/password                                                           95   84     9
+  op://demo.app.k8s-dev/storage-dev/secret-key                                                           87   78     7
+  op://beispiel.app.k8s-dev/datenbank-dev/password                                                       50   47     1
+  op://beispiel.app.k8s-dev/api-token-dev/credential                                                     46   44     2
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ~/.local/state/a38/audit.db │ 1040 entries │ chain intact │ 30 days                                                    
+ t range · f filter · j/k scroll · tab view · r refresh · ? help

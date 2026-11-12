@@ -1,0 +1,30 @@
+ a38 tui   1 Overview   2 Events   3 Sessions                                        ? help  q quit 
+ EVENTS 1–24 of 24, newest first
+   SEQ TIME        TYPE       PROJECT         SESSION             RESULT                            
+  1008 11-12 12:04 denial     demo-projekt    demo-review         denied                            
+   881 11-09 12:12 denial     demo-projekt    demo-migration      denied                            
+   869 11-09 11:11 denial     demo-projekt    demo-migration      denied                            
+   844 11-09 08:43 denial     demo-projekt    demo-review         denied                            
+   757 11-06 13:42 denial     demo-projekt    demo-review         denied                            
+   630 11-04 08:39 denial     demo-projekt    demo-migration      denied                            
+   600 11-03 09:21 denial     demo-projekt    demo-migration      denied                            
+   557 11-02 15:07 denial     demo-projekt    demo-review         denied                            
+   541 11-02 13:23 denial     demo-projekt    demo-review         denied                            
+   412 10-28 13:32 denial     beispielprojekt beispiel-tests      denied                            
+   373 10-28 09:17 denial     demo-projekt    demo-review         denied                            
+   338 10-26 09:17 denial     demo-projekt    demo-review         denied                            
+   330 10-26 08:34 denial     demo-projekt    demo-review         denied                            
+   311 10-23 11:50 denial     beispielprojekt beispiel-tests      denied                            
+   308 10-23 11:23 denial     beispielprojekt beispiel-tests      denied                            
+   217 10-20 09:38 denial     beispielprojekt beispiel-koordinat… denied                            
+   191 10-19 11:04 denial     beispielprojekt beispiel-tests      denied                            
+   172 10-19 09:25 denial     beispielprojekt beispiel-tests      denied                            
+   169 10-19 09:07 denial     beispielprojekt beispiel-tests      denied                            
+   150 10-16 12:10 denial     demo-projekt    demo-review         denied                            
+    72 10-15 13:37 denial     beispielprojekt beispiel-koordinat… denied                            
+    30 10-14 10:36 denial     demo-projekt    demo-migration      denied                            
+    22 10-14 10:02 denial     demo-projekt    demo-migration      denied                            
+     3 10-14 08:10 denial     beispielprojekt beispiel-koordinat… denied                            
+
+ audit.db │ 1040 entries │ chain intact │ 30 days │ filter: type=denial,expiry code=denied          
+ enter detail · / search · f filter · c clear · t range · r refresh

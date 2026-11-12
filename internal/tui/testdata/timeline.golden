@@ -1,0 +1,40 @@
+ a38 tui   1 Overview   2 Events   3 Sessions                                        ? help  q quit 
+ SESSION demo-review (claimed name, esc back)
+ ID s-0046 · project demo-projekt · agent coding-agent (claimed)
+ 2026-11-12 12:04 to 13:42 · requests 6 · popups 2 · grants 1 · deliveries 5 · denials 1
+
+ GRANTS
+  grant-00079  12:26 for 4h  ended 13:42 session_ended  5 deliveries  2 credentials
+
+ TIMELINE
+  11-12 12:04:00 request    -                op://demo.app.k8s-dev/datenbank-dev/password +1
+  11-12 12:04:03 bundle     -                req-00107, 2 entries
+  11-12 12:04:22 denial     denied           op://demo.app.k8s-dev/datenbank-dev/password +1
+  11-12 12:26:00 request    -                op://demo.app.k8s-dev/datenbank-dev/password +1
+  11-12 12:26:03 bundle     -                req-00108, 2 entries
+  11-12 12:26:12 decision   approved         op://demo.app.k8s-dev/datenbank-dev/password +1
+  11-12 12:26:12 grant      ok               grant-00079 for 4h, op://demo.app.k8s-dev/datenbank-de…
+  11-12 12:26:12 delivery   ok               grant-00079, op://demo.app.k8s-dev/datenbank-dev/passw…
+  11-12 12:42:00 request    -                op://demo.app.k8s-dev/datenbank-dev/password
+  11-12 12:42:00 delivery   ok               grant-00079, op://demo.app.k8s-dev/datenbank-dev/passw…
+  11-12 13:03:00 request    -                op://demo.app.k8s-dev/api-token-dev/credential
+  11-12 13:03:00 delivery   ok               grant-00079, op://demo.app.k8s-dev/api-token-dev/crede…
+  11-12 13:10:00 request    -                op://demo.app.k8s-dev/datenbank-dev/password +1
+  11-12 13:10:00 delivery   ok               grant-00079, op://demo.app.k8s-dev/datenbank-dev/passw…
+  11-12 13:26:00 request    -                op://demo.app.k8s-dev/datenbank-dev/password +1
+  11-12 13:26:00 delivery   ok               grant-00079, op://demo.app.k8s-dev/datenbank-dev/passw…
+  11-12 13:42:00 expiry     session_ended    grant-00079, op://demo.app.k8s-dev/datenbank-dev/passw…
+
+
+
+
+
+
+
+
+
+
+
+
+ ~/.local/state/a38/audit.db │ 1040 entries │ chain intact │ 7 days                                 
+ j/k scroll · esc back · q quit

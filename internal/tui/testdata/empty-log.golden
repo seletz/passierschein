@@ -1,0 +1,24 @@
+ a38 tui   1 Overview   2 Events   3 Sessions                    ? help  q quit 
+ Range: 7 days, 2026-11-06 to 2026-11-12  (t changes it)
+
+ No entries in this range.
+ Press t for a longer range, or c to clear the filter.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ~/.local/state/a38/audit.db │ 0 entries │ chain intact │ 7 days                
+ t range · f filter · j/k scroll · tab view · r refresh · ? help

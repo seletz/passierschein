@@ -1,0 +1,40 @@
+ a38 tui   1 Overview   2 Events   3 Sessions                                        ? help  q quit 
+ ENTRY 57  (esc back)
+  Time         2026-10-15 11:50:00 UTC
+  Type         request
+  Result       -
+  Detail       -
+  Request ID   -
+  Grant ID     -
+  References   op://beispiel.app.k8s-test/datenbank-test/password
+
+ VERIFIED BY THE DAEMON
+  Session ID   s-0003
+  Project      beispielprojekt
+  Origin       local, user 501, process 57456
+  Program      /usr/local/bin/coding-agent
+  Directory    /home/beispiel/develop/beispielprojekt
+
+ CLAIMS OF THE AGENT (NOT VERIFIED)
+  Session name beispiel-koordinator
+  Agent        coding-agent
+  Task         Run the integration tests of beispielprojekt
+  Reason       The tests need the login for the development database.
+
+ HASH CHAIN
+  Position     entry 57 of 1040
+  Chain        BROKEN HERE: the hash does not match the content
+  Prev hash    895d29b3a3a59e6350bf5779a72a844b770b5ba7c01ffe7cac94359985ba56dd
+  Hash         e23ec58ae069573da17c7dda72164ea3897bfea52c2472d86d08d47e210a896a
+
+
+
+
+
+
+
+
+
+
+ ~/.local/state/a38/audit.db │ 1040 entries │ CHAIN BROKEN at entry 57 │ all                        
+ j/k scroll · esc back · q quit

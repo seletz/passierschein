@@ -1,0 +1,24 @@
+ a38 tui   1 Overview   2 Events   3 Sessions                    ? help  q quit 
+ KEYS  (esc back)
+  1 2 3, tab   switch the view: overview, events, sessions
+  j k, ↓ ↑     move or scroll; pgdown pgup, g G: start and end
+  enter        detail of an event, timeline of a session
+  esc          back
+  /            search text in the events
+  f            filter: project= session= ref= type= code=
+  c            clear the filter and the search
+  t            time range: today, 7 days, 30 days, all
+  r            read the audit log again and check the chain
+  ?            this help
+  q, ctrl+c    quit
+
+ NOTES
+  The view only reads the audit log. It never writes and never talks to the
+  daemon.
+  The filter for project and session also selects the figures. The filter for
+  ref, type and code and the search select only the events.
+  Session name, agent, task and reason are claims of the agent and not
+  verified.
+  The how-to "Freigaben auswerten" explains each figure.
+ ~/.local/state/a38/audit.db │ 1040 entries │ chain intact │ 7 days             
+ j/k scroll · esc back · q quit

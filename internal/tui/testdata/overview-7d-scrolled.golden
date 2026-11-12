@@ -1,0 +1,24 @@
+ a38 tui   1 Overview   2 Events   3 Sessions                    ? help  q quit 
+ POPUPS PER DAY (largest 8)
+   8 ┤█████             ▃▃▃▃▃ █████             
+     │█████             █████ █████             
+     │█████       ▄▄▄▄▄ █████ █████       ▄▄▄▄▄ 
+     │█████ ▇▇▇▇▇ █████ █████ █████       █████ 
+     │█████ █████ █████ █████ █████ ▅▅▅▅▅ █████ 
+   0 └──────────────────────────────────────────
+      11-06 11-07 11-08 11-09 11-10 11-11 11-12
+
+ BUSIEST SESSIONS        REQ  POP  DEL │  BUSIEST PROJECTS        REQ  POP  DEL
+  demo-review             54   17   43 │   demo-projekt            70   23   55
+  beispiel-koordinator    21    7   19 │   beispielprojekt         35   12   32
+  demo-migration          16    6   12 │ 
+  beispiel-tests          14    5   13 │ 
+
+ MOST REQUESTED CREDENTIALS                                     REQ  DEL  DENY
+  op://demo.app.k8s-dev/api-token-dev/credential                 30   28     2
+  op://demo.app.k8s-dev/datenbank-dev/password                   30   26     3
+  op://demo.app.k8s-dev/storage-dev/secret-key                   28   26     2
+  op://beispiel.app.k8s-dev/datenbank-dev/password               21   21     0
+  op://beispiel.app.k8s-dev/api-token-dev/credential             10   10     0
+ ~/.local/state/a38/audit.db │ 1040 entries │ chain intact │ 7 days             
+ t range · f filter · j/k scroll · tab view · r refresh · ? help

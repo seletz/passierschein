@@ -1,0 +1,30 @@
+ a38 tui   1 Overview   2 Events   3 Sessions                                        ? help  q quit 
+ EVENTS 1–3 of 3, newest first
+   SEQ TIME        TYPE       PROJECT         SESSION             RESULT                            
+   597 11-03 07:17 error      -               -                   fault_end                         
+   596 11-03 07:04 error      beispielprojekt beispiel-koordinat… daemon_faulted                    
+   595 11-03 07:00 error      -               -                   fault_begin                       
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ~/.local/state/a38/audit.db │ 1040 entries │ chain intact │ 30 days │ search: "fault"              
+ enter detail · / search · f filter · c clear · t range · r refresh

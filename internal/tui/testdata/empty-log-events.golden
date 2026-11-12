@@ -1,0 +1,24 @@
+ a38 tui   1 Overview   2 Events   3 Sessions                    ? help  q quit 
+ EVENTS: none match the range, the filter and the search
+   SEQ TIME        TYPE       PROJECT         SESSION             RESULT        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ~/.local/state/a38/audit.db │ 0 entries │ chain intact │ 7 days                
+ enter detail · / search · f filter · c clear · t range · r refresh

@@ -27,15 +27,15 @@ Drei Arten von Prozessen entstehen daraus.
 |---|---|---|
 | `a38 serve` | Daemon | Der Prozess stellt den Agent-Socket und den Admin-Socket bereit. Er prüft die Policy, bündelt, fragt die Freigabe an, vergibt Grants, schreibt das Audit-Log und liefert aus. Nur dieser Prozess spricht mit dem Backend ({{ ref("D1") }}). |
 | `a38 mcp` | Agent | Der Prozess ist ein MCP-Server über stdio (MCP: Model Context Protocol). Das Agent-Werkzeug startet ihn je Sitzung. Er übersetzt die zwei MCP-Werkzeuge in Nachrichten für den Agent-Socket ({{ ref("D41") }}). Er verbindet sich erst beim ersten Aufruf eines Werkzeugs mit dem Daemon und sendet dann den Namen der Sitzung und den Namen des MCP-Clients in `hello`. Ist der Daemon nicht erreichbar, antwortet er mit `daemon_unavailable` und versucht es beim nächsten Aufruf erneut. Er enthält keinen Code für ein Backend. |
-| Admin-Befehle | Mensch | `a38 grants`, `a38 fault` und `a38 doctor` sprechen mit dem Daemon über den Admin-Socket ({{ ref("D44") }}). `a38 audit` liest die Audit-Datei direkt. `a38 config onepassword-token` legt das Token des Service Accounts im Schlüsselbund ab ({{ ref("D51") }}). `a38 llm` und `a38 version` brauchen keinen Daemon. |
+| Admin-Befehle | Mensch | `a38 grants`, `a38 fault` und `a38 doctor` sprechen mit dem Daemon über den Admin-Socket ({{ ref("D44") }}). `a38 audit` und `a38 tui` lesen die Audit-Datei direkt und nur lesend; `a38 tui` gibt es nur unter macOS ({{ ref("D57") }}). `a38 config onepassword-token` legt das Token des Service Accounts im Schlüsselbund ab ({{ ref("D51") }}). `a38 llm` und `a38 version` brauchen keinen Daemon. |
 
 Die Freigabe-UI ist in Stufe 1 kein eigener Prozess der Auslieferung.
 Die Varianten `auto-approve` und `auto-deny` laufen im Daemon.
 Die Variante `script` startet ein Skript als Kindprozess ({{ ref("D40") }}).
 Die Freigabe-App in Swift folgt in Stufe 2 hinter derselben Schnittstelle.
 
-Die Unterbefehle `tui` und `service` aus {{ ref("D42") }} gehören zu späteren Stufen.
-Das Binary kennt sie noch nicht.
+Der Unterbefehl `service` aus {{ ref("D42") }} gehört zu einer späteren Stufe.
+Das Binary kennt ihn noch nicht.
 
 ## Pakete
 
@@ -85,6 +85,9 @@ Die Abhängigkeitsregel gilt in jedem Fall.
 | `internal/backend/onepassword` | `Backend` über das Go-SDK von 1Password mit einem Service Account; nur im macOS-Build von `a38` ([1Password-Backend](#1password-backend)) | 50 |
 | `internal/token` | Typ `Token` mit der Ausgabe `[redacted]`; Schnittstellen `Source` und `Store`; Prüfung der Form eines Tokens | 50, 59 |
 | `internal/tokenfile` | Token-Datei als Quelle (Ausweichweg für Entwicklung und CI): Prüfung von Besitzer und Rechten, Lesen | 50 |
+| `internal/auditstats` | Kennzahlen aus den Einträgen des Audit-Logs (Popups, Ablehnungen, Abweichungen, Auslieferungen, Größe der Bündel, Rangfolgen), Sitzungen und Grants; reine Funktionen ohne Terminal und ohne Uhr; `Clean` entfernt Steuer- und Bidi-Zeichen für jede Ausgabe im Terminal ({{ ref("D57") }}) | 71 |
+| `internal/tui` | Bubble-Tea-Modell von `a38 tui`: Übersicht, Ereignisse mit Filtern und Detail, Sitzungen mit Zeitleiste; liest über eine `Source` und schreibt nie; `cmd/a38/tui_darwin.go` startet es nur im macOS-Build | 71 |
+| `internal/auditdemo` | synthetisches Audit-Log über den echten Store für Tests, Demo und Screenshots; das Programm `internal/auditdemo/gen` ist ein Werkzeug der Entwicklung und nicht Teil des Release | 71 |
 | `internal/keychain` | ein Eintrag im Schlüsselbund von macOS über Security.framework mit `purego`, ohne cgo: anlegen, lesen, löschen, beschreiben; Signatur von `a38`; nur im macOS-Build | 59 |
 
 Vier Pakete aus dem ersten Entwurf entstehen in diesem Issue nicht: `internal/grant`, `internal/policy`, `internal/bundle` und ein Sitzungsregister.
@@ -149,13 +152,16 @@ Die Standardbibliothek ist immer erlaubt.
 | `backend/onepassword` | `backend`, `protocol`, `token`; das SDK von 1Password nur in `sdk_darwin.go` |
 | `doctor` | `protocol`, `config`, `client`, `audit`, `audit/sqlite` (nur lesend), `approval` (nur die Prüfung der Datei der Freigabe-App), `backend` (nur die Namen der Arten), `token` (nur Typen), `tokenfile` (nur die Prüfung der Datei); nie `keychain` |
 | `skill` | `protocol` |
+| `auditstats` | `audit`, `protocol` |
+| `tui` | `audit`, `auditstats`, `protocol`, `clock`; Bubble Tea und Lip Gloss; nie `audit/sqlite` und kein Socket: die Einträge kommen über `tui.Source` |
+| `auditdemo` | `audit`, `protocol`, `session`, `clock` |
 | `cmd/a38` | jedes Paket |
 
 Vier Regeln folgen aus der Tabelle:
 
 1. `protocol` ist das gemeinsame Vokabular. Es importiert nichts von `a38`.
 2. Kein Paket importiert eine Umsetzung eines anderen Pakets. Nur `daemon` und `cmd/a38` verdrahten Umsetzungen.
-3. `mcp` importiert weder `backend` noch `daemon`. Der linux-Build von `a38 mcp` enthält so keinen Code für 1Password ({{ ref("D2") }}, {{ ref("T13") }}). Nur `cmd/a38/serve_onepassword_darwin.go` importiert `backend/onepassword`. Der linux-Build von `a38` enthält deshalb weder das Backend noch das SDK. Ebenso importiert nur `cmd/a38/token_store_darwin.go` das Paket `keychain`; der linux-Build enthält weder `keychain` noch `purego` ({{ ref("D53") }}). `doctor` erhält den Eintrag über eine schmale Schnittstelle ohne Methode zum Lesen des Werts.
+3. `mcp` importiert weder `backend` noch `daemon`. Der linux-Build von `a38 mcp` enthält so keinen Code für 1Password ({{ ref("D2") }}, {{ ref("T13") }}). Nur `cmd/a38/serve_onepassword_darwin.go` importiert `backend/onepassword`. Der linux-Build von `a38` enthält deshalb weder das Backend noch das SDK. Ebenso importiert nur `cmd/a38/token_store_darwin.go` das Paket `keychain`; der linux-Build enthält weder `keychain` noch `purego` ({{ ref("D53") }}). Nur `cmd/a38/tui_darwin.go` importiert `tui`; der linux-Build enthält weder `tui` noch Bubble Tea ({{ ref("D57") }}). `doctor` erhält den Eintrag über eine schmale Schnittstelle ohne Methode zum Lesen des Werts.
 4. Kein Paket ruft `time.Now`, `time.After` oder `time.NewTimer` direkt auf. Es erhält eine `clock.Clock`.
 
 ## Datenfluss einer Anfrage
@@ -584,7 +590,7 @@ Unter Linux bricht `a38 serve --backend 1password` mit „not available on this 
 Die Logik des Pakets hat keine Build-Bedingung.
 So laufen ihre Unit-Tests auch auf dem Linux-Runner der CI.
 `mise run deps:linux:check` prüft den linux-Build ({{ ref("T13") }}).
-Die Prüfung verbietet auch `purego` und das Paket `keychain`.
+Die Prüfung verbietet auch `purego`, das Paket `keychain`, das Paket `tui` und die Bibliotheken unter `charm.land` ({{ ref("D57") }}).
 Der Selbsttest der Prüfung zeigt mit dem darwin-Build und mit einem linux-Build ohne Build-Bedingung, dass die Prüfung das Backend, das SDK, `keychain` und `purego` findet.
 
 **Schmale Schnittstelle:** Das Backend ruft das SDK nur über die interne Schnittstelle `api` auf.
@@ -718,6 +724,8 @@ Jede Abhängigkeit braucht einen Grund.
 | `modernc.org/sqlite` | v1.62.0 | Audit-Log; SQLite in reinem Go, ohne cgo | Empfehlung für Issue 17 |
 | `github.com/modelcontextprotocol/go-sdk` | v1.8.0 | MCP-Server über stdio; das offizielle Go-SDK | in `go.mod` (Issue 24) |
 | `github.com/1password/onepassword-sdk-go` | v0.4.1 | 1Password-Backend mit Service Account; baut mit `CGO_ENABLED=0`; bringt `extism` und `wazero` mit; nur im macOS-Build | in `go.mod` (Issue 50) |
+| `charm.land/bubbletea/v2` | v2.1.1 | Oberfläche von `a38 tui`; nur im macOS-Build | in `go.mod` (Issue 71) |
+| `charm.land/lipgloss/v2` | v2.0.6 | Stile von `a38 tui` (16 Farben des Terminals); nur im macOS-Build | in `go.mod` (Issue 71) |
 | `github.com/ebitengine/purego` | v0.11.3 | Aufruf von Security.framework ohne cgo für den Schlüsselbund; nur im macOS-Build, nur in `internal/keychain` | in `go.mod` (Issue 59) |
 
 `purego` ist die einzige neue Abhängigkeit für den Schlüsselbund.
@@ -731,7 +739,8 @@ Die Version v3 ist erprobt und reicht für beide Dateien.
 
 Das MCP-SDK steht seit Issue 24 in `go.mod`. Das SQLite-Modul steht noch nicht darin.
 Das Issue, das ein Modul braucht, nimmt es auf und prüft dabei die aktuelle Version.
-`modernc.org/sqlite` gehört nur in den Daemon und in `a38 audit`.
+`modernc.org/sqlite` gehört nur in den Daemon, in `a38 audit` und in `a38 tui`.
+Bubble Tea v2 und Lip Gloss v2 sind die gepflegten Hauptversionen (Stand 2026-11-12). Lip Gloss v2.1.0 war drei Tage alt; `a38` nutzt v2.0.6. Bubbles braucht `a38 tui` nicht.
 Das MCP-SDK gehört nur in `internal/mcp`.
 
 ## Was diese Seite nicht entscheidet
