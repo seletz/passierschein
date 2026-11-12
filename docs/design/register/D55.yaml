@@ -1,0 +1,9 @@
+id: D55
+zustand: eingeloest
+titel: 'a38 config ändert die Konfigurationsdatei nur gezielt: keine Symlinks, Sperrdatei, kein Neuladen'
+bezug: '#63'
+schluessel: '#63/config-befehle'
+lauf: '2.0'
+branch: feat/63-config-befehle
+reserviert_am: '2026-11-12'
+eingeloest_am: '2026-11-12'

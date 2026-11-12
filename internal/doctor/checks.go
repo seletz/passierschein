@@ -299,3 +299,9 @@ func detailOr(d, def string) string {
 	}
 	return d
 }
+
+// ConfigResults runs only the configuration check of the doctor. "a38
+// config validate" uses it, so that both commands report the same findings.
+func ConfigResults(ctx context.Context, env Env) []Result {
+	return configCheck{env}.Run(ctx, &State{})
+}
