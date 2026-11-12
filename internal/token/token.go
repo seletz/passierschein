@@ -1,11 +1,12 @@
 // Package token holds the token of the 1Password service account in a
-// type that never prints it, and the interface of a token source.
+// type that never prints it, the interface of a token source and the
+// interface of a token store.
 //
-// Today the only source is the token file (package tokenfile, D51: interim
-// source for development and tests). The target is the macOS keychain
-// (decision of Stefan, 2026-11-12; spike in issue 53). A keychain source
-// implements [Source]; the backend and the wiring of "a38 serve" do not
-// change.
+// There are two sources (D51): the macOS keychain (package keychain, the
+// default; it implements [Store]) and the token file (package tokenfile,
+// the fallback for development and CI). The configuration key
+// backend.onepassword.token_source selects one. The backend does not know
+// the source.
 package token
 
 import (

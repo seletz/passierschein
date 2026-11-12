@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
-# Check that the linux build of a38 has no code for 1Password (test T13).
+# Check that the linux build of a38 has no code for 1Password (test T13)
+# and no code for the macOS keychain (D42, D53, issue 59).
 # The list of packages must not contain:
 # - a package of the 1Password SDK (github.com/1password/),
 # - a package of the WebAssembly runtime of the SDK (github.com/extism/,
 #   github.com/tetratelabs/wazero, github.com/dylibso/),
-# - a package of this module whose path contains "onepassword" or "1password".
+# - a package of this module whose path contains "onepassword" or "1password",
+# - purego (github.com/ebitengine/purego), which binds Security.framework,
+# - the keychain package of this module (internal/keychain).
 # Task deps:linux:check. With "--self-test" the script checks itself with
 # faked package lists, and then with real package lists: the darwin build
-# must contain the 1Password backend and the SDK, and a linux build with the
+# must contain the 1Password backend, the SDK, the keychain package and
+# purego, and a linux build with the
 # build constraint "darwin" switched on (as if the constraint were removed)
 # must be caught. So the check is known to guard something.
 set -euo pipefail
@@ -16,7 +20,7 @@ MODULE=github.com/seletz/passierschein
 
 # forbidden reads a package list on stdin and prints each forbidden package.
 forbidden() {
-  grep -iE "^github\.com/1password/|^github\.com/extism/|^github\.com/tetratelabs/wazero|^github\.com/dylibso/|^${MODULE}/.*(onepassword|1password)" || true
+  grep -iE "^github\.com/1password/|^github\.com/extism/|^github\.com/tetratelabs/wazero|^github\.com/dylibso/|^github\.com/ebitengine/purego|^${MODULE}/.*(onepassword|1password)|^${MODULE}/internal/keychain(/|$)" || true
 }
 
 if [ "${1:-}" = "--self-test" ]; then
@@ -34,19 +38,24 @@ if [ "${1:-}" = "--self-test" ]; then
   expect backend-digit 1 $'github.com/seletz/passierschein/internal/1password'
   expect other-module 0 $'github.com/other/onepassword'
   expect wasm-runtime 2 $'github.com/extism/go-sdk\ngithub.com/tetratelabs/wazero/api'
+  expect purego 2 $'github.com/ebitengine/purego\ngithub.com/ebitengine/purego/internal/strings'
+  expect keychain 1 $'fmt\ngithub.com/seletz/passierschein/internal/keychain'
+  expect keychain-like 0 $'github.com/seletz/passierschein/internal/keychainx\ngithub.com/other/keychain'
 
-  # must_catch <name> <package list>: the list must hold the backend and
-  # the SDK, and the filter must find them.
+  # must_catch <name> <package list>: the list must hold the backend, the
+  # SDK, the keychain package and purego, and the filter must find them.
   must_catch() {
     found=$(printf '%s\n' "$2" | forbidden)
-    for pkg in "${MODULE}/internal/backend/onepassword" "github.com/1password/onepassword-sdk-go"; do
+    for pkg in "${MODULE}/internal/backend/onepassword" "github.com/1password/onepassword-sdk-go" \
+      "${MODULE}/internal/keychain" "github.com/ebitengine/purego"; do
       if ! printf '%s\n' "$found" | grep -qxF "$pkg"; then
         echo "self-test '$1': $pkg is not found; the check would guard nothing" >&2
         fail=1
       fi
     done
   }
-  # Control: the darwin build contains the backend and the SDK.
+  # Control: the darwin build contains the backend, the SDK, the keychain
+  # package and purego.
   must_catch darwin-build "$(GOOS=darwin go list -deps ./cmd/a38)"
   # Negative test: with the constraint "darwin" switched on in a linux
   # build (as if the build constraint were removed), the check fails.
@@ -58,8 +67,8 @@ fi
 list=$(GOOS=linux go list -deps ./cmd/a38)
 found=$(printf '%s\n' "$list" | forbidden)
 if [ -n "$found" ]; then
-  echo "::error::the linux build of a38 contains code for 1Password:" >&2
+  echo "::error::the linux build of a38 contains code for 1Password or the macOS keychain:" >&2
   printf '%s\n' "$found" >&2
   exit 1
 fi
-echo "the linux build of a38 has no 1Password packages ($(printf '%s\n' "$list" | wc -l | tr -d ' ') packages checked)"
+echo "the linux build of a38 has no 1Password and no keychain packages ($(printf '%s\n' "$list" | wc -l | tr -d ' ') packages checked)"
