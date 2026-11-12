@@ -201,6 +201,21 @@ Der Test prüft:
 Optional vergleicht der Test die SHA-256-Prüfsumme des Passworts von `datenbank-dev`.
 Setze dafür `A38_OP_EXPECT_SHA256` auf die Prüfsumme in Hex.
 
+## Service Account der CI
+
+Die CI führt denselben Integrationstest auf einem macOS-Runner aus ([CI](../reference/55-ci.md)).
+Sie nutzt einen zweiten Service Account, nur für die CI, mit Lesezugriff auf `passierschein.dev`.
+So kannst du ihn widerrufen, ohne den Service Account auf deinem Mac zu berühren.
+
+Lege ihn in deinem eigenen Terminal an und setze ihn direkt als Secret des Repositorys:
+
+```sh
+op service-account create passierschein-ci --vault passierschein.dev:read_items --raw \
+  | gh secret set OP_SERVICE_ACCOUNT_TOKEN --repo seletz/passierschein
+```
+
+Das Token erscheint dabei weder im Terminal noch auf der Platte.
+
 ## Token rotieren
 
 Die offizielle Anleitung steht unter [Manage service accounts](https://www.1password.dev/service-accounts/manage-service-accounts).

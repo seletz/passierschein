@@ -45,7 +45,7 @@ Noch nicht vorhanden: die Signatur der App,
 `a38 tui`, `a38 service install`, der Hook gegen `op`, der Betrieb mit Agents
 in der VM und die Auslieferung außerhalb von dev.
 
-25 von 28 Testfällen des Designs sind belegt, 3 teilweise. Unter den belegten ist T15 ein manueller Lauf mit Token. Die
+25 von 28 Testfällen des Designs sind belegt, 3 teilweise. Die App, der darwin-Code und der 1Password-Integrationstest laufen in einem eigenen macOS-Workflow ([CI](docs/reference/55-ci.md)). Die
 Übersicht steht in der [Testabdeckung](docs/reference/90-testabdeckung.md).
 
 ## Zweck

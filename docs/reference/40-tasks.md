@@ -46,6 +46,7 @@ Die Einzelheiten stehen in der [Referenz der Freigabe-App](85-freigabe-app.md).
 
 | Task | Zweck |
 |---|---|
+| `test:onepassword:ci` | Nur in der CI (Workflow `macos.yml`). Schreibt das Token aus `OP_SERVICE_ACCOUNT_TOKEN` in eine temporäre Datei mit `0600` und führt denselben Test aus. Scheitert, wenn das Secret fehlt ([CI](55-ci.md)). |
 | `test:onepassword` | Nur macOS, nur von Hand, nicht Teil von `check`. Führt den Integrationstest des 1Password-Backends gegen den Vault `passierschein.dev` aus. Der Test liest nur. Er braucht `A38_OP_TOKEN_FILE` ([1Password-Backend einrichten](../how-to/30-1password-backend-einrichten.md#integrationstest)). |
 
 ## Pull Requests

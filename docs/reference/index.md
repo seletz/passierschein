@@ -10,6 +10,7 @@ Die Referenz beschreibt Fakten zum Nachschlagen.
 
 - [Tasks](40-tasks.md)
 - [Release](50-release.md)
+- [CI](55-ci.md)
 - [Konventionen](60-konventionen.md)
 - [Fake-Backend](70-fake-backend.md)
 - [Befehle für den Menschen](80-befehle-fuer-den-menschen.md)
