@@ -3,13 +3,13 @@ render_macros: true
 id: 'F12'
 titel: '1Password-Backend über das Go-SDK'
 bereich: 'Backends'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 2
 headless: true
 status: aktiv
 stufe: 3
-umsetzung: zu-bauen
+umsetzung: vorhanden
 implementiert: [D1, D12, D39]
 use_cases: [UC1, UC11]
 ---

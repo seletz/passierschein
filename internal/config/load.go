@@ -43,6 +43,11 @@ type rawFile struct {
 		AuditFile yaml.Node `yaml:"audit_file"`
 		UIApp     yaml.Node `yaml:"ui_app"`
 	} `yaml:"paths"`
+	Backend struct {
+		OnePassword struct {
+			TokenFile yaml.Node `yaml:"token_file"`
+		} `yaml:"onepassword"`
+	} `yaml:"backend"`
 }
 
 type rawVault struct {
@@ -125,6 +130,7 @@ func Parse(data []byte) (*Config, error) {
 	cfg.Paths.AuditFile = pathValue(raw.Paths.AuditFile, DefaultAuditFile, "paths.audit_file", fail)
 	// An empty UIApp means: search next to the a38 binary.
 	cfg.Paths.UIApp = pathValue(raw.Paths.UIApp, func() (string, error) { return "", nil }, "paths.ui_app", fail)
+	cfg.Backend.OnePassword.TokenFile = pathValue(raw.Backend.OnePassword.TokenFile, DefaultTokenFile, "backend.onepassword.token_file", fail)
 	if cfg.Paths.SocketDir != "" && len(cfg.AgentSocket()) > maxSocketPath {
 		fail("paths.socket_dir: the path of a socket is longer than %d bytes", maxSocketPath)
 	}
@@ -397,4 +403,15 @@ func DefaultAuditFile() (string, error) {
 		return "", err
 	}
 	return filepath.Join(dir, "audit.db"), nil
+}
+
+// DefaultTokenFile returns the default location of the token file of the
+// 1Password backend: $XDG_CONFIG_HOME/a38/onepassword-token, or
+// ~/.config/a38/onepassword-token. A38_CONFIG does not move it.
+func DefaultTokenFile() (string, error) {
+	dir, err := xdgDir("XDG_CONFIG_HOME", ".config")
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "a38", "onepassword-token"), nil
 }

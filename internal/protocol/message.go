@@ -279,6 +279,9 @@ const (
 // BackendStatus is the state of the backend for a38 doctor. It never
 // holds a value.
 type BackendStatus struct {
+	// Kind is the backend kind, the value of the flag --backend ("fake"
+	// or "1password"). It is empty for an old daemon.
+	Kind string `json:"kind,omitempty"`
 	// State is [BackendOK], [BackendLocked] or [BackendUnreachable].
 	State string `json:"state"`
 	// Reason is the finding in one sentence. It is empty if State is ok.
