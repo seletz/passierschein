@@ -37,11 +37,24 @@ Der Mensch startet ihn, nicht der Agent.
 | Schalter | Bedeutung |
 |---|---|
 | `--config <datei>` | Konfigurationsdatei, siehe oben. |
-| `--backend fake\|1password` | Das Backend. Ein echtes Backend verlangt `--ui app` ({{ ref("D40") }}). |
+| `--backend fake\|1password` | Das Backend. Ein echtes Backend verlangt `--ui app` ({{ ref("D40") }}). `1password` gibt es nur im macOS-Build; unter Linux bricht der Start mit „not available on this platform“ ab ({{ ref("D42") }}). |
 | `--fake-file <datei>` | YAML-Datei des Fake-Backends. Pflicht mit `--backend fake`. |
 | `--ui app\|auto-approve\|auto-deny\|script` | Die Freigabe. `app` startet die Freigabe-App. Die anderen Werte sind nur mit dem Fake-Backend erlaubt. `app` mit dem Fake-Backend ist erlaubt, um die Oberfläche zu testen. |
 | `--ui-script <befehl>` | Programm der Freigabe mit `--ui script`. |
 | `--ui-app <pfad>` | Pfad der Freigabe-App mit `--ui app`. |
+
+### Konfiguration des 1Password-Backends
+
+| Schlüssel | Standard | Bedeutung |
+|---|---|---|
+| `backend.onepassword.token_file` | `$XDG_CONFIG_HOME/a38/onepassword-token`, ohne die Variable `~/.config/a38/onepassword-token` | Token-Datei des Service Accounts. Nur `--backend 1password` liest sie. |
+
+Die Token-Datei ist eine reguläre Datei, gehört dem Benutzer und hat genau den Modus `0600` ({{ ref("D51") }}, Annahme).
+Sonst startet der Daemon mit `--backend 1password` nicht, und die Meldung nennt den Befund.
+Der Daemon liest die Datei einmal beim Start.
+Ein ungültiges Token oder ein fehlendes Netz verhindern den Start nicht: Jede Anfrage endet dann mit `backend_locked` oder `backend_unavailable`.
+`A38_CONFIG` verschiebt die Token-Datei nicht.
+Die Einrichtung beschreibt [1Password-Backend einrichten](../how-to/30-1password-backend-einrichten.md).
 
 ### Obergrenze eines Bündels
 
@@ -141,7 +154,8 @@ Der Exit-Code ist 0 ohne Befund.
 | `audit file` | Die Datei existiert und ist schreibbar, das Verzeichnis ebenfalls. |
 | `audit space` | Im Verzeichnis sind mindestens 100 MiB frei. |
 | `audit chain` | Die Hash-Kette stimmt. Die Prüfung liest die Datei nur. |
-| `backend` | Zustand des Backends, soweit der Daemon ihn meldet. |
+| `backend` | Zustand des Backends, soweit der Daemon ihn meldet: `ok`, `locked` oder `unreachable`. Für 1Password heißt `locked`: 1Password lehnt das Token ab. |
+| `1password token` | Nur macOS. Die Token-Datei des 1Password-Backends existiert, ist eine reguläre Datei des Benutzers und hat den Modus `0600`. Die Prüfung liest den Inhalt nicht. Läuft der Daemon mit dem Fake-Backend, entfällt die Prüfung. Eine fehlende Datei ist nur ein Befund, wenn der Daemon mit `--backend 1password` läuft. |
 | `approval UI` | Zustand der Freigabe-App, soweit der Daemon ihn meldet. Im Modus `app` prüft die Prüfung die Datei der App wie der Daemon vor dem Start. |
 
 Mit `--json` gibt der Befehl ein Objekt mit `ok` und der Liste `results` aus.

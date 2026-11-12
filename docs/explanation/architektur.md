@@ -77,6 +77,8 @@ Die Abhängigkeitsregel gilt in jedem Fall.
 | Admin-Befehle | `cmd/a38/admin.go`, `grants.go` und `fault.go` nutzen `internal/client` auf dem Admin-Socket; es gibt kein Paket `internal/admin` | 25 |
 | `internal/doctor` | Prüfungen von `a38 doctor`; `cmd/a38/doctor.go` | 25 |
 | `internal/skill` | eingebettete Anleitung für Agents; `cmd/a38/llm.go` | 26 |
+| `internal/backend/onepassword` | `Backend` über das Go-SDK von 1Password mit einem Service Account; nur im macOS-Build von `a38` ([1Password-Backend](#1password-backend)) | 50 |
+| `internal/tokenfile` | Token-Datei des Service Accounts: Prüfung von Besitzer und Rechten, Lesen, Typ `Token` mit der Ausgabe `[redacted]` | 50 |
 
 Vier Pakete aus dem ersten Entwurf entstehen in diesem Issue nicht: `internal/grant`, `internal/policy`, `internal/bundle` und ein Sitzungsregister.
 Kein anderes Paket braucht heute einen Typ aus ihnen.
@@ -134,7 +136,9 @@ Die Standardbibliothek ist immer erlaubt.
 | `daemon` | alle Pakete oberhalb dieser Zeile; nur `daemon` wählt die Umsetzungen aus |
 | `client` | `protocol` |
 | `mcp` | `protocol`, `config`, `version`, `client` |
-| `doctor` | `protocol`, `config`, `client`, `audit`, `audit/sqlite` (nur lesend), `approval` (nur die Prüfung der Datei der Freigabe-App) |
+| `tokenfile` | kein Paket von `a38` |
+| `backend/onepassword` | `backend`, `protocol`, `tokenfile`; das SDK von 1Password nur in `sdk_darwin.go` |
+| `doctor` | `protocol`, `config`, `client`, `audit`, `audit/sqlite` (nur lesend), `approval` (nur die Prüfung der Datei der Freigabe-App), `backend` (nur die Namen der Arten), `tokenfile` (nur die Prüfung der Datei) |
 | `skill` | `protocol` |
 | `cmd/a38` | jedes Paket |
 
@@ -142,7 +146,7 @@ Vier Regeln folgen aus der Tabelle:
 
 1. `protocol` ist das gemeinsame Vokabular. Es importiert nichts von `a38`.
 2. Kein Paket importiert eine Umsetzung eines anderen Pakets. Nur `daemon` und `cmd/a38` verdrahten Umsetzungen.
-3. `mcp` importiert weder `backend` noch `daemon`. Der linux-Build von `a38 mcp` enthält so keinen Code für 1Password ({{ ref("D2") }}, {{ ref("T13") }}).
+3. `mcp` importiert weder `backend` noch `daemon`. Der linux-Build von `a38 mcp` enthält so keinen Code für 1Password ({{ ref("D2") }}, {{ ref("T13") }}). Nur `cmd/a38/serve_onepassword_darwin.go` importiert `backend/onepassword`. Der linux-Build von `a38` enthält deshalb weder das Backend noch das SDK.
 4. Kein Paket ruft `time.Now`, `time.After` oder `time.NewTimer` direkt auf. Es erhält eine `clock.Clock`.
 
 ## Datenfluss einer Anfrage
@@ -555,6 +559,87 @@ Eine Bibliothek für die Kommandozeile bringt für sieben Unterbefehle keinen Vo
 
 Der Besitzer eines Unterbefehls ändert nur seine Datei.
 
+## 1Password-Backend
+
+Das Paket `internal/backend/onepassword` setzt {{ ref("F12") }} um.
+Es nutzt das Go-SDK von 1Password mit dem Token eines Service Accounts ({{ ref("D1") }}, {{ ref("D39") }}).
+Die Desktop-Integration des SDK nutzt es nicht.
+Die Einrichtung beschreibt die Anleitung [1Password-Backend einrichten](../how-to/30-1password-backend-einrichten.md).
+
+**Build:** Nur die Datei `sdk_darwin.go` importiert das SDK.
+Nur `cmd/a38/serve_onepassword_darwin.go` importiert das Paket.
+Der linux-Build von `a38` enthält deshalb weder das Backend noch das SDK ({{ ref("D2") }}, {{ ref("D42") }}).
+Unter Linux bricht `a38 serve --backend 1password` mit „not available on this platform“ ab.
+Die Logik des Pakets hat keine Build-Bedingung.
+So laufen ihre Unit-Tests auch auf dem Linux-Runner der CI.
+`mise run deps:linux:check` prüft den linux-Build ({{ ref("T13") }}).
+Der Selbsttest der Prüfung zeigt mit dem darwin-Build und mit einem linux-Build ohne Build-Bedingung, dass die Prüfung das Backend und das SDK findet.
+
+**Schmale Schnittstelle:** Das Backend ruft das SDK nur über die interne Schnittstelle `api` auf.
+Sie hat drei Aufrufe: Vaults auflisten, Items eines Vaults auflisten, ein Item lesen.
+Sie enthält keinen Typ des SDK.
+Die Unit-Tests ersetzen sie durch eine Fälschung im Arbeitsspeicher.
+
+**Namen ({{ ref("D12") }}, {{ ref("D27") }}, {{ ref("G23") }}):**
+
+- Das Backend fragt nur nach den Vaults der Konfiguration. Einen anderen Vault sieht `a38` nicht, auch wenn der Service Account ihn sieht. Das Backend listet nie die Items eines anderen Vaults.
+- Vault, Item und Feld vergleicht das Backend genau mit den Titeln in 1Password, ohne Angleichung. Das Fake-Backend vergleicht ebenso.
+- Das Segment des Items ist ein Titel und nie die Kennung eines Items.
+- Das Segment des Felds ist die Bezeichnung eines Felds. Das Feld darf in einem Abschnitt liegen. Die Bezeichnung muss im ganzen Item eindeutig sein.
+- Eine Referenz mit Attribut, zum Beispiel `?attribute=otp`, endet mit `not_found` ({{ ref("G25") }}). Eine Referenz mit Abschnitt hat vier Segmente und endet schon im Protokoll mit `invalid_request`.
+
+**Feste Kennungen ({{ ref("G30") }}):**
+
+- `Resolve` sucht die Kennungen von Vault, Item und Feld und bindet sie an die Referenz. Die Bindung gilt bis zum Ende des Daemons.
+- `Read` liest nur über diese Kennungen. Der Daemon liest so das Item, das der Mensch freigegeben hat. Das gilt auch nach einer Umbenennung und neben einem neuen Item mit demselben Titel.
+- Findet ein späteres `Resolve` derselben Referenz ein anderes Item, endet die Anfrage mit `backend_unavailable`. Ein Neustart des Daemons beendet alle Grants und nimmt das neue Item an ({{ ref("D33") }}).
+- Zwei Items, zwei Felder oder zwei Vaults mit demselben Titel enden mit `backend_unavailable` und nicht mit `not_found`. Die Referenz existiert, aber das Backend kann nicht sagen, welchen Eintrag der Mensch meint. Das Log nennt Vault und Titel. Der Mensch benennt einen Eintrag um.
+- Die Schnittstelle `backend.Backend` und `backend.Names` bleiben unverändert.
+
+**Lesen ohne Wert:** Das SDK hat keinen Aufruf, der die Bezeichnungen der Felder ohne die Werte liefert (v0.4.1).
+`Resolve` lädt deshalb das Item.
+Das Backend behält nur Titel und Kennungen und verwirft das Item sofort.
+`Read` lädt das Item bei jedem Aufruf neu und hält keinen Wert vor ({{ ref("D34") }}).
+
+**Fehler:** Jeder Fehler umhüllt `ErrLocked`, `ErrUnavailable` oder `ErrNotFound`.
+
+| Fehler des SDK | Fehler des Backends | Code |
+|---|---|---|
+| Token abgelehnt, abgelaufen oder widerrufen | `ErrLocked` | `backend_locked` |
+| Netz, Rate Limit, Zeitgrenze | `ErrUnavailable` | `backend_unavailable` |
+| Item oder Vault nicht gefunden | `ErrNotFound` | `not_found` |
+| jeder unbekannte Fehler | `ErrUnavailable` | `backend_unavailable` |
+
+Das SDK hat nur für das Rate Limit einen eigenen Fehlertyp.
+Das Backend erkennt die anderen Klassen an Wörtern der Meldung.
+Eine unbekannte Meldung ist deshalb `backend_unavailable`.
+Kein Fehler und keine Zeile im Log enthält einen Wert, das Token oder den Text des SDK.
+Das Log nennt nur die Klasse, zum Beispiel `authentication` oder `network`.
+Jeder Aufruf des SDK hat eine Zeitgrenze von 20 Sekunden.
+
+**Start:** Das Backend verbindet sich erst beim ersten Aufruf.
+Scheitert die Verbindung, versucht es das Backend frühestens nach 30 Sekunden erneut.
+Der Daemon prüft beim Start im Hintergrund den Zustand und schreibt ihn ins Log.
+
+| Lage beim Start | Verhalten |
+|---|---|
+| Token-Datei fehlt, ist ein Link, ist keine reguläre Datei, gehört einem anderen Benutzer oder hat nicht `0600` | Der Daemon startet nicht. Die Meldung nennt den Befund. |
+| Token ungültig | Der Daemon startet. Jede Anfrage endet mit `backend_locked`. `a38 doctor` zeigt den Zustand. |
+| kein Netz | Der Daemon startet. Jede Anfrage endet mit `backend_unavailable`, bis das Netz wieder da ist. |
+
+Ein Fehler in der Datei ist ein Fehler der Einrichtung und bleibt gleich, bis der Mensch ihn behebt.
+Einen Fehler des Tokens oder des Netzes zeigt der laufende Daemon besser als eine Schleife von Neustarts.
+Die Wahl folgt dem Wunsch nach einem ruhigen Dienst ({{ ref("D48") }}): Ein gesperrtes oder nicht erreichbares Backend ist ein Fehler der Anfrage und keine Störung des Daemons.
+
+**Token:** Die Konfiguration nennt die Token-Datei (`backend.onepassword.token_file`).
+Der Daemon liest sie einmal beim Start.
+Er hält das Token nur im Arbeitsspeicher, im Typ `tokenfile.Token`.
+Der Typ gibt in `fmt`, `slog` und JSON nur `[redacted]` aus.
+Es gibt keine Umgebungsvariable für das Token, denn jeder Kindprozess erbt die Umgebung.
+
+**Status:** `status_result` nennt im Feld `backend.kind` die Art des Backends.
+`a38 doctor` prüft damit die Token-Datei nur, wenn sie gebraucht wird.
+
 ## Teststrategie
 
 Jeder Test nennt seinen Testfall im Kommentar, zum Beispiel `// T22 (part): ...`.
@@ -563,6 +648,7 @@ Die Tests sind tabellengetrieben.
 | Mittel | Paket | Zweck |
 |---|---|---|
 | gefälschte Uhr | `clock.Fake` | Der Test stellt die Zeit mit `Advance` vor. Bündelfenster, Wartezeit der Freigabe und Laufzeit eines Grants brauchen keine echte Zeit ({{ ref("T2") }}, {{ ref("T4") }}, {{ ref("T19") }}). `BlockUntil` wartet, bis der Code seinen Timer gestartet hat. |
+| gefälschtes SDK | Test in `backend/onepassword` | Die Fälschung der Schnittstelle `api` stellt Titel, doppelte Titel, Fehler des SDK und hängende Aufrufe nach. Kein Test ohne Build-Tag ruft 1Password auf ({{ ref("F12") }}). |
 | Fake-Backend | `backend/fake` | Vaults aus einer YAML-Datei. Das Backend zählt Auflösungen und Lesezugriffe und stellt „gesperrt“ und „nicht erreichbar“ nach ({{ ref("T3") }}, {{ ref("T17") }}). |
 | gefälschte Freigabe | `approval/fakeui` | `auto-approve`, `auto-deny` und `script`. Das Skript speichert die Freigabeanfrage und die Meldungen ({{ ref("T21") }}, {{ ref("T26") }}). |
 | gefälschte Freigabe-App | `approval/appui/testdata/fakeapp` | Ein kleines Go-Programm, das ein Skript je Fall startet. Es öffnet kein Fenster und fragt nie Touch ID. Es zeichnet die Anfrage auf und antwortet nach den Schaltern des Skripts ({{ ref("T14") }}, {{ ref("T6") }}). |
@@ -577,6 +663,9 @@ Es gibt drei Ebenen von Tests:
 
 Eine vierte Art läuft nur auf macOS und nur von Hand: `mise run app:e2e` startet `a38 serve --ui app` mit der echten App im Debug-Build ({{ ref("T14") }}).
 Der Test liegt in `cmd/a38/app_e2e_test.go` hinter den Build-Tags `darwin appe2e`; `go test ./...` öffnet deshalb nie ein Fenster.
+
+Eine fünfte Art läuft nur auf macOS, nur von Hand und nur mit dem Token des Menschen: `mise run test:onepassword` prüft das 1Password-Backend gegen den Vault `passierschein.dev` ({{ ref("T15") }}).
+Der Test liegt hinter den Build-Tags `darwin opintegration` und läuft nur, wenn `A38_OP_TOKEN_FILE` gesetzt ist.
 
 Regeln für einen Test mit Prozessen:
 
@@ -596,6 +685,7 @@ Jede Abhängigkeit braucht einen Grund.
 | `golang.org/x/sys` | v0.49.0 | Peer-Daten des Sockets ohne cgo: `LOCAL_PEERCRED` und `LOCAL_PEERPID` unter macOS, `SO_PEERCRED` unter Linux | in `go.mod` |
 | `modernc.org/sqlite` | v1.62.0 | Audit-Log; SQLite in reinem Go, ohne cgo | Empfehlung für Issue 17 |
 | `github.com/modelcontextprotocol/go-sdk` | v1.8.0 | MCP-Server über stdio; das offizielle Go-SDK | in `go.mod` (Issue 24) |
+| `github.com/1password/onepassword-sdk-go` | v0.4.1 | 1Password-Backend mit Service Account; baut mit `CGO_ENABLED=0`; bringt `extism` und `wazero` mit; nur im macOS-Build | in `go.mod` (Issue 50) |
 
 `go.yaml.in/yaml` ist der gepflegte Nachfolger von `gopkg.in/yaml.v3`.
 Die Version v4.0.0 ist eine Woche alt (Stand 2026-11-11).

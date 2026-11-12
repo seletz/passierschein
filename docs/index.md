@@ -10,10 +10,12 @@ render_macros: true
 Passierschein ist ein Credential-Broker für Coding Agents. Das
 Kommandozeilenwerkzeug heißt `a38`.
 
-!!! warning "Stand: Stufe 1"
+!!! warning "Stand: Stufe 3 gebaut, Praxistest offen"
     Stufe 1 läuft lokal mit einem Fake-Backend und einer gefälschten Freigabe.
-    Es gibt noch kein 1Password-Backend und kein Popup mit Touch ID.
-    Das [Tutorial](tutorials/10-erste-schritte.md) führt durch den Ablauf.
+    Stufe 2 bringt die Freigabe-App mit Touch ID.
+    Stufe 3 bringt das 1Password-Backend mit einem Service Account (nur macOS).
+    Der Praxistest mit echtem Touch ID und echtem 1Password ist offen.
+    Das [Tutorial](tutorials/10-erste-schritte.md) führt durch den Ablauf mit dem Fake-Backend.
 
 ## Zweck
 

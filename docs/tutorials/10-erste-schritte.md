@@ -12,7 +12,7 @@ Am Ende hast du jeden Teil von Stufe 1 gesehen.
 
 !!! warning "Stufe 1 hat keinen echten Passwortmanager und kein Freigabe-Fenster"
     In diesem Tutorial liest der Daemon die Werte aus einer Datei mit erfundenen Werten (Fake-Backend).
-    Es gibt kein 1Password-Backend.
+    Das Tutorial nutzt kein 1Password-Backend.
     Es gibt kein Popup und kein Touch ID.
     Der Schalter `--ui auto-approve` gibt jede Anfrage ohne Mensch frei.
     Nutze diese Kombination nur zum Lernen und zum Testen.

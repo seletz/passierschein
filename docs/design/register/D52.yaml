@@ -1,0 +1,9 @@
+id: D52
+zustand: eingeloest
+titel: Das 1Password-Backend liest über feste Kennungen und lehnt doppelte Titel ab
+bezug: '#50'
+schluessel: '#50/feste-kennung'
+lauf: '2.0'
+branch: feat/50-onepassword-backend
+reserviert_am: '2026-11-12'
+eingeloest_am: '2026-11-12'

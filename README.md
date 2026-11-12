@@ -13,9 +13,16 @@ Freigabe-App „Passierschein“ (Swift, Ordner `app/`) zeigt das Popup und frag
 Touch ID. Der Daemon startet sie mit `a38 serve --ui app`. Der Ablauf über
 echte Prozesse läuft mit der Debug-App und gefälschter Authentifizierung
 (`mise run app:e2e`). Offen sind der Praxistest mit dem echten Touch ID am
-Bildschirm und unter OmniWM, die Signatur und das 1Password-Backend. Die
+Bildschirm und unter OmniWM und die Signatur. Die
 Anleitung [Freigabe-App lokal ausprobieren](docs/how-to/40-freigabe-app-ausprobieren.md)
 zeigt, wie du die App ohne Touch ID startest.
+
+**Stufe 3 ist gebaut, der Praxistest ist offen.** Das 1Password-Backend
+liest über das Go-SDK mit dem Token eines Service Accounts
+(`a38 serve --backend 1password --ui app`, nur macOS). Der Integrationstest
+gegen den Vault `passierschein.dev` wartet auf den Lauf mit Stefans Token.
+Die Anleitung [1Password-Backend einrichten](docs/how-to/30-1password-backend-einrichten.md)
+beschreibt Service Account, Token-Datei und Test.
 
 Was in Stufe 1 funktioniert:
 
@@ -32,11 +39,11 @@ Was in Stufe 1 funktioniert:
 - Backend aus einer YAML-Datei (`--backend fake`) und Freigabe ohne Mensch
   (`--ui auto-approve`, `auto-deny`, `script`) für Tests und zum Lernen
 
-Noch nicht vorhanden: das 1Password-Backend, die Signatur der App,
+Noch nicht vorhanden: die Signatur der App,
 `a38 tui`, `a38 service install`, der Hook gegen `op`, der Betrieb mit Agents
 in der VM und die Auslieferung außerhalb von dev.
 
-24 von 28 Testfällen des Designs sind durch automatische Tests belegt, 3 teilweise. Die
+24 von 28 Testfällen des Designs sind durch automatische Tests belegt, 4 teilweise. Die
 Übersicht steht in der [Testabdeckung](docs/reference/90-testabdeckung.md).
 
 ## Zweck
