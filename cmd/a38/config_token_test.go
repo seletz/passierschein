@@ -430,7 +430,7 @@ func TestKeychainSource(t *testing.T) {
 		want    string
 	}{
 		{"item", func() *fakeStore { s := newFakeStore(); s.value = &v; return s }, time.Second, ""},
-		{"no item", newFakeStore, time.Second, `has no item a38-test-fake/a38-test (backend.onepassword.token_source: keychain); store the token with "a38 config onepassword-token set"`},
+		{"no item", newFakeStore, time.Second, `has no item a38-test-fake/a38-test (backend.onepassword.token_source: keychain, the default); store the token with "a38 config onepassword-token set", or set backend.onepassword.token_source: file`},
 		{"interaction", func() *fakeStore {
 			s := newFakeStore()
 			s.getErr = fmt.Errorf("keychain: %w", token.ErrInteraction)

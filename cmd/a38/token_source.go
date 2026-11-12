@@ -69,7 +69,7 @@ func (s keychainSource) Token() (token.Token, error) {
 	case r.err == nil:
 		return r.tok, nil
 	case errors.Is(r.err, token.ErrNotFound):
-		return token.Token{}, fmt.Errorf("the keychain has no item %s (backend.onepassword.token_source: keychain); store the token with \"a38 config onepassword-token set\", then start the daemon again", store.Name())
+		return token.Token{}, fmt.Errorf("the keychain has no item %s (backend.onepassword.token_source: keychain, the default); store the token with \"a38 config onepassword-token set\", or set backend.onepassword.token_source: file to use the token file; then start the daemon again", store.Name())
 	case errors.Is(r.err, token.ErrInteraction):
 		return token.Token{}, fmt.Errorf("the keychain refused the item %s or needs a confirmation (%w); check it with \"a38 config onepassword-token status\" and store the token again with \"a38 config onepassword-token set --replace\"", store.Name(), r.err)
 	}

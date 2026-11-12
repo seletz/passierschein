@@ -10,8 +10,9 @@ headless: true
 status: gueltig
 use_cases: [UC11]
 beleg:
-  notiz: 'Bestätigt von Stefan 2026-11-12: Quelle keychain, Lesen nur vom Terminal, nur Metadaten, Befehl a38 config onepassword-token. Offen: Name des Eintrags a38.onepassword/service-account, --replace'
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-12'
+  notiz: 'Abgenommen in PR 61: keychain als Standard, nur Terminal, nur Metadaten, a38 config onepassword-token, Eintrag a38.onepassword/service-account, --replace; Datei für Entwicklung und CI'
 ---
 # D51 — Das Token liegt im Schlüsselbund, eine Datei mit Modus 0600 ist der Ausweichweg
 
@@ -35,8 +36,8 @@ beleg:
 
 **Begründung:** Ein Eintrag im Schlüsselbund, den `a38` selbst anlegt, ist für ein anderes Programm desselben Benutzers nicht still lesbar; das hat der Spike gemessen. Der Weg über `purego` braucht kein CGO. Die Datei ist einfach und reicht für Entwicklung und CI, wo jeder Neubau sonst einen Dialog auslöste. Ein Kindprozess erbt die Umgebung, auch ein Agent; eine Umgebungsvariable gäbe das Token weiter.
 
-**Bestätigt:** Stefan hat am 2026-11-12 bestätigt: die Quelle `keychain` als Standard, das Lesen des Tokens nur vom Terminal, nur Metadaten in jeder Ausgabe, der Befehl `a38 config onepassword-token`.
+**Bestätigt:** Stefan hat am 2026-11-12 die Umsetzung abgenommen (PR 61): die Quelle `keychain` als Standard, das Lesen des Tokens nur vom Terminal, nur Metadaten in jeder Ausgabe, den Befehl `a38 config onepassword-token`, den Eintrag `a38.onepassword` mit dem Konto `service-account` und das Ersetzen mit `--replace`. Die Token-Datei bleibt für Entwicklung und CI.
 
-**Offen:** Der Name des Eintrags (Dienst `a38.onepassword`, Konto `service-account`) und das Ersetzen mit `--replace` sind Vorschläge aus der Entwicklung; Stefan bestätigt sie im Praxistest. Die Bindung an die Developer ID gehört zu {{ ref("G5") }}.
+**Offen:** Die Bindung an die Developer ID gehört zu {{ ref("G5") }}.
 
 **Quelle:** Entwicklung der Stufe 3, [Issue 50](https://github.com/seletz/passierschein/issues/50); Spike [Issue 53](https://github.com/seletz/passierschein/issues/53); Umsetzung [Issue 59](https://github.com/seletz/passierschein/issues/59). Ziel Schlüsselbund und Freigabe des Baus: Stefan, 2026-11-12.

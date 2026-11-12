@@ -132,7 +132,7 @@ Jeder Prompt nennt a38. Sonst nutzt der Agent Werte, die er schon hat, und ruft 
     - `grant`: Eine Freigabe gilt höchstens 4 Stunden. Im Popup wählst du eine kürzere Zeit.
     - `bundle`: Anfragen einer Sitzung innerhalb von 3 Sekunden landen in einem Popup. Ein Popup hat höchstens 10 Einträge.
     - `paths.ui_app`: Der Daemon startet genau diese App. Sockets und Audit-Log liegen am Standardort.
-    - `backend.onepassword`: Nur der Daemon liest das Token des Service Accounts. Der Agent sieht es nie.
+    - `backend.onepassword`: Nur der Daemon liest das Token des Service Accounts. Der Agent sieht es nie. Die Demo nutzt die Token-Datei (`token_source: file`); der normale Weg ist der Schlüsselbund ([1Password-Backend einrichten](30-1password-backend-einrichten.md)).
     - Der Skill sagt dem Agent, wie er fragt und dass er nach einem Nein aufhört.
     - `.mcp.json` meldet `a38 mcp` im Projekt an, mit dem Namen der Sitzung `demo-praesentation`.
 - **Aussage:** Die Regeln stehen in einer lesbaren Datei; der Agent hat keinen Zugriff auf den Passwortmanager.
@@ -231,7 +231,7 @@ Jeder Prompt nennt a38. Sonst nutzt der Agent Werte, die er schon hat, und ruft 
 ### Abschluss: Was noch fehlt (30 Sekunden)
 
 - Das Release ist noch nicht signiert und notarisiert; die App ist ad hoc signiert.
-- Das Token liegt noch in einer Datei; der Weg in den Schlüsselbund ist in Prüfung.
+- Die Demo liest das Token aus einer Datei. Der Schlüsselbund (`a38 config onepassword-token set`) ist gebaut; ohne Signatur mit Developer ID fragt macOS nach jedem neuen Build nach.
 - Der Betrieb mit Agents in einer VM und die TUI `a38 tui` fehlen noch.
 
 ## Abbau

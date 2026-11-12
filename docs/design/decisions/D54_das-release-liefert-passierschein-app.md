@@ -10,8 +10,9 @@ headless: true
 status: gueltig
 use_cases: [UC11]
 beleg:
-  notiz: Vorschlag aus der Entwicklung von Issue 68, zu bestätigen durch Stefan; die Signatur ist erst im signierten Snapshot erprobt
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-12'
+  notiz: im Review von PR 69 bestätigt
 ---
 # D54 — Das Release liefert Passierschein.app mit a38 als eigenes ZIP, gebaut nach goreleaser
 
@@ -31,4 +32,4 @@ beleg:
 
 **Grenze:** Der signierte Snapshot mit der echten Developer ID ist am 2026-11-12 grün ([Lauf 43208639784](https://github.com/seletz/passierschein/actions/runs/43208639784)). Ein echtes Release und der Praxistest auf dem Mac sind offen ({{ ref("G5") }}). Das einzelne `a38` aus dem tar-Archiv und `a38` im Bundle haben verschiedene Bezeichner.
 
-**Quelle:** [Issue 68](https://github.com/seletz/passierschein/issues/68), Vorschlag aus der Entwicklung.
+**Quelle:** [Issue 68](https://github.com/seletz/passierschein/issues/68), Vorschlag aus der Entwicklung; von Stefan am 2026-11-12 im Review von PR 69 bestätigt.

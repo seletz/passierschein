@@ -664,6 +664,7 @@ Es gibt keine Umgebungsvariable für das Token, denn jeder Kindprozess erbt die 
 - `a38 config onepassword-token set` liest das Token nur vom Terminal, ohne Echo; eine Pipe oder Datei lehnt er mit dem Exit-Code 2 ab.
 - `a38 config` ist eine Gruppe mit einer Tabelle von Unterbefehlen (`cmd/a38/config.go`); weitere Unterbefehle für die Konfiguration kommen dort hinzu.
 - Die Signatur von `a38` liest das Paket mit `SecCodeCopySelf` und `SecCodeCopySigningInformation`, ohne Dialog und ohne Kindprozess.
+- Es gibt damit zwei Leser von Signaturen: `keychain` liest die eigene Signatur von `a38` über die Security-API für Anzeige und Partitionsliste, `appui` prüft die Datei der Freigabe-App mit `/usr/bin/codesign` gegen das Team von `a38`; die Zwecke und Build-Grenzen sind verschieden, eine Zusammenlegung ist offen.
 - Ein Test legt nur Einträge `a38-test-…` an. In einem Test-Binary verweigert `keychain.Store` den Eintrag des Produkts. Die Tests von `cmd/a38` nutzen eine Fälschung des Eintrags.
 - Die Grenzen bis zur Signatur mit Developer ID nennt {{ ref("G5") }}: Jeder neue Build braucht eine Bestätigung, und ein anderes Programm kann denselben Dialog auslösen.
 

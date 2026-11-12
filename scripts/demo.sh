@@ -158,9 +158,12 @@ paths:
   ui_app: $(tilde "$APP_EXE")
 
 # The 1Password backend reads the token of the service account from this
-# file (mode 0600). Only "a38 serve --backend 1password" reads it.
+# file (mode 0600). Only "a38 serve --backend 1password" reads it. The
+# demo uses the token file; without token_source the daemon would read the
+# macOS keychain (a38 config onepassword-token set).
 backend:
   onepassword:
+    token_source: file
     token_file: $(tilde "$TOKEN_FILE")
 EOF
   else
