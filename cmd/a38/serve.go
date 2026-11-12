@@ -9,11 +9,13 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"slices"
 	"strings"
 	"syscall"
 
 	"github.com/seletz/passierschein/internal/approval"
+	"github.com/seletz/passierschein/internal/approval/appui"
 	"github.com/seletz/passierschein/internal/approval/fakeui"
 	"github.com/seletz/passierschein/internal/approval/queue"
 	"github.com/seletz/passierschein/internal/backend"
@@ -45,6 +47,7 @@ type serveFlags struct {
 	ui       string
 	fakeFile string
 	script   string
+	uiApp    string
 }
 
 // parseServeFlags reads and checks the command line.
@@ -57,6 +60,7 @@ func parseServeFlags(args []string, stderr io.Writer) (serveFlags, error) {
 	fs.StringVar(&f.ui, "ui", "", "approval UI: "+strings.Join(uis, ", "))
 	fs.StringVar(&f.fakeFile, "fake-file", "", "YAML file of the fake backend (with --backend fake)")
 	fs.StringVar(&f.script, "ui-script", "", "program and arguments of the approval script, split at white space (with --ui script)")
+	fs.StringVar(&f.uiApp, "ui-app", "", "path of the approval app (with --ui app; default: paths.ui_app of the configuration, else next to the a38 binary)")
 	if err := fs.Parse(args); err != nil {
 		return f, err
 	}
@@ -72,6 +76,8 @@ func parseServeFlags(args []string, stderr io.Writer) (serveFlags, error) {
 		return f, fmt.Errorf("--backend %s needs --ui app", f.backend)
 	case f.backend == "fake" && f.fakeFile == "":
 		return f, errors.New("--backend fake needs --fake-file")
+	case f.uiApp != "" && f.ui != "app":
+		return f, errors.New("--ui-app needs --ui app")
 	case f.ui == "script" && strings.TrimSpace(f.script) == "":
 		return f, errors.New("--ui script needs --ui-script")
 	}
@@ -173,8 +179,23 @@ func newBroker(f serveFlags, cfg *config.Config, log *slog.Logger) (*broker.Brok
 		return nil, nil, nil, err
 	}
 	clk := clock.System{}
-	ui, err := fakeui.New(mode, fakeui.Options{ScriptCommand: strings.Fields(f.script), Clock: clk})
-	if err != nil {
+	var ui approval.UI
+	var closeUI func()
+	appPath := ""
+	if mode == approval.ModeApp {
+		appPath = resolveUIApp(f.uiApp, cfg.Paths.UIApp, executablePath, homeDir)
+		log.Info("approval app chosen", "path", appPath)
+		app, err := appui.New(appui.Options{Path: appPath, Clock: clk, Logger: log})
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		// A missing or bad app does not stop the daemon: each request
+		// then ends with ui_failed and a38 doctor names the finding.
+		if err := app.Check(); err != nil {
+			log.Error("the approval app cannot be used; each approval request ends with ui_failed", "path", appPath, "error", err)
+		}
+		ui, closeUI = app, app.Close
+	} else if ui, err = fakeui.New(mode, fakeui.Options{ScriptCommand: strings.Fields(f.script), Clock: clk}); err != nil {
 		return nil, nil, nil, err
 	}
 	store, err := openAuditFile(cfg.Paths.AuditFile)
@@ -182,6 +203,9 @@ func newBroker(f serveFlags, cfg *config.Config, log *slog.Logger) (*broker.Brok
 		log.Error("cannot open the audit log", "error", err)
 	}
 	closeAll := func() {
+		if closeUI != nil {
+			closeUI() // ends the apps of the notices that still run
+		}
 		if err := store.Close(); err != nil {
 			log.Error("cannot close the audit log", "error", err)
 		}
@@ -190,7 +214,7 @@ func newBroker(f serveFlags, cfg *config.Config, log *slog.Logger) (*broker.Brok
 	// the wait time (D30). A notice passes the queue at once.
 	q := queue.New(ui, clk, 0)
 	lock := fault.New(fault.Options{Store: store, UI: q, Clock: clk, Logger: log})
-	b := broker.New(cfg, be, q, store, clk, log, broker.WithUIMode(mode), broker.WithLock(lock))
+	b := broker.New(cfg, be, q, store, clk, log, broker.WithUIMode(mode), broker.WithUIApp(appPath), broker.WithLock(lock))
 	return b, lock, closeAll, nil
 }
 
@@ -202,4 +226,87 @@ func newBackend(f serveFlags) (backend.Backend, error) {
 	default:
 		return nil, fmt.Errorf("--backend %s is not implemented in stage 1", f.backend)
 	}
+}
+
+// The names of the approval app . The bundle is
+// Passierschein.app, its main executable is Contents/MacOS/Passierschein.
+// A development build is a plain executable named Passierschein.
+const (
+	appName   = "Passierschein"
+	appBundle = appName + ".app"
+)
+
+// appInBundle is the path of the app executable inside a bundle.
+var appInBundle = filepath.Join(appBundle, "Contents", "MacOS", appName)
+
+// executablePath returns the path of the running binary with links
+// resolved, or an empty string.
+func executablePath() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	if real, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = real
+	}
+	return exe
+}
+
+// appCandidates returns the places where the daemon looks for the
+// approval app, in this order, if neither the flag nor the configuration
+// names it. self is the real path of the a38 binary (links resolved), home
+// the home directory; each may be empty.
+//
+//  1. a38 runs inside a bundle <X>.app/Contents/MacOS/a38: the sibling
+//     <X>.app/Contents/MacOS/Passierschein,
+//  2. next to a38: Passierschein.app/Contents/MacOS/Passierschein, then a
+//     plain executable Passierschein,
+//  3. /Applications, then ~/Applications.
+func appCandidates(self, home string) []string {
+	var c []string
+	if self != "" {
+		dir := filepath.Dir(self)
+		if filepath.Base(dir) == "MacOS" && filepath.Base(filepath.Dir(dir)) == "Contents" &&
+			strings.HasSuffix(filepath.Dir(filepath.Dir(dir)), ".app") {
+			c = append(c, filepath.Join(dir, appName))
+		}
+		c = append(c, filepath.Join(dir, appInBundle), filepath.Join(dir, appName))
+	}
+	c = append(c, filepath.Join("/Applications", appInBundle))
+	if home != "" {
+		c = append(c, filepath.Join(home, "Applications", appInBundle))
+	}
+	return c
+}
+
+// resolveUIApp returns the path of the approval app: the flag, else the
+// configuration, else the first of [appCandidates] that exists. If none
+// exists it returns the first candidate, so that the message names a path.
+// The file checks of the daemon apply to the result.
+func resolveUIApp(flagValue, configured string, exe, home func() string) string {
+	switch {
+	case flagValue != "":
+		if abs, err := filepath.Abs(flagValue); err == nil {
+			return abs // the app runs with another working directory
+		}
+		return flagValue
+	case configured != "":
+		return configured
+	}
+	c := appCandidates(exe(), home())
+	for _, p := range c {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return c[0]
+}
+
+// homeDir returns the home directory of the user, or an empty string.
+func homeDir() string {
+	h, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return h
 }

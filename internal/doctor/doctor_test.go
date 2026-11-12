@@ -153,3 +153,43 @@ func TestSystemEnvComponents(t *testing.T) {
 		t.Errorf("backend check = %+v", res)
 	}
 }
+
+func TestSystemEnvUIApp(t *testing.T) {
+	// D6, D40: in the mode app the doctor checks the file of the approval
+	// app as the daemon does. A bad file is a finding with the cause.
+	dir := shortDir(t)
+	write := func(name string, mode os.FileMode) string {
+		p := filepath.Join(dir, name)
+		if err := os.WriteFile(p, []byte("#!/bin/sh\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(p, mode); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	tests := []struct {
+		name      string
+		path      string
+		wantState ComponentState
+		want      string
+	}{
+		{"good", write("good", 0o755), StateOK, "mode app"},
+		{"writable by others", write("bad", 0o757), StateUnreachable, "writable by group or others"},
+		{"missing", filepath.Join(dir, "nope"), StateUnreachable, "no such file"},
+		{"no path reported", "", StateUnreachable, "does not report the path"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			st := &protocol.StatusResult{UI: &protocol.UIStatus{Mode: "app", Usable: true, AppPath: tt.path}}
+			got := SystemEnv{}.UI(st)
+			if got.State != tt.wantState || !strings.Contains(got.Detail, tt.want) {
+				t.Errorf("UI = %+v, want %s with %q", got, tt.wantState, tt.want)
+			}
+			res := uiCheck{SystemEnv{}}.Run(context.Background(), &State{Status: st})
+			if len(res) != 1 || res[0].OK != (tt.wantState == StateOK) {
+				t.Errorf("check = %+v", res)
+			}
+		})
+	}
+}

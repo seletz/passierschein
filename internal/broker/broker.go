@@ -90,6 +90,12 @@ func WithUIMode(m approval.Mode) Option {
 	}
 }
 
+// WithUIApp tells the broker the path of the approval app. The status
+// shows it, so that a38 doctor can check the file.
+func WithUIApp(path string) Option {
+	return func(b *Broker) { b.uiApp = path }
+}
+
 // Broker is the decision half of the daemon. All methods are safe for
 // concurrent use.
 type Broker struct {
@@ -105,6 +111,8 @@ type Broker struct {
 	authRequired bool
 	// uiMode is the mode of the approval UI from WithUIMode, or empty.
 	uiMode approval.Mode
+	// uiApp is the path of the approval app from WithUIApp, or empty.
+	uiApp string
 
 	// slot lets only one approval request reach the UI at a time (D30).
 	// The UI that the caller gives is also a queue with the timeout;

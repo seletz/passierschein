@@ -263,13 +263,13 @@ func (c uiCheck) Run(_ context.Context, st *State) []Result {
 	if st.Status == nil {
 		return nil
 	}
-	return component(c.Name(), c.env.UI(st.Status), "start the approval app, then try the request again")
+	return component(c.Name(), c.env.UI(st.Status), "check the approval app (path, owner, mode; the reference page names the search path) and try the request again")
 }
 
 func component(name string, comp Component, next string) []Result {
 	switch comp.State {
 	case StateOK:
-		return []Result{ok(name, "ok")}
+		return []Result{ok(name, "%s", detailOr(comp.Detail, "ok"))}
 	case StateLocked:
 		return []Result{finding(name, name+" is locked", detailOr(comp.Detail, "locked"), next)}
 	case StateUnreachable:

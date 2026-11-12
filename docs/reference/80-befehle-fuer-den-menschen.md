@@ -29,6 +29,59 @@ Ein `--` beendet die Schalter.
 
 Läuft der Daemon nicht, nennen `grants` und `fault` den Grund und enden mit 1.
 
+## a38 serve
+
+`a38 serve` startet den Daemon.
+Der Mensch startet ihn, nicht der Agent.
+
+| Schalter | Bedeutung |
+|---|---|
+| `--config <datei>` | Konfigurationsdatei, siehe oben. |
+| `--backend fake\|1password` | Das Backend. Ein echtes Backend verlangt `--ui app` ({{ ref("D40") }}). |
+| `--fake-file <datei>` | YAML-Datei des Fake-Backends. Pflicht mit `--backend fake`. |
+| `--ui app\|auto-approve\|auto-deny\|script` | Die Freigabe. `app` startet die Freigabe-App. Die anderen Werte sind nur mit dem Fake-Backend erlaubt. `app` mit dem Fake-Backend ist erlaubt, um die Oberfläche zu testen. |
+| `--ui-script <befehl>` | Programm der Freigabe mit `--ui script`. |
+| `--ui-app <pfad>` | Pfad der Freigabe-App mit `--ui app`. |
+
+### Ort der Freigabe-App
+
+Der Daemon sucht den Pfad in dieser Reihenfolge:
+
+1. Schalter `--ui-app`. Ein relativer Pfad gilt ab dem Arbeitsverzeichnis von `a38 serve`.
+2. Schlüssel `paths.ui_app` der Konfigurationsdatei.
+3. Der Daemon löst die symbolischen Links seines eigenen Binarys auf. Danach sucht er der Reihe nach:
+    1. Läuft `a38` in einem Bundle (`<X>.app/Contents/MacOS/a38`), das Geschwister `<X>.app/Contents/MacOS/Passierschein`.
+    2. Neben `a38`: `Passierschein.app/Contents/MacOS/Passierschein`, danach eine einfache ausführbare Datei `Passierschein`.
+    3. `/Applications/Passierschein.app/Contents/MacOS/Passierschein`, danach `~/Applications/Passierschein.app/Contents/MacOS/Passierschein`.
+
+Der erste vorhandene Treffer gilt.
+Die Prüfung der Datei unten gilt für jeden Treffer.
+Ein Bundle in `/Applications` gehört meist dem Benutzer oder `root`; beides ist erlaubt.
+Der Daemon schreibt beim Start den gewählten Pfad ins Log.
+Die App heißt „Passierschein“, das Werkzeug `a38` ({{ ref("D50") }}).
+
+### Auslieferung
+
+Das Release kann `a38` im Bundle `Passierschein.app` ausliefern (`Contents/MacOS/a38`) und einen symbolischen Link in den `PATH` legen.
+Der Linux-Build bleibt das einzelne Binary `a38` ohne App.
+Die Paketierung gehört zur Arbeit am Release ({{ ref("G5") }}, {{ ref("D46") }}) und nicht zu diesem Stand.
+
+### Prüfung vor jedem Start
+
+Der Daemon prüft die Datei vor jedem Start der App ({{ ref("D6") }}, {{ ref("D40") }}):
+
+- Die Datei existiert und ist eine reguläre Datei. Ein symbolischer Link gilt als sein Ziel.
+- Die Datei gehört dem Benutzer des Daemons oder `root`.
+- Weder die Gruppe noch andere dürfen schreiben.
+- Der Besitzer darf die Datei ausführen.
+- Die Datei hat kein Setuid- und kein Setgid-Bit.
+
+Besteht die Datei eine Prüfung nicht, startet der Daemon die App nicht.
+Die Anfrage endet mit `ui_failed`, und der Daemon schreibt eine Zeile ins Log.
+Der Daemon selbst startet trotzdem.
+`a38 doctor` meldet den Befund in der Prüfung `approval UI`.
+Die Prüfung der Code-Signatur fehlt noch ({{ ref("G5") }}).
+
 ## a38 grants
 
 | Aufruf | Wirkung |
@@ -80,7 +133,7 @@ Der Exit-Code ist 0 ohne Befund.
 | `audit space` | Im Verzeichnis sind mindestens 100 MiB frei. |
 | `audit chain` | Die Hash-Kette stimmt. Die Prüfung liest die Datei nur. |
 | `backend` | Zustand des Backends, soweit der Daemon ihn meldet. |
-| `approval UI` | Zustand der Freigabe-App, soweit der Daemon ihn meldet. |
+| `approval UI` | Zustand der Freigabe-App, soweit der Daemon ihn meldet. Im Modus `app` prüft die Prüfung die Datei der App wie der Daemon vor dem Start. |
 
 Mit `--json` gibt der Befehl ein Objekt mit `ok` und der Liste `results` aus.
 Jedes Ergebnis hat `check`, `ok`, `detail` oder `finding`, `cause` und `next_step`.

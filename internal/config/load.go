@@ -41,6 +41,7 @@ type rawFile struct {
 	Paths struct {
 		SocketDir yaml.Node `yaml:"socket_dir"`
 		AuditFile yaml.Node `yaml:"audit_file"`
+		UIApp     yaml.Node `yaml:"ui_app"`
 	} `yaml:"paths"`
 }
 
@@ -120,6 +121,8 @@ func Parse(data []byte) (*Config, error) {
 
 	cfg.Paths.SocketDir = pathValue(raw.Paths.SocketDir, DefaultSocketDir, "paths.socket_dir", fail)
 	cfg.Paths.AuditFile = pathValue(raw.Paths.AuditFile, DefaultAuditFile, "paths.audit_file", fail)
+	// An empty UIApp means: search next to the a38 binary.
+	cfg.Paths.UIApp = pathValue(raw.Paths.UIApp, func() (string, error) { return "", nil }, "paths.ui_app", fail)
 	if cfg.Paths.SocketDir != "" && len(cfg.AgentSocket()) > maxSocketPath {
 		fail("paths.socket_dir: the path of a socket is longer than %d bytes", maxSocketPath)
 	}

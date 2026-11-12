@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/seletz/passierschein/internal/approval"
 	"github.com/seletz/passierschein/internal/audit"
 	"github.com/seletz/passierschein/internal/audit/sqlite"
 	"github.com/seletz/passierschein/internal/client"
@@ -163,6 +164,21 @@ func (SystemEnv) UI(st *protocol.StatusResult) Component {
 	}
 	if !st.UI.Usable {
 		return Component{State: StateUnreachable, Detail: "mode " + st.UI.Mode + ": " + detailOr(st.UI.Reason, "not usable")}
+	}
+	if st.UI.Mode == string(approval.ModeApp) {
+		// The doctor checks the file of the approval app as the daemon
+		// does before each start (D6, D40). The signature is G5.
+		if st.UI.AppPath == "" {
+			return Component{State: StateUnreachable, Detail: "mode app: the daemon does not report the path of the approval app"}
+		}
+		fi, err := os.Stat(st.UI.AppPath)
+		if err == nil {
+			err = approval.CheckAppFile(fi, os.Getuid())
+		}
+		if err != nil {
+			return Component{State: StateUnreachable, Detail: fmt.Sprintf("mode app, %s: %v", st.UI.AppPath, err)}
+		}
+		return Component{State: StateOK, Detail: "mode app, " + st.UI.AppPath}
 	}
 	return Component{State: StateOK, Detail: "mode " + st.UI.Mode}
 }

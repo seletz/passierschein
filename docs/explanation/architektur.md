@@ -64,6 +64,7 @@ Die Abhängigkeitsregel gilt in jedem Fall.
 | `internal/audit/sqlite` | `Store` mit SQLite und Hash-Kette; `cmd/a38/audit.go` | 17 |
 | `internal/backend/fake` | `Backend` aus einer YAML-Datei, mit Zählern und den Zuständen „gesperrt“ und „nicht erreichbar“ | 18 |
 | `internal/approval/fakeui` | `UI` für `auto-approve`, `auto-deny` und `script` | 19 |
+| `internal/approval/appui` | `UI` für `--ui app`: startet die Freigabe-App als Kindprozess | 40 |
 | `internal/approval/queue` | Warteschlange und Wartezeit: höchstens eine Freigabeanfrage zur gleichen Zeit | 19 |
 | `internal/daemon` | Sockets, Rechte, Peer-Daten, Sitzungen, Namenskonflikt, Start und Ende; `cmd/a38/serve.go` | 20 |
 | `internal/client` | Verbindung zu einem Socket des Daemons: `hello`, Anfrage senden, Antwort über die Kennung zuordnen. `internal/mcp` und die Admin-Befehle nutzen das Paket. | 20 |
@@ -127,13 +128,13 @@ Die Standardbibliothek ist immer erlaubt.
 | `backend` | `protocol` |
 | `approval` | `protocol`, `config`, `session` |
 | `audit` | `protocol`, `session` |
-| Umsetzung einer Schnittstelle (`backend/fake`, `audit/sqlite`, `approval/fakeui`, `approval/queue`) | das eigene Schnittstellenpaket und dessen erlaubte Pakete, dazu `clock` |
+| Umsetzung einer Schnittstelle (`backend/fake`, `audit/sqlite`, `approval/fakeui`, `approval/appui`, `approval/queue`) | das eigene Schnittstellenpaket und dessen erlaubte Pakete, dazu `clock` |
 | `policy`, `bundle`, `grant`, `fault` | `protocol`, `config`, `session`, `clock`, dazu die Schnittstellenpakete `approval` und `audit` |
 | `broker` | alle Pakete oberhalb dieser Zeile, aber nur die Schnittstellenpakete und keine Umsetzung |
 | `daemon` | alle Pakete oberhalb dieser Zeile; nur `daemon` wählt die Umsetzungen aus |
 | `client` | `protocol` |
 | `mcp` | `protocol`, `config`, `version`, `client` |
-| `doctor` | `protocol`, `config`, `client`, `audit`, `audit/sqlite` (nur lesend) |
+| `doctor` | `protocol`, `config`, `client`, `audit`, `audit/sqlite` (nur lesend), `approval` (nur die Prüfung der Datei der Freigabe-App) |
 | `skill` | `protocol` |
 | `cmd/a38` | jedes Paket |
 
@@ -350,6 +351,92 @@ Der Daemon vertraut einer Entscheidung nicht.
 Der Broker prüft die Kennung der Anfrage, die Auswahl und die Laufzeit.
 Eine ungültige Freigabe endet mit `ui_failed` ({{ ref("D32") }}, {{ ref("T23") }}).
 
+### Freigabe-App als Kindprozess
+
+Das Paket `internal/approval/appui` setzt `UI` für `--ui app` um ({{ ref("D6") }}, {{ ref("D40") }}, {{ ref("F11") }}).
+Die Freigabe-App heißt „Passierschein“ ({{ ref("D50") }}): Bundle `Passierschein.app`, Hauptdatei `Contents/MacOS/Passierschein`. Sie ist ein eigenes Programm.
+Der Vertrag zwischen Daemon und App ist das JSON des Pakets `internal/approval`.
+
+**Aufruf.** Der Daemon startet die App ohne Argumente, mit dem Arbeitsverzeichnis `/` und in einer eigenen Prozessgruppe.
+Die Umgebung der App enthält nur `HOME`, `USER`, `LOGNAME`, `TMPDIR`, `LANG`, `LC_ALL`, `PATH` und `__CF_USER_TEXT_ENCODING`, soweit der Daemon sie hat.
+Variablen wie `DYLD_INSERT_LIBRARIES` erreichen die App nicht.
+Die Standardfehlerausgabe der App wirft der Daemon weg.
+
+**Eine Nachricht je Start.**
+Der Daemon schreibt genau ein JSON-Objekt auf die Standardeingabe der App und schließt sie.
+Die App liest das Feld `type`:
+
+| `type` | Nachricht | Antwort der App |
+|---|---|---|
+| `approval_request` | `approval.Request` | Genau ein JSON-Objekt `approval.Decision` auf der Standardausgabe, danach Exit-Code nach der Tabelle unten. |
+| `notice` | `approval.Notice` | Keine Ausgabe. Die App zeigt die Meldung, bis der Mensch sie schließt, und endet mit 0. Sie hat keine Aktionen und keine Antwort. |
+
+Jede andere Art ist für die App ein Fehler im Aufruf (Exit-Code 64 oder 65).
+Die Anfrage enthält nie einen Secret-Wert, nur Namen ({{ ref("T14") }}).
+Die Version des Schemas ist `approval.Version`.
+Der Vertrag bleibt, wie ihn der Abschnitt „Verhältnis zum Prototyp“ beschreibt. Diese Stufe ändert das JSON nicht.
+
+**Exit-Codes.**
+Der Exit-Code und das Ergebnis müssen zusammenpassen.
+Der Daemon wertet nur die Paare der Tabelle.
+
+| Exit-Code | `outcome` | Wirkung im Daemon |
+|---|---|---|
+| 0 | `approved` | Freigabe, wenn alle Regeln unten gelten. |
+| 10 | `denied` | Ablehnung (`denied`). |
+| 11 | `timeout` | Zeitablauf (`timeout`). |
+| 12, 64, 65, 70 und jeder andere Code | beliebig, auch `error` | Fehler (`ui_failed`). |
+
+**Regeln für eine Freigabe.**
+Eine Freigabe gilt nur, wenn alle Punkte stimmen:
+
+- Die Ausgabe ist genau ein JSON-Objekt, höchstens 1 MiB groß.
+- `request_id` ist die Kennung der Anfrage.
+- `approved_credential_ids` ist nicht leer, ohne Wiederholung und eine Teilmenge der Einträge der Anfrage. Eine leere Liste ist eine Ablehnung.
+- `ttl_seconds` ist größer als 0 und nicht größer als `grant.ttl_seconds` der Anfrage.
+- `auth` ist gesetzt, `auth.ok` ist `true` und `auth.policy` ist `biometrics`, `biometrics_or_companion` oder `owner`. Die Richtlinie `skipped` gilt nie ({{ ref("D7") }}). Der Broker prüft dasselbe noch einmal, weil er keiner UI vertraut ({{ ref("T23") }}).
+
+Jede andere Lage ist keine Freigabe ({{ ref("D35") }}): Startfehler, Absturz, Signal, kein JSON, mehrere Werte, zu viel Ausgabe, falsche Kennung, fremder Eintrag, Laufzeit außerhalb des Bereichs, fehlende oder fehlgeschlagene Authentifizierung.
+Der Daemon antwortet dann mit `ui_failed` und liefert nichts.
+Der Text des Fehlers nennt nie die Ausgabe der App.
+
+**Wartezeit.**
+Die Warteschlange setzt `timeout_seconds` und beendet die Anfrage nach der Wartezeit ({{ ref("D30") }}).
+`appui` hat eine zweite Frist: `timeout_seconds` plus 5 Sekunden Schonfrist, gemessen mit `clock.Clock`.
+Nach ihrem Ablauf und beim Ende des Kontexts beendet der Daemon die App und ihre Prozessgruppe mit `SIGKILL` und wartet, bis das System den Prozess abgeholt hat.
+Es bleibt kein Zombie zurück.
+Die App zeigt die Restzeit selbst an und endet mit Exit-Code 11, wenn sie abläuft.
+
+**Meldung.**
+`Notify` startet die App mit der Nachricht `notice`, wartet nicht auf sie und gibt sofort zurück.
+Eine Meldung bleibt höchstens 10 Minuten offen.
+Danach, und beim Ende des Daemons, beendet der Daemon die App.
+Ein Fehler der App steht nur im Log ({{ ref("D36") }}, {{ ref("D48") }}, {{ ref("D28") }}).
+Die Wahl „dieselbe App, Art `notice`“ ist ein Vorschlag und wartet auf die Bestätigung durch Stefan ({{ ref("G20") }}).
+
+**Prüfung der Datei.**
+Vor jedem Start prüft der Daemon die Datei der App mit `approval.CheckAppFile`: reguläre Datei (ein Link gilt als sein Ziel), Besitzer ist der Benutzer oder `root`, weder Gruppe noch andere dürfen schreiben, der Besitzer darf ausführen, kein Setuid- oder Setgid-Bit.
+Die Prüfung schaut nicht auf das Verzeichnis der Datei.
+Zwischen der Prüfung und dem Start bleibt ein kurzes Zeitfenster.
+Eine Datei, die die Prüfung nicht besteht, startet der Daemon nie: `ui_failed` und eine Zeile im Log.
+`a38 doctor` führt dieselbe Prüfung aus; der Daemon nennt dafür den Pfad im Feld `ui.app_path` der Antwort `status`.
+
+**Erweiterungspunkt für die Signatur ({{ ref("G5") }}).**
+Die Schnittstelle `appui.Verifier` hat die Methode `Verify(ctx, path) error`.
+Der Daemon ruft sie nach der Prüfung der Datei vor jedem Start auf.
+Ein Fehler stoppt den Start.
+Der Standard `appui.NoopVerifier` tut nichts.
+Die Prüfung der Code-Signatur und der Team-ID gehört nicht zu Issue 40 und bleibt offen, bis {{ ref("G5") }} geschlossen ist.
+
+**Ort der App.**
+Der Schalter `--ui-app`, der Schlüssel `paths.ui_app` der Konfiguration und die Suche (Bundle von `a38`, neben `a38`, `/Applications`, `~/Applications`) stehen in der [Referenz der Befehle](../reference/80-befehle-fuer-den-menschen.md).
+
+**Änderungen an den gemeinsamen Paketen.**
+`approval.ValidateDecision` und `approval.CheckAppFile` sind neu.
+`fakeui.ValidateDecision` ruft die erste Funktion auf.
+`config.Paths.UIApp` und `protocol.UIStatus.AppPath` sind neue, optionale Felder.
+`broker.WithUIApp` meldet den Pfad im Status.
+
 ### Verhältnis zum Prototyp
 
 Die JSON-Form folgt dem Prototyp aus dem [Spike zur Freigabe-UI](spikes/20-freigabe-ui.md).
@@ -416,6 +503,7 @@ session_name:
 paths:
   socket_dir: ~/.local/state/a38/run
   audit_file: ~/.local/state/a38/audit.db
+  # ui_app: ~/Applications/Passierschein.app/Contents/MacOS/Passierschein   # ohne Wert: Suche, siehe Referenz
 ```
 
 Nur `version` ist Pflicht.
@@ -460,6 +548,7 @@ Die Tests sind tabellengetrieben.
 | gefälschte Uhr | `clock.Fake` | Der Test stellt die Zeit mit `Advance` vor. Bündelfenster, Wartezeit der Freigabe und Laufzeit eines Grants brauchen keine echte Zeit ({{ ref("T2") }}, {{ ref("T4") }}, {{ ref("T19") }}). `BlockUntil` wartet, bis der Code seinen Timer gestartet hat. |
 | Fake-Backend | `backend/fake` | Vaults aus einer YAML-Datei. Das Backend zählt Auflösungen und Lesezugriffe und stellt „gesperrt“ und „nicht erreichbar“ nach ({{ ref("T3") }}, {{ ref("T17") }}). |
 | gefälschte Freigabe | `approval/fakeui` | `auto-approve`, `auto-deny` und `script`. Das Skript speichert die Freigabeanfrage und die Meldungen ({{ ref("T21") }}, {{ ref("T26") }}). |
+| gefälschte Freigabe-App | `approval/appui/testdata/fakeapp` | Ein kleines Go-Programm, das ein Skript je Fall startet. Es öffnet kein Fenster und fragt nie Touch ID. Es zeichnet die Anfrage auf und antwortet nach den Schaltern des Skripts ({{ ref("T14") }}, {{ ref("T6") }}). |
 | gefälschter Broker | Test in `daemon` | Die Socket-Schicht läuft ohne Policy, Grants und Audit-Log ({{ ref("T10") }}, {{ ref("T12") }}). |
 | Fuzz-Test | `protocol` | `FuzzDecode` prüft, dass die Dekodierung bei keiner Eingabe abstürzt ({{ ref("T10") }}). |
 
