@@ -105,6 +105,7 @@ func TestServeFlags(t *testing.T) {
 		{"argument", []string{"--config", cfg, "--backend", "fake", "--ui", "auto-deny", "extra"}, "unexpected argument"},
 		{"unknown flag", []string{"--verbose"}, "flag provided but not defined"},
 		{"fake backend without file", []string{"--config", cfg, "--backend", "fake", "--ui", "auto-deny"}, "--backend fake needs --fake-file"},
+		{"ui-app without app mode", []string{"--config", cfg, "--backend", "fake", "--fake-file", "x.yaml", "--ui", "auto-deny", "--ui-app", "/x"}, "--ui-app needs --ui app"},
 		{"script without program", []string{"--config", cfg, "--backend", "fake", "--fake-file", "x.yaml", "--ui", "script"}, "--ui script needs --ui-script"},
 	}
 	for _, tt := range tests {
@@ -155,14 +156,13 @@ func TestServeConfigPriority(t *testing.T) {
 
 // TestServeStartFailures: the daemon does not start without its parts.
 func TestServeStartFailures(t *testing.T) {
-	cfg, socketDir, fakeFile := writeConfig(t)
+	cfg, socketDir, _ := writeConfig(t)
 	tests := []struct {
 		name       string
 		args       []string
 		wantStderr string
 	}{
 		{"missing fake file", []string{"--backend", "fake", "--fake-file", "/tmp/a38-missing/fake.yaml", "--ui", "auto-approve"}, "fake backend"},
-		{"approval app", []string{"--backend", "fake", "--fake-file", fakeFile, "--ui", "app"}, "not implemented"},
 		{"1password backend", []string{"--backend", "1password", "--ui", "app"}, "not implemented"},
 	}
 	for _, tt := range tests {

@@ -191,6 +191,10 @@ type Paths struct {
 	SocketDir string
 	// AuditFile is the SQLite file of the audit log.
 	AuditFile string
+	// UIApp is the path of the approval app. It is empty if the
+	// configuration does not name one; the daemon then searches next to
+	// its own binary. The flag --ui-app of "a38 serve" has priority.
+	UIApp string
 }
 
 // SessionNameRules holds the rules for the session name. They apply to the

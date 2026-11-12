@@ -218,6 +218,7 @@ func (m *StatusResult) Validate() error {
 		if err := firstError(
 			checkText("ui mode", m.UI.Mode, MaxClaimLength, false),
 			checkText("ui reason", m.UI.Reason, MaxClaimLength, true),
+			checkText("ui app_path", m.UI.AppPath, MaxClaimLength, true),
 		); err != nil {
 			return err
 		}
