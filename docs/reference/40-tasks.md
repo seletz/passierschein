@@ -96,14 +96,25 @@ keinen Zugriff.
 
 ## Release
 
+Die Tasks mit „nur CI“ laufen nur in den Workflows `release.yml` und `signed-snapshot.yml`.
+Den Ablauf beschreibt [Release](50-release.md).
+
 | Task | Zweck |
 |---|---|
-| `release` | Erhöht die Version, legt den Tag an und schiebt ihn zu GitHub. |
-| `release:snapshot` | Baut ein Release nach `dist/`, ohne etwas zu veröffentlichen. |
-| `release:sbom:check` | Prüft die SBOMs und die Prüfsummen in `dist/`. |
-| `release:publish` | Nur CI: baut und veröffentlicht das Release des Tags. |
-| `release:secrets:check` | Nur CI: prüft, ob die Secrets für die Signatur gesetzt sind. |
-| `release:signatures:check` | Prüft die Signatur der darwin-Binaries in `dist/`. |
+| `release` | Legt interaktiv den nächsten Tag an und schiebt ihn zu GitHub. |
+| `release:snapshot` | Baut Archive, SBOMs und Prüfsummen nach `dist/`, ohne Veröffentlichung. |
+| `release:sbom:check` | Prüft je Archiv (tar.gz und App-ZIP) die SBOM und die Prüfsummendatei. |
+| `release:publish` | Nur CI. goreleaser legt den Entwurf des Release an. |
+| `release:secrets:check` | Nur CI. Scheitert und nennt jedes fehlende der fünf Secrets. |
+| `release:signatures:check` | Prüft die Signatur der darwin-Binaries in `dist/` mit quill. |
+| `release:app` | Nur macOS. Legt `build/release-app/Passierschein.app` aus dem universellen Release-Build der App und dem darwin-`a38` aus `dist/` an. Unsigniert. |
+| `release:app:sign` | Nur macOS. Signiert `a38` im Bundle, dann das Bundle, mit der Developer ID aus einem temporären Schlüsselbund. `APP_SIGN_ADHOC=1` signiert ad-hoc, nie für einen Tag. |
+| `release:app:notarize` | Nur CI auf macOS. Reicht das Bundle beim Notardienst ein, wartet, heftet das Ticket an und prüft es. |
+| `release:app:check` | Nur macOS. Prüft Signatur, Bezeichner, Hardened Runtime, Developer-ID-Kette, Team-ID, Gatekeeper und Ticket. `APP_CHECK=adhoc` prüft ein ad-hoc signiertes Bundle. |
+| `release:app:package` | Nur macOS. Packt das ZIP der App, prüft die ausgepackte Kopie, schreibt die SBOM und ergänzt die Prüfsummendatei. |
+| `release:app:upload` | Nur CI. Lädt ZIP, SBOM und Prüfsummendatei in den Entwurf. |
+| `release:assets:check` | Nur CI. Prüft, dass der Entwurf jede Datei hat und die Prüfsummendatei jede nennt. |
+| `release:finalize` | Nur CI. Veröffentlicht den Entwurf. |
 
 ## Werkzeugversionen
 
@@ -112,7 +123,7 @@ keinen Zugriff.
 - Unter `[tools]` stehen die Werkzeuge für alle Tasks: Go, uv, goreleaser,
   golangci-lint, govulncheck und gitleaks.
 - Ein Werkzeug für genau einen Task steht an diesem Task unter `tools`.
-- Swift steht an jedem Task der Freigabe-App unter `tools`, nicht unter
+- Swift steht an jedem Task der Freigabe-App und an `release:app` unter `tools`, nicht unter
   `[tools]`. So installiert die CI auf Linux kein Swift.
 - Die Version von Zensical steht in `pyproject.toml` und `uv.lock`.
 
@@ -122,4 +133,4 @@ Der Task `tools:check` prüft diese Regeln:
 - Jeder Schritt `run:` eines Workflows ruft genau einen mise-Task auf.
 - Jede Action ist auf einen Commit-Hash festgelegt. Die Version steht als
   Kommentar dahinter.
-- Jeder Task `app:*` legt dieselbe Swift-Version fest.
+- Jeder Task `app:*` und der Task `release:app` legen dieselbe Swift-Version fest.

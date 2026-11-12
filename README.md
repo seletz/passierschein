@@ -13,7 +13,7 @@ Freigabe-App „Passierschein“ (Swift, Ordner `app/`) zeigt das Popup und frag
 Touch ID. Der Daemon startet sie mit `a38 serve --ui app`. Der Ablauf über
 echte Prozesse läuft mit der Debug-App und gefälschter Authentifizierung
 (`mise run app:e2e`). Offen sind der Praxistest mit dem echten Touch ID am
-Bildschirm und unter OmniWM und die Signatur. Die
+Bildschirm und unter OmniWM. Die
 Anleitung [Freigabe-App lokal ausprobieren](docs/how-to/40-freigabe-app-ausprobieren.md)
 zeigt, wie du die App ohne Touch ID startest.
 
@@ -28,8 +28,8 @@ beschreibt Service Account, Token-Datei und Test.
 
 Eine Demo des Stands baust du mit einem Befehl auf und ab.
 Die Anleitung [Demo vorführen](docs/how-to/50-demo-vorfuehren.md) enthält
-- [Live-Demo als Tutorial](docs/tutorials/20-live-demo.md): der Ablauf Schritt für Schritt mit Bildern.
 den Ablaufplan mit Agent, Popup, Touch ID, Audit-Log und Störung.
+Das Tutorial [Live-Demo](docs/tutorials/20-live-demo.md) zeigt den Ablauf Schritt für Schritt mit Bildern.
 
 Was in Stufe 1 funktioniert:
 
@@ -46,8 +46,15 @@ Was in Stufe 1 funktioniert:
 - Backend aus einer YAML-Datei (`--backend fake`) und Freigabe ohne Mensch
   (`--ui auto-approve`, `auto-deny`, `script`) für Tests und zum Lernen
 
-Noch nicht vorhanden: die Signatur der App,
-`a38 tui`, `a38 service install`, der Hook gegen `op`, der Betrieb mit Agents
+**Release mit signierter App ist gebaut, der erste Lauf mit der echten
+Developer ID ist offen.** Das Release liefert `Passierschein.app` mit `a38`
+im Bundle als ZIP, signiert mit der Developer ID, notarisiert und mit
+angeheftetem Ticket. Der Daemon prüft die Signatur der App, wenn `a38`
+selbst mit der Developer ID signiert ist. Die Anleitung
+[Release signieren und prüfen](docs/how-to/60-release-signieren-und-pruefen.md)
+beschreibt Secrets, Prüfung und Installation.
+
+Noch nicht vorhanden: `a38 tui`, `a38 service install`, der Hook gegen `op`, der Betrieb mit Agents
 in der VM und die Auslieferung außerhalb von dev.
 
 25 von 28 Testfällen des Designs sind belegt, 3 teilweise. Die App, der darwin-Code und der 1Password-Integrationstest laufen in einem eigenen macOS-Workflow ([CI](docs/reference/55-ci.md)). Die
