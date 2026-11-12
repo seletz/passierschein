@@ -252,3 +252,34 @@ Beide Befehle öffnen die Audit-Datei nur lesend.
 Der Daemon muss nicht laufen.
 `--file <audit-datei>` ersetzt den Pfad aus der Konfiguration.
 `list` kennt `--json` und gibt je Eintrag eine Zeile aus.
+
+## a38 hook
+
+`a38 hook op-guard` ist ein Hook für das Agent-Werkzeug ({{ ref("F16") }}, {{ ref("D58") }}).
+Das Agent-Werkzeug startet ihn vor jedem Befehl des Werkzeugs `Bash`.
+Der Mensch richtet ihn ein ([Hook gegen den direkten Aufruf von op einrichten](../how-to/23-hook-gegen-op-einrichten.md)).
+
+| Aufruf | Wirkung |
+|---|---|
+| `a38 hook op-guard` | Liest die Eingabe des Hooks (JSON) von stdin und entscheidet. Führt den Befehl der Eingabe nie aus. |
+| `a38 hook op-guard --print-config` | Gibt den Block `hooks` für die `settings.json` von Claude Code aus, mit dem Namen `a38` (`--scope project`, Standard). |
+| `a38 hook op-guard --print-config --scope user` | Derselbe Block mit dem absoluten Pfad des laufenden `a38`. |
+
+Der Befehl liest weder die Konfigurationsdatei noch den Daemon.
+Er ändert keine Datei.
+
+Die Exit-Codes folgen dem Vertrag des Agent-Werkzeugs, nicht der Tabelle oben:
+
+| Code | Bedeutung |
+|---|---|
+| 0 | Durchlassen. Keine Ausgabe. Auch bei einer Eingabe, die kein JSON ist, größer als 1 MiB ist oder deren Befehl kein Parser versteht; dann steht nur der Grund auf stderr, nie ein Teil der Eingabe. |
+| 2 | Blockieren. Die Meldung für den Agent steht auf stderr, stdout bleibt leer. |
+| 1 | Falscher Aufruf, zum Beispiel ein unbekannter Schalter. Das Agent-Werkzeug lässt den Befehl dann durch. |
+
+Der Hook prüft nur das Werkzeug `Bash`. Er blockiert drei Fälle:
+
+| Regel | Fall |
+|---|---|
+| `op-cli` | Ein Befehl startet `op`, auch über einen Pfad, hinter `sudo`, `env`, `command`, `exec`, `nohup`, `time`, `nice`, `timeout`, `xargs`, `find -exec`, in Pipeline, Liste, Subshell, Befehlsersetzung oder in der Zeichenkette von `bash -c`, `sh -c`, `zsh -c`, `eval` und `env -S` (bis zur Tiefe 3). |
+| `a38-token-file` | Ein Befehl nennt einen Pfad auf `/onepassword-token` als Argument oder als Eingabe (`<`). `ls`, `stat`, `test`, `[`, `echo`, `printf` und `a38` lesen die Datei nicht und passieren. |
+| `a38-keychain-token` | `security find-generic-password` mit `-w` oder `-g` für den Eintrag `a38.onepassword` oder sein Label. |

@@ -86,6 +86,7 @@ Die Abhängigkeitsregel gilt in jedem Fall.
 | `internal/token` | Typ `Token` mit der Ausgabe `[redacted]`; Schnittstellen `Source` und `Store`; Prüfung der Form eines Tokens | 50, 59 |
 | `internal/tokenfile` | Token-Datei als Quelle (Ausweichweg für Entwicklung und CI): Prüfung von Besitzer und Rechten, Lesen | 50 |
 | `internal/keychain` | ein Eintrag im Schlüsselbund von macOS über Security.framework mit `purego`, ohne cgo: anlegen, lesen, löschen, beschreiben; Signatur von `a38`; nur im macOS-Build | 59 |
+| `internal/opguard` | Hook gegen den direkten Aufruf von `op`: Eingabe des Hooks lesen, Befehl mit einem Shell-Parser prüfen, Meldung für den Agent, Block für `settings.json`; `cmd/a38/hook.go` ([Hook gegen op](#hook-gegen-op)) | 78 |
 
 Vier Pakete aus dem ersten Entwurf entstehen in diesem Issue nicht: `internal/grant`, `internal/policy`, `internal/bundle` und ein Sitzungsregister.
 Kein anderes Paket braucht heute einen Typ aus ihnen.
@@ -149,6 +150,7 @@ Die Standardbibliothek ist immer erlaubt.
 | `backend/onepassword` | `backend`, `protocol`, `token`; das SDK von 1Password nur in `sdk_darwin.go` |
 | `doctor` | `protocol`, `config`, `client`, `audit`, `audit/sqlite` (nur lesend), `approval` (nur die Prüfung der Datei der Freigabe-App), `backend` (nur die Namen der Arten), `token` (nur Typen), `tokenfile` (nur die Prüfung der Datei); nie `keychain` |
 | `skill` | `protocol` |
+| `opguard` | kein Paket von `a38`; als einziges Modul `mvdan.cc/sh/v3/syntax` |
 | `cmd/a38` | jedes Paket |
 
 Vier Regeln folgen aus der Tabelle:
@@ -578,6 +580,17 @@ Die Änderung nutzt den YAML-Baum nur, um die Zeilen zu finden; ein Neuschreiben
 Jede Änderung läuft vor dem Schreiben durch `Parse`.
 `a38 config validate` nutzt `doctor.ConfigResults`, dieselbe Prüfung wie `a38 doctor`.
 
+## Hook gegen op
+
+`a38 hook op-guard` setzt {{ ref("F16") }} und {{ ref("D15") }} um; die Einzelheiten stehen in {{ ref("D58") }}.
+Die Einrichtung beschreibt die Anleitung [Hook gegen den direkten Aufruf von op einrichten](../how-to/23-hook-gegen-op-einrichten.md).
+
+- **Vertrag:** JSON auf stdin, Exit-Code 0 (durchlassen, keine Ausgabe) oder 2 (blockieren, Meldung auf stderr). Das ist die Form von `PreToolUse` in Claude Code ([Hooks reference](https://code.claude.com/docs/en/hooks), Stand 2026-11-12). Die Gemini CLI behandelt Exit-Code 2 mit stderr gleich. Der Hook prüft nur das Werkzeug `Bash`.
+- **Im Zweifel durchlassen:** Der Rest von a38 schließt im Zweifel. Der Hook öffnet im Zweifel: Er ist keine Grenze ({{ ref("RI5") }}), und ein Fehler im Hook darf die normale Arbeit des Agents nicht anhalten. Eine Eingabe über 1 MiB, kein JSON oder ein Befehl, den kein Parser versteht, ergibt Exit-Code 0. Ein Fehler im Aufruf ergibt 1, nicht 2.
+- **Parser statt Suchmuster:** Das Paket zerlegt den Befehl mit `mvdan.cc/sh/v3/syntax`, erst als bash, dann als zsh. Ein Suchmuster unterscheidet `op read` als Befehl nicht von `git commit -m "op read"`. Es versteht weder Anführungszeichen noch Backslash, Befehlsersetzung oder Kommentare. Der Parser liefert den Baum; das Paket prüft jedes einfache Kommando darin, auch in `$( … )`, Backticks und `<( … )`. Ein eigener Tokenizer müsste dieselbe Grammatik nachbauen.
+- **Regeln:** Das Paket hält drei Regeln (`op-cli`, `a38-token-file`, `a38-keychain-token`). Den Namen des Eintrags im Schlüsselbund schreibt es selbst, weil `internal/keychain` nicht im linux-Build liegt; ein Test unter macOS vergleicht beide Namen.
+- **Linux:** Der Hook gehört zur Seite des Agents und läuft auch in der VM ({{ ref("D53") }}). Das Paket hat keine Build-Bedingung. Ein Test prüft, dass der linux-Build von `a38` das Paket enthält und dass das Paket außer der Standardbibliothek nur den Parser braucht.
+
 ## 1Password-Backend
 
 Das Paket `internal/backend/onepassword` setzt {{ ref("F12") }} um.
@@ -727,11 +740,18 @@ Jede Abhängigkeit braucht einen Grund.
 | `github.com/modelcontextprotocol/go-sdk` | v1.8.0 | MCP-Server über stdio; das offizielle Go-SDK | in `go.mod` (Issue 24) |
 | `github.com/1password/onepassword-sdk-go` | v0.4.1 | 1Password-Backend mit Service Account; baut mit `CGO_ENABLED=0`; bringt `extism` und `wazero` mit; nur im macOS-Build | in `go.mod` (Issue 50) |
 | `github.com/ebitengine/purego` | v0.11.3 | Aufruf von Security.framework ohne cgo für den Schlüsselbund; nur im macOS-Build, nur in `internal/keychain` | in `go.mod` (Issue 59) |
+| `mvdan.cc/sh/v3` | v3.14.1 | Shell-Parser für den Hook gegen `op`; nur das Paket `syntax`, nur in `internal/opguard` | in `go.mod` (Issue 78) |
 
 `purego` ist die einzige neue Abhängigkeit für den Schlüsselbund.
 Jede Go-Bibliothek für den Schlüsselbund braucht entweder cgo oder `/usr/bin/security`; der zweite Weg schützt das Token nicht ([Spike](spikes/50-token-im-schluesselbund.md)).
 Der eigene Code über `purego` ist klein und bleibt im Paket `internal/keychain`.
 `golang.org/x/sys` schaltet zusätzlich das Echo des Terminals für `a38 config onepassword-token set` ab.
+
+`mvdan.cc/sh/v3` ist der Parser von `shfmt` (BSD-3-Clause, reines Go, ohne cgo).
+Die Version v3.14.1 erschien am 2026-09-06; das Projekt wird gepflegt.
+Das Paket `syntax` importiert nur die Standardbibliothek und `mvdan.cc/sh/v3/fileutil`.
+Die übrigen Module von `mvdan.cc/sh` (Interpreter, Terminal) gelangen nicht ins Binary.
+`mise run vuln` meldet für das Modul nichts.
 
 `go.yaml.in/yaml` ist der gepflegte Nachfolger von `gopkg.in/yaml.v3`.
 Die Version v4.0.0 ist eine Woche alt (Stand 2026-11-11).

@@ -57,7 +57,7 @@ Benutzeroberfläche im Terminal.
 | 1 | Lokal mit gefälschtem Backend und gefälschter Freigabe |
 | 2 | Freigabe-App in Swift |
 | 3 | Echtes 1Password-Backend |
-| 4 | Hook gegen den direkten Aufruf von `op` |
+| 4 | Hook gegen den direkten Aufruf von `op` (`a38 hook op-guard`; gebaut, Praxistest offen) |
 | 5 | Agents in der VM |
 
 MVP bedeutet Minimum Viable Product: die kleinste nutzbare Fassung. Die

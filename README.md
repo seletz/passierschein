@@ -55,6 +55,7 @@ Was in Stufe 1 funktioniert:
 - `a38 config onepassword-token set`, `status` und `delete`: das Token des
   Service Accounts im Schlüsselbund von macOS (nur macOS)
 - `a38 llm --skill`: die Anleitung für Agents
+- `a38 hook op-guard`: der Hook gegen den direkten Aufruf von `op` (Stufe 4)
 - Backend aus einer YAML-Datei (`--backend fake`) und Freigabe ohne Mensch
   (`--ui auto-approve`, `auto-deny`, `script`) für Tests und zum Lernen
 
@@ -63,7 +64,13 @@ der App, wenn `a38` selbst mit der Developer ID signiert ist. Die Anleitung
 [Release signieren und prüfen](docs/how-to/60-release-signieren-und-pruefen.md)
 beschreibt für Maintainer die Secrets und die Prüfung eines Release.
 
-Noch nicht vorhanden: `a38 tui`, `a38 service install`, der Hook gegen `op`, der Betrieb mit Agents
+**Stufe 4 ist gebaut, der Praxistest ist offen.** Der Hook `a38 hook op-guard`
+blockiert im Agent-Werkzeug einen Befehl, der `op` startet, und verweist auf
+`request_credentials`. Er ist ein Hinweis und kein Schutz. Die Anleitung
+[Hook gegen den direkten Aufruf von op einrichten](docs/how-to/23-hook-gegen-op-einrichten.md)
+zeigt den Eintrag in Claude Code.
+
+Noch nicht vorhanden: `a38 tui`, `a38 service install`, der Betrieb mit Agents
 in der VM und Homebrew (das folgt, wenn das Repo öffentlich ist).
 
 25 von 28 Testfällen des Designs sind belegt, 3 teilweise. Die App, der darwin-Code und der 1Password-Integrationstest laufen in einem eigenen macOS-Workflow ([CI](docs/reference/55-ci.md)). Die

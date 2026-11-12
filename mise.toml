@@ -240,7 +240,9 @@ run = "bash scripts/release-finalize.sh publish"
 # ~/.config/a38/config.yaml, ~/develop/demo-projekt). DEMO_BACKEND=fake on
 # each task: the rehearsal in /tmp/a38-probe, which touches nothing else.
 [tasks."demo:setup"]
-description = "macOS only: build and install the demo (a38, app, config, demo project with .mcp.json and skill); never overwrites what it did not install; DEMO_BACKEND=fake for the rehearsal in /tmp"
+description = "macOS only: build and install the demo (a38, app, config, demo project with .mcp.json, skill and the hook op-guard); never overwrites what it did not install; DEMO_BACKEND=fake for the rehearsal in /tmp"
+# renovate: datasource=github-releases depName=jqlang/jq extractVersion=^jq-(?<version>.+)$
+tools = { jq = "1.8.2" }
 run = "bash scripts/demo.sh setup"
 
 [tasks."demo:preflight"]

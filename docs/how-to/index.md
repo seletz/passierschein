@@ -11,6 +11,7 @@ Eine Anleitung löst eine bestimmte Aufgabe.
 - [a38 aus dem Release installieren](15-a38-aus-dem-release-installieren.md)
 - [Skill für Agents installieren](20-skill-installieren.md)
 - [a38 als MCP-Server anmelden](22-mcp-server-anmelden.md)
+- [Hook gegen den direkten Aufruf von op einrichten](23-hook-gegen-op-einrichten.md)
 - [Störung finden und beheben](24-stoerung-finden-und-beheben.md)
 - [Konfiguration anlegen und ändern](26-konfiguration-anlegen-und-aendern.md)
 - [1Password-Backend einrichten](30-1password-backend-einrichten.md)

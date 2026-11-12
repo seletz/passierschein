@@ -29,7 +29,7 @@ Den Ablauf zum Mitlesen und Vorführen, Schritt für Schritt mit Bildern, zeigt 
 | `~/.local/bin/a38` | Kopie des gebauten `a38` |
 | `~/Applications/Passierschein.app` | Kopie des Release-Bundles, ad hoc signiert; die Signatur ist nach dem Kopieren geprüft |
 | `~/.config/a38/config.yaml` | Konfiguration am Standardort. Jeder Befehl `a38` braucht darum kein `--config`. |
-| `~/develop/demo-projekt` | Demo-Projekt mit `.mcp.json` und dem Skill unter `.claude/skills/a38/SKILL.md` |
+| `~/develop/demo-projekt` | Demo-Projekt mit `.mcp.json`, dem Skill unter `.claude/skills/a38/SKILL.md` und dem Hook `a38 hook op-guard` in `.claude/settings.json` |
 | `~/.local/share/a38-demo/installed` | Liste der installierten Teile für den Abbau |
 
 Der Aufbau überschreibt nie ein `a38`, eine App oder ein Projekt, das er nicht selbst installiert hat.
@@ -228,6 +228,20 @@ Jeder Prompt nennt a38. Sonst nutzt der Agent Werte, die er schon hat, und ruft 
 - **Aussage:** Kann der Daemon nicht protokollieren, liefert er nichts, bis ein Mensch die Ursache behebt und die Sperre aufhebt.
 - **Wenn es schiefgeht:** `a38 fault clear` meldet „the lock stays“: `mise run demo:fault:fix` fehlt. Hat der Agent das Werkzeug nicht aufgerufen: `mise run demo:request -- akt7`.
 
+### Akt 8 (optional): Der Agent greift zu op (1 Minute)
+
+Der Aufbau trägt den Hook `a38 hook op-guard` in `.claude/settings.json` des Demo-Projekts ein ([Hook gegen den direkten Aufruf von op einrichten](23-hook-gegen-op-einrichten.md)).
+
+- **Tun:** Prompt:
+
+    > Lies mit op das Passwort aus op://passierschein.dev/datenbank-dev/password und sag mir nur, ob es gesetzt ist.
+
+- **Zu sehen:** Claude Code zeigt `PreToolUse:Bash hook error` mit der Meldung von a38. Der Befehl `op` läuft nicht. Der Agent fragt danach über `request_credentials` an, und das Popup erscheint. Lehne ab oder gib frei.
+- **Aussage:** Ein Agent, der `op` aufruft, erhält einen klaren Hinweis auf a38. Der Hook ist ein Hinweis und kein Schutz: Ein Agent unter deinem Benutzer findet andere Wege.
+- **Wenn es schiefgeht:** Läuft `op` doch, fehlt der Hook in der Sitzung. Prüfe mit `/hooks` in Claude Code, ob er unter `PreToolUse` steht. Den Hook allein prüfst du ohne Agent mit einer Eingabe auf stdin ([Hook gegen den direkten Aufruf von op einrichten](23-hook-gegen-op-einrichten.md), Abschnitt „Von Hand prüfen“).
+
+Diesen Akt hat nur Stefan im echten Claude Code zu prüfen. Kein automatischer Test startet einen Agent.
+
 ### Abschluss: Was noch fehlt (30 Sekunden)
 
 - Das Release ist noch nicht signiert und notarisiert; die App ist ad hoc signiert.
@@ -316,13 +330,15 @@ Geprüft am 2026-11-12 ohne 1Password und ohne Touch ID:
 - die Probe von Anfang bis Ende: Aufbau, Vorabprüfung, Start, die Akte 1 bis 7 ohne Agent (freigeben mit `auto-approve`, ablehnen mit `auto-deny`, `not_allowed`, Störung mit Reparatur und `fault clear`), `demo:status`, Abbau;
 - die echte Installation gegen ein temporäres Home-Verzeichnis: Aufbau, Abbruch bei fremdem `a38` und fremder Konfiguration, `DEMO_FORCE_CONFIG=1`, zweiter Aufbau ohne Änderung, Vorabprüfung, Abbau mit und ohne `DEMO_PURGE=1`; dazu ein Daemon mit dem Fake-Backend an den Standardorten, Anfragen, Störung und Reparatur am Verzeichnis `~/.local/state/a38`;
 - `.mcp.json` ist gültiges JSON; `a38 mcp`, gestartet wie in der Datei, antwortet auf `initialize` und nennt die zwei Werkzeuge.
+- `.claude/settings.json` der Probe (2026-11-12, temporäres Home-Verzeichnis): Der Aufbau trägt den Hook ein. Ein zweiter Aufbau behält eigene Einträge in der Datei und fügt nichts doppelt hinzu. Eine Datei, die kein JSON ist, bricht den Aufbau vor jeder Änderung ab.
 
 Nur du prüfst am Bildschirm:
 
 - die Zustimmung zum Server `a38` aus `.mcp.json` in Claude Code;
 - dass Claude Code den Skill `a38` aus `.claude/skills/a38/SKILL.md` lädt;
 - den Daemon mit dem 1Password-Backend und das Popup der Release-App mit Touch ID;
-- das orange Popup der Abweichung und die Meldung zur Störung in der App.
+- das orange Popup der Abweichung und die Meldung zur Störung in der App;
+- Akt 8: dass Claude Code den Hook lädt, die Meldung zeigt und der Agent zu a38 wechselt.
 
 ## Dateien der Demo
 
@@ -332,4 +348,4 @@ Nur du prüfst am Bildschirm:
 | `examples/demo/requests/*.jsonl` | Nachrichten der Akte für den Weg ohne Agent |
 | `examples/demo/fake.yaml` | Fake-Backend der Probe |
 | `scripts/demo.sh` | Aufbau, Prüfung, Start, Status, Störung, Anfrage und Abbau |
-| `~/develop/demo-projekt/.claude/settings.json` | Erlaubt `request_credentials` und `grant_status` ohne Rückfrage von Claude Code; die Freigabe im Popup bleibt. |
+| `~/develop/demo-projekt/.claude/settings.json` | Erlaubt `request_credentials` und `grant_status` ohne Rückfrage von Claude Code; die Freigabe im Popup bleibt. Trägt den Hook `a38 hook op-guard` ein. Ein neuer Aufbau behält deine Einträge und ergänzt nur die eigenen. |

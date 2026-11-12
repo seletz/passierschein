@@ -1,0 +1,9 @@
+id: D58
+zustand: eingeloest
+titel: a38 hook op-guard erkennt op im Bash-Befehl mit einem Shell-Parser und lässt im Zweifel durch
+bezug: '#78'
+schluessel: '#78/op-guard'
+lauf: '2.0'
+branch: feat/78-op-hook
+reserviert_am: '2026-11-12'
+eingeloest_am: '2026-11-12'

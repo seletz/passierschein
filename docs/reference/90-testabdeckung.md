@@ -80,5 +80,14 @@ Die Pakete stehen ohne den Präfix `internal/`.
 - {{ ref("T21") }} bleibt teilweise, bis die Swift-Tests `missingClaims` und `sessionNameUnabridged` den Testfall im Kommentar nennen. Die Freigabe-App zeigt die Leermarke für einen fehlenden Namen.
 - {{ ref("T18") }} ist ein Fall der Release-Kette. Der Teil mit den Secrets lässt sich nur im Workflow prüfen; das Release `v0.1.0` belegt ihn. Offen ist der Praxistest des Release auf dem Mac ({{ ref("G5") }}).
 
+## Ohne Testfall im Design
+
+Für den Hook gegen den direkten Aufruf von `op` ({{ ref("F16") }}, Stufe 4) hat das Design keinen Testfall.
+Die Tests nennen deshalb das Feature im Kommentar (`// F16, UC12, D15: …`).
+
+| Feature | Zustand | Testfunktionen | Fehlt oder Anmerkung |
+|---|---|---|---|
+| {{ ref("F16") }} | teilweise | `opguard`: `TestCheck` (Tabelle mit 126 Fällen: `op` als Wort, Pfad, in Anführungszeichen und mit Backslash, hinter `sudo`, `env`, `command`, `exec`, `nohup`, `time`, `nice`, `timeout`, `xargs`, `find -exec`, in Listen, Pipelines, Subshells, Befehlsersetzung, Backticks, `bash -c`, `eval`; Wörter, die nur „op“ enthalten, Argumente, Kommentare, Here-Documents; Token-Datei und Schlüsselbund), `TestCheckDepth`, `TestCheckParsed`, `TestDecideSamples` (Eingaben in der Form von Claude Code unter `testdata/`), `TestDecideFailOpen` (kein JSON, falsche Form, über 1 MiB, anderes Ereignis, anderes Werkzeug), `TestDecideReadsAtMostTheLimit`, `TestDecideReadError`, `TestMessage` (nennt `request_credentials`, nennt keinen anderen Weg), `TestLinuxBuild`, `FuzzDecide`, `FuzzCheck`; `cmd/a38`: `TestHookOpGuardContract` (stdin, stdout, stderr, Exit-Code), `TestHookOpGuardProcess` (echtes Binary mit Pipe), `TestHookPrintConfig`, `TestHookHelp`, `TestHookTokenFileName`, `TestHookKeychainNames` (nur macOS) | Kein Test führt einen geprüften Befehl aus. Offen ist der Praxistest in Claude Code: Hook laden, Meldung sehen, der Agent wechselt zu `a38` (Akt 8 der [Demo](../how-to/50-demo-vorfuehren.md)). Das Feld `umsetzung` von {{ ref("F16") }} steht deshalb auf `teilweise`. |
+
 Das Register trägt denselben Stand im Feld `umsetzung` jedes Testfalls und jedes Features.
 `dg-register get <ID> umsetzung` zeigt ihn.

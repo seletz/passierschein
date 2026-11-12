@@ -1,0 +1,9 @@
+Sample inputs of a PreToolUse hook of Claude Code.
+
+Shape: https://code.claude.com/docs/en/hooks (section PreToolUse input,
+example for the Bash tool), read on 2026-11-12. The fields "session_id",
+"prompt_id", "transcript_path", "permission_mode", "hook_event_name",
+"tool_name", "tool_input" and "tool_use_id" and the Bash fields "command",
+"description", "timeout" and "run_in_background" are copied from that
+example. Only the values of "cwd" and "command" are neutral test data.
+"scratchpad_dir" is optional in the documentation and missing here.
