@@ -13,6 +13,9 @@
 # - Every action is pinned to a full commit hash, with the version as comment:
 #   `uses: owner/name@<40 hex digits> # vX.Y.Z`.
 #
+# - Every job of a workflow has `timeout-minutes`, so that a hanging job does
+#   not burn minutes (macOS minutes count ten times).
+#
 # A finding is printed and the script exits 1. `mise run tools:check` runs it.
 # TOOLS_CHECK_ROOT overrides the repository root (for tests).
 set -euo pipefail
@@ -65,6 +68,9 @@ for wf in "$ROOT"/.github/workflows/*.yml; do
       *) fail "$name: every step runs one mise task (run: mise run <task>), found: run: $cmd" ;;
     esac
   done < <(grep -E '^[[:space:]]*(- )?run:' "$wf" || true)
+  jobs=$(grep -cE '^    runs-on:' "$wf" || true)
+  timeouts=$(grep -cE '^    timeout-minutes: [0-9]+' "$wf" || true)
+  [ "$jobs" = "$timeouts" ] || fail "$name: $jobs jobs, but $timeouts with timeout-minutes; each job needs timeout-minutes"
   while IFS= read -r line; do
     action=${line#*uses: }
     [[ "$action" =~ @[0-9a-f]{40}\ #\ v$semver$ ]] || fail "$name: $action is not pinned to a commit hash with a version comment (@<hash> # vX.Y.Z)"
@@ -72,6 +78,6 @@ for wf in "$ROOT"/.github/workflows/*.yml; do
 done
 
 if [ "$status" -eq 0 ]; then
-  echo "pinned: go $go_mise, uv $(pin uv), goreleaser $(pin goreleaser), gitleaks $(pin gitleaks), cyclonedx-gomod $cyclonedx, swift $swift (app tasks); workflows run only mise tasks and pinned actions"
+  echo "pinned: go $go_mise, uv $(pin uv), goreleaser $(pin goreleaser), gitleaks $(pin gitleaks), cyclonedx-gomod $cyclonedx, swift $swift (app tasks); workflows run only mise tasks and pinned actions, each job has a timeout"
 fi
 exit "$status"

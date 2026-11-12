@@ -298,6 +298,9 @@ Eine Antwort sieht so aus:
 Mit `DEMO_BACKEND=fake` läuft jeder Task der Demo in `/tmp/a38-probe` (`DEMO_DIR` ändert den Ort).
 Die Probe nutzt dort eine eigene Konfiguration mit `--config`, ein eigenes `a38` und eine eigene App.
 Sie berührt `~/.config/a38`, `~/.local/bin` und `~/Applications` nie.
+Jeder Aufruf von `a38` läuft dort mit einem eigenen Home-Verzeichnis und eigenen XDG-Ordnern unter `/tmp/a38-probe/home`.
+`a38 doctor` sieht deshalb nie einen installierten Dienst, die echte Konfiguration oder den echten Zustand.
+In Terminal 3 setzt die Ausgabe von `demo:start` dieselben Variablen (`HOME`, `XDG_CONFIG_HOME`, `XDG_STATE_HOME`) für dich.
 Die Datei `examples/demo/fake.yaml` hat denselben Vault, dieselben Items und Felder mit erfundenen Werten.
 `DEMO_UI` wählt beim Start die Freigabe:
 
