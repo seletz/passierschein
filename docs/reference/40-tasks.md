@@ -37,7 +37,7 @@ Die Einzelheiten stehen in der [Referenz der Freigabe-App](85-freigabe-app.md).
 
 | Task | Zweck |
 |---|---|
-| `app:build` | Baut die Freigabe-App als Debug und Release, legt das App-Bundle an und prüft, dass der Release-Build die Testschalter ablehnt. |
+| `app:build` | Baut die Freigabe-App „Passierschein“ als Debug und Release, legt das App-Bundle `app/.build/bundle/Passierschein.app` an und prüft, dass der Release-Build die Testschalter ablehnt. |
 | `app:test` | Führt die Tests der Freigabe-App aus, ohne Fenster und ohne Touch ID. |
 | `app:run:sample` | Zeigt ein Beispiel aus `app/Samples` im Debug-Build mit gefälschter Authentifizierung. |
 

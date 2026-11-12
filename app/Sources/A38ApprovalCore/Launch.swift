@@ -35,7 +35,7 @@ public func prepare(arguments: [String], testSwitches: Bool = TestSwitches.compi
         return .exit(stdout: nil, stderr: usageText, code: .success)
     }
     if options.showVersion {
-        return .exit(stdout: nil, stderr: "a38-approve \(appVersion)", code: .success)
+        return .exit(stdout: nil, stderr: "Passierschein \(appVersion)", code: .success)
     }
 
     var input: Data?
@@ -88,7 +88,7 @@ public func readStandardInput(limit: Int = Limits.maxMessageBytes) -> Data? {
 /// Writes a diagnostic line to the standard error. It contains IDs and
 /// codes only, never a text of the request.
 public func diagnose(_ text: String) {
-    FileHandle.standardError.write(Data("a38-approve: \(text)\n".utf8))
+    FileHandle.standardError.write(Data("Passierschein: \(text)\n".utf8))
 }
 
 /// Writes the decision as the one line on the standard output and ends the

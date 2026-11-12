@@ -62,7 +62,7 @@ Voraussetzungen:
     mise run app:build
     ```
 
-    Der Task legt `app/.build/bundle/a38-approve.app` an.
+    Der Task legt `app/.build/bundle/Passierschein.app` an.
     Er prüft, dass der Release-Build jeden Testschalter ablehnt.
 
 2. Führe die Tests aus:

@@ -61,7 +61,7 @@ public struct UsageError: Error, Equatable, Sendable {
 public let usageText = usageBase + usageTestSwitches
 
 let usageBase = """
-Usage: a38-approve < message.json
+Usage: Passierschein < message.json
 
 The daemon a38 serve starts the app without arguments. The app reads one
 message (an approval request or a notice) from the standard input. For a

@@ -27,7 +27,7 @@ enum AppProcess {
     /// The built executable next to the test bundle.
     static var executable: URL {
         // The test bundle lies in the build folder next to the executable.
-        Bundle(for: BundleMarker.self).bundleURL.deletingLastPathComponent().appendingPathComponent("a38-approve")
+        Bundle(for: BundleMarker.self).bundleURL.deletingLastPathComponent().appendingPathComponent("Passierschein")
     }
 
     static func run(_ args: [String], input: Data) throws -> RunResult {

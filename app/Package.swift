@@ -14,7 +14,7 @@ let package = Package(
     name: "A38Approval",
     platforms: [.macOS(.v15)],
     products: [
-        .executable(name: "a38-approve", targets: ["a38-approve"]),
+        .executable(name: "Passierschein", targets: ["Passierschein"]),
     ],
     targets: [
         // Protocol, validation, view models, decisions. No AppKit, no
@@ -30,14 +30,14 @@ let package = Package(
             swiftSettings: testSwitches
         ),
         .executableTarget(
-            name: "a38-approve",
+            name: "Passierschein",
             dependencies: ["A38ApprovalCore", "A38ApprovalUI"],
             swiftSettings: testSwitches
         ),
         .testTarget(
             name: "A38ApprovalCoreTests",
             // The process tests start the built executable.
-            dependencies: ["A38ApprovalCore", "a38-approve"],
+            dependencies: ["A38ApprovalCore", "Passierschein"],
             swiftSettings: testSwitches
         ),
     ]

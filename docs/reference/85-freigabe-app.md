@@ -1,6 +1,6 @@
 ---
 title: Freigabe-App
-description: "Die Swift-App a38-approve: Fälle des Popups, Regeln gegen eine versehentliche Freigabe, Meldung, Protokoll, Exit-Codes, Testschalter und Bau."
+description: "Die Swift-App Passierschein: Fälle des Popups, Regeln gegen eine versehentliche Freigabe, Meldung, Protokoll, Exit-Codes, Testschalter und Bau."
 render_macros: true
 tags:
   - Thema/Freigabe
@@ -9,9 +9,13 @@ tags:
 
 Die Freigabe-App zeigt dem Menschen eine Freigabeanfrage oder eine Meldung ({{ ref("F11") }}).
 Der Daemon `a38 serve` startet die App je Nachricht ({{ ref("D6") }}).
+Die App heißt „Passierschein“.
+Das Kommandozeilenwerkzeug heißt weiter `a38`.
 Die App liegt im Ordner `app/` des Repos.
 Sie ist ein Swift-Paket mit dem Namen `A38Approval`.
-Das ausführbare Programm heißt `a38-approve`.
+Das Paket und die Module (`A38ApprovalCore`, `A38ApprovalUI`) behalten ihren Namen.
+Das ausführbare Programm heißt `Passierschein`.
+Das App-Bundle heißt `Passierschein.app`.
 
 Die App kennt keinen Secret-Wert.
 Die Nachricht enthält je Zugangsdatum nur Kennung, Vault, Titel und Feld.
@@ -28,12 +32,14 @@ Die Nachricht enthält je Zugangsdatum nur Kennung, Vault, Titel und Feld.
 |---|---|
 | `A38ApprovalCore` | Nachrichten, strenge Prüfung, Entscheidung, Exit-Codes, Zustand von Popup und Meldung, Texte, Schalter. Kein AppKit, kein SwiftUI, keine LocalAuthentication. |
 | `A38ApprovalUI` | Fenster (`NSPanel`), Ansichten in SwiftUI, Touch ID mit LocalAuthentication |
-| `a38-approve` | Einstieg des Programms |
+| `Passierschein` | Einstieg des Programms |
 | `Tests/A38ApprovalCoreTests` | Tests mit Swift Testing, ohne Fenster und ohne Touch ID |
 | `Samples/` | Beispielnachrichten mit neutralen Daten |
 
 Alle Texte der Oberfläche stehen in `app/Sources/A38ApprovalCore/Strings.swift`.
 Die Texte sind englisch wie im abgenommenen Prototyp.
+Das Banner trägt rechts den Namen „Passierschein“.
+Texte mit Befehlen für den Menschen nennen weiter `a38`, zum Beispiel `a38 doctor`.
 Eine Übersetzung ändert nur diese Datei.
 
 ## Fälle des Popups
@@ -120,7 +126,7 @@ Die Meldung bleibt offen, bis der Mensch sie schließt.
 
 ## Protokoll
 
-Der Daemon startet `a38-approve` ohne Argumente.
+Der Daemon startet `Passierschein.app/Contents/MacOS/Passierschein` oder ein einzelnes Programm `Passierschein` ohne Argumente.
 Das Arbeitsverzeichnis ist `/`.
 Die Umgebung enthält nur `HOME`, `USER`, `LOGNAME`, `TMPDIR`, `LANG`, `LC_ALL`, `PATH` und `__CF_USER_TEXT_ENCODING`.
 Die App braucht keine weitere Variable.
@@ -237,12 +243,28 @@ Das Skript `scripts/app-swift-check.sh` prüft macOS, SDK und Version.
 
 | Task | Wirkung |
 |---|---|
-| `mise run app:build` | baut Debug und Release, legt `app/.build/bundle/a38-approve.app` an und prüft den Release-Build |
+| `mise run app:build` | baut Debug und Release, legt `app/.build/bundle/Passierschein.app` an und prüft den Release-Build |
 | `mise run app:test` | führt `swift test` aus |
 | `mise run app:run:sample -- <beispiel>` | zeigt ein Beispiel im Debug-Build mit gefälschter Authentifizierung |
 
-`app:build` legt das App-Bundle aus dem Release-Build an.
-Die `Info.plist` enthält die Bundle-ID `io.github.seletz.a38.approve`, den Namen `a38` und `LSUIElement`.
+`app:build` legt das App-Bundle aus dem Release-Build an:
+
+```text
+Passierschein.app/
+  Contents/
+    Info.plist
+    MacOS/
+      Passierschein   die Freigabe-App
+      a38             vorgesehen für das Go-Programm, fehlt noch
+```
+
+Der Platz `Contents/MacOS/a38` ist für das Go-Programm vorgesehen.
+`app:build` kopiert `a38` nicht in das Bundle.
+Das Packen gehört zur Arbeit am Release ({{ ref("G5") }}).
+Der Daemon sucht die App als `Passierschein.app/Contents/MacOS/Passierschein` oder als `Passierschein` neben `a38`, im Bundle neben `Contents/MacOS/a38` und in `/Applications` und `~/Applications`.
+
+Die `Info.plist` enthält die Bundle-ID `io.github.seletz.passierschein`, den Namen „Passierschein“ (`CFBundleName`, `CFBundleDisplayName`) und `LSUIElement`.
+Der Dialog von Touch ID nennt diesen Namen.
 Das Bundle trägt eine Ad-hoc-Signatur mit Hardened Runtime.
 Danach prüft `scripts/app-release-check.sh` den Release-Build und das Bundle:
 

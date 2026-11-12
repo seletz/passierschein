@@ -25,4 +25,4 @@ cd "$APP"
 swift build -c debug >&2
 # --skip-auth: never the real Touch ID dialog. --auto-close: the popup ends
 # with timeout (a notice: closes) after 30 s.
-exec "$(swift build -c debug --show-bin-path)/a38-approve" --skip-auth --auto-close 30 "$@" < "Samples/$sample.json"
+exec "$(swift build -c debug --show-bin-path)/Passierschein" --skip-auth --auto-close 30 "$@" < "Samples/$sample.json"

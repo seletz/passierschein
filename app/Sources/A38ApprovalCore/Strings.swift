@@ -9,8 +9,9 @@ import Foundation
 public enum UIText {
     // MARK: Window
 
-    public static let windowTitle = "a38 approval"
-    public static let brand = "a38"
+    public static let windowTitle = "Passierschein"
+    /// The name of the app at the right of the banner.
+    public static let brand = "Passierschein"
 
     // MARK: Banner
 

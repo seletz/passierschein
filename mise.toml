@@ -95,7 +95,7 @@ run = "dg-register check"
 # toolchain (core:swift of mise, swift.org release); it needs Xcode for the
 # macOS SDK. tools:check keeps the pins equal.
 [tasks."app:build"]
-description = "macOS only: build the approval app (debug and release), assemble app/.build/bundle/a38-approve.app (ad-hoc signed), check that the release rejects the test switches"
+description = "macOS only: build the approval app (debug and release), assemble app/.build/bundle/Passierschein.app (ad-hoc signed), check that the release rejects the test switches"
 # renovate: datasource=github-releases depName=swiftlang/swift extractVersion=^swift-(?<version>.+)-RELEASE$
 tools = { "swift" = "6.4.2" }
 run = "bash scripts/app-build.sh"
