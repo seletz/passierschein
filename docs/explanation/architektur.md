@@ -463,6 +463,8 @@ Die Freigabe-App „Passierschein“ liegt im Ordner `app/` ({{ ref("F11") }}).
 Das Bundle heißt `Passierschein.app`.
 Das Kommandozeilenwerkzeug heißt weiter `a38`.
 Sie prüft jede Nachricht streng gegen diese Typen: Ein unbekanntes Feld, ein fehlendes Pflichtfeld oder ein Eintrag außerhalb von dev ist ein Fehler.
+Der Test `TestAppSamples` in `internal/approval` liest jede Datei unter `app/Samples` streng mit den Go-Typen und schreibt sie ohne Verlust zurück. `app/Samples` ist der Vertrag.
+`timeout_seconds` liegt für die App zwischen 1 und 3600 (`approval.MinTimeoutSeconds`, `approval.MaxTimeoutSeconds`). Die Warteschlange begrenzt ihre Wartezeit auf diesen Bereich. `appui` startet die App nicht und meldet einen Fehler, wenn der Wert außerhalb liegt.
 Die [Referenz der Freigabe-App](../reference/85-freigabe-app.md) beschreibt Fälle, Regeln, Exit-Codes und Testschalter.
 
 ## Schnittstellen zu Backend und Audit-Log
@@ -504,7 +506,7 @@ grant:
   lifetime: 4h
 bundle:
   window: 3s
-  max_entries: 10
+  max_entries: 10   # 1 bis 50, siehe unten
 session_name:
   max_length: 80
   allowed_characters: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -_():"
@@ -528,6 +530,13 @@ Das Beispiel zeigt bei allen anderen Schlüsseln außer `vaults` und `projects` 
 `Config.ProjectFor` leitet das Projekt aus dem Arbeitsverzeichnis ab.
 Der längste passende Pfad gewinnt.
 Der Daemon löst symbolische Links des Arbeitsverzeichnisses vor dem Aufruf auf.
+`bundle.max_entries` darf höchstens 50 sein.
+Die Freigabe-App lehnt eine Anfrage mit mehr als 50 Einträgen ab ({{ ref("D40") }}).
+Das Laden scheitert deshalb bei einem größeren Wert mit einer klaren Meldung.
+Die Grenze steht in Go an einer Stelle (`config.MaxBundleEntries`).
+Die App hat dieselbe Grenze in Swift (`app/Sources/A38ApprovalCore/Decoding.swift`, `maxCredentials`).
+Beide Stellen ändern sich zusammen.
+
 Die Konfiguration löst die Pfade der Projekte beim Laden auf (`Project.RealPaths`). Der Pfad bleibt für Meldungen so, wie er in der Datei steht (`Project.Paths`). Ein Pfad, den es nicht gibt oder den das Laden nicht auflösen kann, bleibt unverändert. Das Laden scheitert dann nicht. `a38 doctor` meldet ihn als Befund (`Project.MissingPaths`).
 Der Daemon vergleicht den Namen eines Vaults genau, ohne Rücksicht auf Muster ({{ ref("D12") }}).
 
@@ -565,6 +574,9 @@ Es gibt drei Ebenen von Tests:
 1. **Paket-Test:** Der Test prüft ein Paket allein. Er nutzt die Fakes der Schnittstellen.
 2. **Test im Prozess:** Der Test baut den Daemon im Testprozess zusammen: Socket in einem temporären Verzeichnis, Fake-Backend, Skript-UI, gefälschte Uhr. Die meisten Testfälle des Design-Sets laufen auf dieser Ebene, weil sie die gefälschte Uhr brauchen.
 3. **Test mit Prozessen:** Der Test baut das Binary einmal je Testlauf in ein temporäres Verzeichnis. Er startet `a38 serve --backend fake --fake-file <datei> --ui auto-approve` mit einer eigenen Konfigurationsdatei und danach `a38 mcp` als Kindprozesse. Er spricht MCP über stdin und stdout von `a38 mcp` ({{ ref("T1") }}). Diese Ebene nutzt die echte Uhr und deshalb kurze Werte in der Konfiguration, zum Beispiel ein Bündelfenster von 50 Millisekunden.
+
+Eine vierte Art läuft nur auf macOS und nur von Hand: `mise run app:e2e` startet `a38 serve --ui app` mit der echten App im Debug-Build ({{ ref("T14") }}).
+Der Test liegt in `cmd/a38/app_e2e_test.go` hinter den Build-Tags `darwin appe2e`; `go test ./...` öffnet deshalb nie ein Fenster.
 
 Regeln für einen Test mit Prozessen:
 

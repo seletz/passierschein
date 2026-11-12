@@ -115,6 +115,12 @@ description = "macOS only: show a sample of app/Samples in the debug build with 
 tools = { "swift" = "6.4.2" }
 run = "bash scripts/app-run-sample.sh"
 
+[tasks."app:e2e"]
+description = "macOS only: run a38 serve --ui app with the real debug app over real processes (fake authentication, no Touch ID; two short windows open); not part of check"
+# renovate: datasource=github-releases depName=swiftlang/swift extractVersion=^swift-(?<version>.+)-RELEASE$
+tools = { "swift" = "6.4.2" }
+run = "bash scripts/app-e2e.sh"
+
 [tasks."pr:screenshot"]
 description = "Render the output of a command as a PNG for a pull request: mise run pr:screenshot -- out.png -- <command>"
 # renovate: datasource=pypi depName=playwright

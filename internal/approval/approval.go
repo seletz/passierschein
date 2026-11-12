@@ -30,6 +30,16 @@ const Version = 1
 // decision expires. The expiry counts as a denial with the code timeout.
 const DefaultTimeout = 2 * time.Minute
 
+// The range of Request.TimeoutSeconds that the approval app accepts. The app
+// has the same limits in Swift (app/Sources/A38ApprovalCore, the check of
+// timeout_seconds). A request outside the range is no approval (appui).
+const (
+	// MinTimeoutSeconds is the smallest valid TimeoutSeconds.
+	MinTimeoutSeconds = 1
+	// MaxTimeoutSeconds is the largest valid TimeoutSeconds.
+	MaxTimeoutSeconds = 3600
+)
+
 // The values of the field "type".
 const (
 	// TypeRequest is the type of a Request.

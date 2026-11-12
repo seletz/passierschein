@@ -3,12 +3,12 @@ render_macros: true
 id: 'T14'
 titel: 'Die Freigabe-App gibt nur nach Touch ID frei'
 bereich: 'Freigabe'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 4
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: teilweise
 beweist: [F11, D31]
 ---
 # T14 — Die Freigabe-App gibt nur nach Touch ID frei

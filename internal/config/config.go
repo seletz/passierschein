@@ -61,6 +61,11 @@ const (
 	DefaultBundleWindow = 3 * time.Second
 	// DefaultBundleMaxEntries is the maximum number of entries in a bundle.
 	DefaultBundleMaxEntries = 10
+	// MaxBundleEntries is the largest valid value of bundle.max_entries.
+	// The approval app rejects a request with more entries. The app has the
+	// same limit in Swift: app/Sources/A38ApprovalCore/Decoding.swift
+	// (maxCredentials). Change both together.
+	MaxBundleEntries = 50
 	// DefaultSessionNameMaxLength is the maximum length of a session name
 	// in characters.
 	DefaultSessionNameMaxLength = 80

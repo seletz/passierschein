@@ -25,8 +25,9 @@ Es nutzt `vorhanden` dafür.
 
 ## Stand
 
-Von 28 Testfällen sind 24 umgesetzt, 2 teilweise und 2 zu bauen.
-Die zwei offenen Testfälle gehören zu Stufe 2: die Freigabe-App ({{ ref("T14") }}) und das 1Password-Backend ({{ ref("T15") }}).
+Von 28 Testfällen sind 24 umgesetzt, 3 teilweise und 1 zu bauen.
+Der offene Testfall gehört zu Stufe 2: das 1Password-Backend ({{ ref("T15") }}).
+Die Freigabe-App ({{ ref("T14") }}) ist teilweise belegt: Teil 1 ist automatisch, Teil 2 ist manuell.
 
 Die Tests nutzen zwei Arten von Testaufbau.
 Die meisten laufen im Prozess des Tests mit einer gefälschten Uhr und einer aufzeichnenden Freigabe (Paket `broker`, Hilfstyp `fakeui.Recorder`).
@@ -53,7 +54,7 @@ Die Pakete stehen ohne den Präfix `internal/`.
 | {{ ref("T11") }} | umgesetzt | `daemon`: `TestFactsComeFromTheDaemon`, `TestProjectFromWorkingDirectory`, `TestUnknownCwdHasNoProject`, `TestNewSessionID`; `daemon`: `TestReadPeer`; `broker`: `TestApprovalRequestContent`, `TestPolicyUsesVerifiedProjectNotClaims`, `TestGrantOfOtherSessionDoesNotCover`; `config`: `TestProjectFor`; `session`: `TestSessionClaims`; `approval`: `TestRequestKeepsFactsAndClaimsApart` | – |
 | {{ ref("T12") }} | umgesetzt | `daemon`: `TestSocketModes`, `TestListenRejectsSocketDir`, `TestListenCreatesSocketDir`, `TestAdminMessagesOnAgentSocket`, `TestAdminSocket`; `cmd/a38`: `TestHumanCommandsWithDaemonProcess` (Agent-Socket lehnt `grants_list` und `grant_revoke` ab); `protocol`: `TestDecodeRejects` | – |
 | {{ ref("T13") }} | umgesetzt | Task `mise run deps:linux:check` (Skript `scripts/linux-deps-check.sh` mit Selbsttest, Teil von `mise run check` und der CI); `mcp`: `TestImportRule` | Die Form ist eine Prüfung der CI, kein Go-Test. Es gibt noch kein 1Password-Paket. Der Selbsttest belegt die Regel mit gefälschten Paketlisten. |
-| {{ ref("T14") }} | zu-bauen | – | Die Freigabe-App in Swift gehört zu Stufe 2. Es gibt weder den automatischen Teil 1 (Testschalter) noch die manuelle Liste von Teil 2. |
+| {{ ref("T14") }} | teilweise | Teil 1 automatisch: Swift (`mise run app:test`): `DecodingTests` (jede ungültige Eingabe), `ApprovalViewModelTests` (Regeln des Popups), `DecisionTests` (Entscheidung, Exit-Codes, letzte Prüfung, Schalter, Meldung), `ProcessTests` (Programm als Prozess wie vom Daemon gestartet); `mise run app:build` (der Release-Build lehnt jeden Testschalter ab). Go: `approval`: `TestAppSamples` (jede Datei unter `app/Samples` streng gelesen und ohne Verlust zurückgeschrieben); `appui`: `TestApprove`, `TestRequestHoldsNoSecret`, `TestApproveRejectsTimeoutOutOfRange`; `queue`: `TestQueueTimeoutSecondsInAppRange`; `config`: `TestParseRejects` (Obergrenze über 50); `cmd/a38`: `TestServeUIApp` (Programm als Kindprozess). Echte Prozesse mit der Debug-App: `cmd/a38`: `TestAppE2E` (`mise run app:e2e`, nur macOS, nicht Teil von `check`): gefälschte Authentifizierung wird abgelehnt (`ui_failed`, kein Wert, kein Grant, Eintrag `error`), `timeout`, Meldung; das JSON fließt in beide Richtungen. | Teil 2 bleibt manuell am Bildschirm: Eingabetaste und Leertaste, die Verzögerung von 1,5 Sekunden, Name der App im echten Dialog von Touch ID, Fenster unter OmniWM und über Vollbild-Apps ({{ ref("G4") }}). Das echte Touch ID hat noch niemand ausgelöst. Der Ablauf ist mit gefälschter Authentifizierung belegt, nie mit einer echten Freigabe. Signatur und Notarisierung ({{ ref("G5") }}) fehlen. |
 | {{ ref("T15") }} | zu-bauen | – | Das 1Password-Backend gehört zu Stufe 2. Der Test ist manuell nach Rücksprache mit Stefan. |
 | {{ ref("T16") }} | umgesetzt | `broker`: `TestGrantEnds` (Sitzung endet, Widerruf, Neustart mit dem Grund `daemon_stopped`), `TestShutdownEndsGrants`, `TestRevokeUnknownGrant`; `grant`: `TestEnds`; `cmd/a38`: `TestHumanCommandsWithDaemonProcess` (`a38 grants revoke` am echten Daemon), `TestServeRestartEndsGrants` (echter Prozess: SIGTERM, Grund im Audit-Log, neue Freigabe nach dem Neustart, `a38 audit verify` über den Neustart) | Grenze: Ein Ende ohne Signal (SIGKILL, Absturz) schreibt keinen Eintrag, denn Grants leben nur im Arbeitsspeicher. Der Test belegt nur das geordnete Ende (SIGINT, SIGTERM). Die Seite zur Architektur nennt die Grenze. |
 | {{ ref("T17") }} | umgesetzt | `broker`: `TestBackendErrors` (gesperrt und nicht erreichbar, beim Auflösen und beim Lesen); `mcp`: `TestDaemonUnavailableThenReachable`; `backend`: `TestCode`; `fake`: `TestErrorStates` | – |
@@ -71,7 +72,8 @@ Die Pakete stehen ohne den Präfix `internal/`.
 
 ## Was die Lücken bedeuten
 
-- {{ ref("T14") }} und {{ ref("T15") }} bleiben offen, bis die Freigabe-App und das 1Password-Backend entstehen.
+- {{ ref("T14") }} ist teilweise. Teil 1 ist automatisch (Swift-Tests, Go-Tests, `mise run app:e2e`). Teil 2 bleibt manuell am Bildschirm, mit dem echten Touch ID und unter OmniWM ({{ ref("G4") }}).
+- {{ ref("T15") }} bleibt offen, bis das 1Password-Backend entsteht.
 - {{ ref("T21") }} bleibt teilweise, bis die Freigabe-App die Leermarke für einen fehlenden Namen zeigt.
 - {{ ref("T18") }} ist ein Fall der Release-Kette. Der Teil mit den Secrets lässt sich nur im Workflow prüfen.
 

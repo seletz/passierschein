@@ -32,6 +32,9 @@ func New(ui approval.UI, clk clock.Clock, timeout time.Duration) *Queue {
 	if timeout <= 0 {
 		timeout = approval.DefaultTimeout
 	}
+	// The approval app accepts 1 to 3600 seconds only. A value outside the
+	// range would end each request with ui_failed, so the queue clamps it.
+	timeout = min(max(timeout, approval.MinTimeoutSeconds*time.Second), approval.MaxTimeoutSeconds*time.Second)
 	if clk == nil {
 		clk = clock.System{}
 	}

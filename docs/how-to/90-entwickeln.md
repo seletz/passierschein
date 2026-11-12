@@ -90,7 +90,8 @@ Voraussetzungen:
 
 `mise run check` enthält die Tasks der App nicht.
 Die CI läuft auf Linux und baut die App nicht.
-Vor einem Pull Request mit Änderungen in `app/` führe `mise run app:build` und `mise run app:test` lokal aus.
+Vor einem Pull Request mit Änderungen in `app/` führe `mise run app:build`, `mise run app:test` und `mise run app:e2e` lokal aus.
+Die Anleitung [Freigabe-App lokal ausprobieren](40-freigabe-app-ausprobieren.md) zeigt den Daemon mit der Debug-App.
 Die Referenz steht unter [Freigabe-App](../reference/85-freigabe-app.md).
 
 ## Mit Worktrees arbeiten
