@@ -13,7 +13,7 @@ Ein Befehl zeigt nie einen Secret-Wert.
 
 Alle Befehle lesen die Konfigurationsdatei mit `--config <datei>`.
 Ohne das Argument gilt `A38_CONFIG`, danach der Standardort.
-Die Befehle `grants`, `fault`, `doctor` und `config onepassword-token status` kennen `--json`.
+Die Befehle `grants`, `fault`, `doctor`, `config path`, `config show`, `config validate`, `config vault list`, `config project list` und `config onepassword-token status` kennen `--json`.
 
 Die Schalter dürfen vor und nach den Argumenten stehen.
 `a38 grants revoke <grant-id> --config <datei>` und `a38 grants revoke --config <datei> <grant-id>` sind gleich.
@@ -121,7 +121,7 @@ Die Prüfung der Code-Signatur fehlt noch ({{ ref("G5") }}).
 Der Befehl richtet den Daemon als LaunchAgent ein ({{ ref("F15") }}, {{ ref("D56") }}).
 Nur der macOS-Build kennt ihn.
 Unter Linux endet jeder Unterbefehl mit „not available on this platform“ und dem Exit-Code 1 ({{ ref("D53") }}).
-Die Schritte stehen in [Daemon als Dienst einrichten](../how-to/26-daemon-als-dienst-einrichten.md).
+Die Schritte stehen in [Daemon als Dienst einrichten](../how-to/28-daemon-als-dienst-einrichten.md).
 
 | Aufruf | Wirkung |
 |---|---|
@@ -210,7 +210,33 @@ Die Namen sind eine Wahl von Issue 25 und warten auf die Bestätigung durch Stef
 
 `a38 config` fasst die Befehle für die Konfiguration zusammen.
 `a38 config --help` listet die Unterbefehle.
-Heute gibt es einen Unterbefehl: `onepassword-token`.
+Jeder Unterbefehl kennt `--help` und `--config <datei>`.
+Eine Anleitung steht in [Konfiguration anlegen und ändern](../how-to/26-konfiguration-anlegen-und-aendern.md).
+Die Entscheidung dazu ist {{ ref("D55") }}.
+
+| Unterbefehl | Wirkung |
+|---|---|
+| `path` | Zeigt die Datei, die gilt, den Grund (Schalter, `A38_CONFIG`, `XDG_CONFIG_HOME`, Standard) und ob sie existiert. Exit-Code 0. |
+| `show` | Zeigt jeden Wert mit der Herkunft (`file`, `default`), die aufgelösten Pfade (Sockets, Audit-Datei, Quelle des Tokens), die vorhandenen Vaults und die Projekte mit Pfaden (geschrieben, aufgelöst, fehlend) und die Prüfung. Eine Datei, die nicht lädt, gibt den Fehler mit Zeile und Exit-Code 1, nie eine Teilausgabe. Der Befehl liest das Token nie. |
+| `init [--force]` | Legt die Datei mit den Standardwerten und Kommentaren an (Verzeichnis 0700, Datei 0600). Eine vorhandene Datei bleibt; der Befehl endet mit 1. `--force` verschiebt sie nach `config.yaml.bak-<Zeitstempel>`. |
+| `validate` | Lädt und prüft die Datei wie die Prüfung `configuration` von `a38 doctor`. Exit-Code 0 ohne Befund, sonst 1 mit dem nächsten Schritt. |
+| `vault add <name> --environment dev\|test\|prod` | Trägt einen Vault ein. Ein doppelter Name oder eine andere Umgebung ist ein Fehler. |
+| `vault remove <name>` | Entfernt einen Vault. Nutzt ihn ein Projekt, endet der Befehl mit 1 und nennt die Projekte. |
+| `vault list` | Listet die Vaults. |
+| `project add <name> --path <dir> [--path …] --vault <vault> [--vault …]` | Trägt ein Projekt ein. Jeder Pfad ist absolut oder beginnt mit `~/`. Jeder Vault steht in der Liste. Ein fehlender Pfad ist ein Hinweis. |
+| `project remove <name>` | Entfernt ein Projekt. |
+| `project list` | Listet die Projekte. |
+| `onepassword-token` | Siehe unten. |
+
+Die Befehle `vault add|remove` und `project add|remove` ändern nur den Block der Liste.
+Kommentare, Reihenfolge und Leerzeilen bleiben erhalten; ein Kommentar über einem entfernten Eintrag bleibt stehen.
+Die Änderung durchläuft vor dem Schreiben dieselben Regeln wie das Laden.
+Eine Datei, die nicht lädt, ändern sie nicht.
+Sie schreiben eine temporäre Datei im selben Verzeichnis und benennen sie um; der Modus der Datei bleibt.
+Sie schreiben nicht durch einen symbolischen Link.
+Eine Sperrdatei `<datei>.lock` und ein Vergleich vor dem Umbenennen verhindern gleichzeitige Änderungen.
+Nach der Änderung weisen sie darauf hin, dass der Daemon die Datei nur beim Start liest und neu starten muss.
+Ein Schalter darf vor und nach den Argumenten stehen.
 
 ### a38 config onepassword-token
 

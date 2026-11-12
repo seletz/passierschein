@@ -49,7 +49,13 @@ Der Dienst startet später nicht den Link, sondern die Datei im Bundle.
 
 ## Konfiguration und Token einrichten
 
-1. Lege die Konfiguration unter `~/.config/a38/config.yaml` an ([1Password-Backend einrichten](30-1password-backend-einrichten.md#konfiguration)).
+1. Lege die Konfiguration an und trage Vaults und Projekte ein ([Konfiguration anlegen und ändern](26-konfiguration-anlegen-und-aendern.md)):
+
+    ```sh
+    a38 config init
+    a38 config validate
+    ```
+
 2. Lege das Token des Service Accounts im Schlüsselbund ab:
 
     ```sh

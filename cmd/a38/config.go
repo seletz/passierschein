@@ -6,9 +6,14 @@ import (
 )
 
 // configCommands lists the subcommands of "a38 config" in the sequence of
-// the usage text. Later subcommands (where the configuration comes from, a
-// new configuration file, the vaults) join this table.
+// the usage text.
 var configCommands = []command{
+	{"path", "Show which configuration file applies and why", runConfigPath},
+	{"show", "Show the effective configuration with the origin of each value", runConfigShow},
+	{"init", "Write a new configuration file with the default values", runConfigInit},
+	{"validate", "Check the configuration file with the rules of the daemon", runConfigValidate},
+	{"vault", "Add, remove and list vaults in the configuration file", runVault},
+	{"project", "Add, remove and list projects in the configuration file", runProject},
 	{"onepassword-token", "Store, show and delete the token of the 1Password service account (macOS keychain)", runOnePasswordToken},
 }
 
