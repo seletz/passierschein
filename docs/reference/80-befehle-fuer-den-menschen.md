@@ -49,9 +49,22 @@ Der Daemon sucht den Pfad in dieser Reihenfolge:
 
 1. Schalter `--ui-app`. Ein relativer Pfad gilt ab dem Arbeitsverzeichnis von `a38 serve`.
 2. Schlüssel `paths.ui_app` der Konfigurationsdatei.
-3. Neben dem Binary `a38`, nach Auflösung symbolischer Links: `a38-approve`, danach `a38-approve.app/Contents/MacOS/a38-approve`.
+3. Der Daemon löst die symbolischen Links seines eigenen Binarys auf. Danach sucht er der Reihe nach:
+    1. Läuft `a38` in einem Bundle (`<X>.app/Contents/MacOS/a38`), das Geschwister `<X>.app/Contents/MacOS/Passierschein`.
+    2. Neben `a38`: `Passierschein.app/Contents/MacOS/Passierschein`, danach eine einfache ausführbare Datei `Passierschein`.
+    3. `/Applications/Passierschein.app/Contents/MacOS/Passierschein`, danach `~/Applications/Passierschein.app/Contents/MacOS/Passierschein`.
 
-Die Dateinamen der Suche sind ein Vorschlag und warten auf die Bestätigung durch Stefan.
+Der erste vorhandene Treffer gilt.
+Die Prüfung der Datei unten gilt für jeden Treffer.
+Ein Bundle in `/Applications` gehört meist dem Benutzer oder `root`; beides ist erlaubt.
+Der Daemon schreibt beim Start den gewählten Pfad ins Log.
+Die App heißt „Passierschein“, das Werkzeug `a38` ({{ ref("D50") }}).
+
+### Auslieferung
+
+Das Release kann `a38` im Bundle `Passierschein.app` ausliefern (`Contents/MacOS/a38`) und einen symbolischen Link in den `PATH` legen.
+Der Linux-Build bleibt das einzelne Binary `a38` ohne App.
+Die Paketierung gehört zur Arbeit am Release ({{ ref("G5") }}, {{ ref("D46") }}) und nicht zu diesem Stand.
 
 ### Prüfung vor jedem Start
 

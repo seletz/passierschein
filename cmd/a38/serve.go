@@ -183,7 +183,8 @@ func newBroker(f serveFlags, cfg *config.Config, log *slog.Logger) (*broker.Brok
 	var closeUI func()
 	appPath := ""
 	if mode == approval.ModeApp {
-		appPath = resolveUIApp(f.uiApp, cfg.Paths.UIApp, executablePath)
+		appPath = resolveUIApp(f.uiApp, cfg.Paths.UIApp, executablePath, homeDir)
+		log.Info("approval app chosen", "path", appPath)
 		app, err := appui.New(appui.Options{Path: appPath, Clock: clk, Logger: log})
 		if err != nil {
 			return nil, nil, nil, err
@@ -227,14 +228,16 @@ func newBackend(f serveFlags) (backend.Backend, error) {
 	}
 }
 
-// DefaultAppNames lists the file names that the daemon looks for next to
-// its own binary, in this order, if neither the flag nor the configuration
-// names the approval app. The paths are relative to the directory of the
-// binary.
-var DefaultAppNames = []string{
-	"a38-approve",
-	filepath.Join("a38-approve.app", "Contents", "MacOS", "a38-approve"),
-}
+// The names of the approval app . The bundle is
+// Passierschein.app, its main executable is Contents/MacOS/Passierschein.
+// A development build is a plain executable named Passierschein.
+const (
+	appName   = "Passierschein"
+	appBundle = appName + ".app"
+)
+
+// appInBundle is the path of the app executable inside a bundle.
+var appInBundle = filepath.Join(appBundle, "Contents", "MacOS", appName)
 
 // executablePath returns the path of the running binary with links
 // resolved, or an empty string.
@@ -249,11 +252,38 @@ func executablePath() string {
 	return exe
 }
 
+// appCandidates returns the places where the daemon looks for the
+// approval app, in this order, if neither the flag nor the configuration
+// names it. self is the real path of the a38 binary (links resolved), home
+// the home directory; each may be empty.
+//
+//  1. a38 runs inside a bundle <X>.app/Contents/MacOS/a38: the sibling
+//     <X>.app/Contents/MacOS/Passierschein,
+//  2. next to a38: Passierschein.app/Contents/MacOS/Passierschein, then a
+//     plain executable Passierschein,
+//  3. /Applications, then ~/Applications.
+func appCandidates(self, home string) []string {
+	var c []string
+	if self != "" {
+		dir := filepath.Dir(self)
+		if filepath.Base(dir) == "MacOS" && filepath.Base(filepath.Dir(dir)) == "Contents" &&
+			strings.HasSuffix(filepath.Dir(filepath.Dir(dir)), ".app") {
+			c = append(c, filepath.Join(dir, appName))
+		}
+		c = append(c, filepath.Join(dir, appInBundle), filepath.Join(dir, appName))
+	}
+	c = append(c, filepath.Join("/Applications", appInBundle))
+	if home != "" {
+		c = append(c, filepath.Join(home, "Applications", appInBundle))
+	}
+	return c
+}
+
 // resolveUIApp returns the path of the approval app: the flag, else the
-// configuration, else the first of [DefaultAppNames] next to the binary
-// that exists. If none exists it returns the first name, so that the
-// message names a path.
-func resolveUIApp(flagValue, configured string, exe func() string) string {
+// configuration, else the first of [appCandidates] that exists. If none
+// exists it returns the first candidate, so that the message names a path.
+// The file checks of the daemon apply to the result.
+func resolveUIApp(flagValue, configured string, exe, home func() string) string {
 	switch {
 	case flagValue != "":
 		if abs, err := filepath.Abs(flagValue); err == nil {
@@ -263,15 +293,20 @@ func resolveUIApp(flagValue, configured string, exe func() string) string {
 	case configured != "":
 		return configured
 	}
-	self := exe()
-	if self == "" {
-		return DefaultAppNames[0] // relative: the file check refuses it
-	}
-	dir := filepath.Dir(self)
-	for _, n := range DefaultAppNames {
-		if _, err := os.Stat(filepath.Join(dir, n)); err == nil {
-			return filepath.Join(dir, n)
+	c := appCandidates(exe(), home())
+	for _, p := range c {
+		if _, err := os.Stat(p); err == nil {
+			return p
 		}
 	}
-	return filepath.Join(dir, DefaultAppNames[0])
+	return c[0]
+}
+
+// homeDir returns the home directory of the user, or an empty string.
+func homeDir() string {
+	h, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return h
 }

@@ -49,7 +49,7 @@ func (e *buildError) Error() string { return "build fake app: " + e.out }
 // writeApp writes the script that starts the fake app with the flags.
 func writeApp(t *testing.T, dir string, mode os.FileMode, flags string) string {
 	t.Helper()
-	path := filepath.Join(dir, "a38-approve")
+	path := filepath.Join(dir, "Passierschein")
 	if err := os.WriteFile(path, []byte("#!/bin/sh\nexec "+buildFakeApp(t)+" "+flags+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -172,40 +172,100 @@ func TestServeUIApp(t *testing.T) {
 	}
 }
 
+// writeExe creates an empty executable file with its directories.
+func writeExe(t *testing.T, path string) string {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, nil, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
 func TestResolveUIApp(t *testing.T) {
-	dir, err := os.MkdirTemp("/tmp", "a38-")
+	root, err := os.MkdirTemp("/tmp", "a38-")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.RemoveAll(dir) })
-	exe := func() string { return filepath.Join(dir, "a38") }
-	bundle := filepath.Join(dir, DefaultAppNames[1])
-	if got := resolveUIApp("/flag/app", "/cfg/app", exe); got != "/flag/app" {
-		t.Errorf("flag: %q", got)
+	t.Cleanup(func() { _ = os.RemoveAll(root) })
+	home := filepath.Join(root, "home")
+	inApps := filepath.Join("/Applications", appInBundle)
+	if _, err := os.Stat(inApps); err == nil {
+		t.Skip("a real app is installed in /Applications")
 	}
-	if got := resolveUIApp("", "/cfg/app", exe); got != "/cfg/app" {
-		t.Errorf("config: %q", got)
-	}
-	if got := resolveUIApp("", "", exe); got != filepath.Join(dir, DefaultAppNames[0]) {
-		t.Errorf("nothing there: %q", got)
-	}
-	if err := os.MkdirAll(filepath.Dir(bundle), 0o700); err != nil {
+	homeApp := filepath.Join(home, "Applications", appInBundle)
+	bin := filepath.Join(root, "bin")
+	binExe := func() string { return filepath.Join(bin, "a38") }
+	homeFn := func() string { return home }
+
+	// Case a: a38 runs from inside a bundle; its symlink lives in another
+	// directory, as a link in the PATH does. The real path decides.
+	bundle := filepath.Join(root, "Beispiel.app", "Contents", "MacOS")
+	writeExe(t, filepath.Join(bundle, "a38"))
+	link := filepath.Join(root, "pathdir", "a38")
+	if err := os.MkdirAll(filepath.Dir(link), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(bundle, nil, 0o700); err != nil {
+	if err := os.Symlink(filepath.Join(bundle, "a38"), link); err != nil {
 		t.Fatal(err)
 	}
-	if got := resolveUIApp("", "", exe); got != bundle {
-		t.Errorf("bundle: %q", got)
+	realOfLink := func() string {
+		r, err := filepath.EvalSymlinks(link)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r
 	}
-	plain := filepath.Join(dir, DefaultAppNames[0])
-	if err := os.WriteFile(plain, nil, 0o700); err != nil {
-		t.Fatal(err)
+	if got := realOfLink(); filepath.Base(filepath.Dir(got)) != "MacOS" {
+		t.Fatalf("link resolves to %q", got)
 	}
-	if got := resolveUIApp("", "", exe); got != plain {
-		t.Errorf("plain file first: %q", got)
+	sibling := executablePathOf(writeExe(t, filepath.Join(bundle, appName)))
+	// A plain file next to the link must not win over the sibling.
+	writeExe(t, filepath.Join(filepath.Dir(link), appName))
+	if got := resolveUIApp("", "", func() string { return executablePathOf(link) }, homeFn); got != sibling {
+		t.Errorf("case a: %q, want %q", got, sibling)
 	}
-	if got := resolveUIApp("", "", func() string { return "" }); got != DefaultAppNames[0] {
-		t.Errorf("no executable path: %q", got)
+
+	tests := []struct {
+		name  string
+		setup func()
+		want  string
+	}{
+		{"nothing there: first candidate", func() {}, filepath.Join(bin, appInBundle)},
+		{"home applications", func() { writeExe(t, homeApp) }, homeApp},
+		{"plain executable next to a38", func() { writeExe(t, filepath.Join(bin, appName)) }, filepath.Join(bin, appName)},
+		{"bundle next to a38 wins over plain", func() { writeExe(t, filepath.Join(bin, appInBundle)) }, filepath.Join(bin, appInBundle)},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setup()
+			if got := resolveUIApp("", "", binExe, homeFn); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+	t.Run("flag and configuration come first", func(t *testing.T) {
+		if got := resolveUIApp("/flag/app", "/cfg/app", binExe, homeFn); got != "/flag/app" {
+			t.Errorf("flag: %q", got)
+		}
+		if got := resolveUIApp("", "/cfg/app", binExe, homeFn); got != "/cfg/app" {
+			t.Errorf("config: %q", got)
+		}
+	})
+	t.Run("no executable path", func(t *testing.T) {
+		if got := resolveUIApp("", "", func() string { return "" }, func() string { return "" }); got != inApps {
+			t.Errorf("got %q, want %q", got, inApps)
+		}
+	})
+}
+
+// executablePathOf resolves links as executablePath does.
+func executablePathOf(p string) string {
+	r, err := filepath.EvalSymlinks(p)
+	if err != nil {
+		return p
+	}
+	return r
 }

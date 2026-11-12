@@ -354,7 +354,7 @@ Eine ungültige Freigabe endet mit `ui_failed` ({{ ref("D32") }}, {{ ref("T23") 
 ### Freigabe-App als Kindprozess
 
 Das Paket `internal/approval/appui` setzt `UI` für `--ui app` um ({{ ref("D6") }}, {{ ref("D40") }}, {{ ref("F11") }}).
-Die Freigabe-App ist ein eigenes Programm.
+Die Freigabe-App heißt „Passierschein“ ({{ ref("D50") }}): Bundle `Passierschein.app`, Hauptdatei `Contents/MacOS/Passierschein`. Sie ist ein eigenes Programm.
 Der Vertrag zwischen Daemon und App ist das JSON des Pakets `internal/approval`.
 
 **Aufruf.** Der Daemon startet die App ohne Argumente, mit dem Arbeitsverzeichnis `/` und in einer eigenen Prozessgruppe.
@@ -426,10 +426,10 @@ Die Schnittstelle `appui.Verifier` hat die Methode `Verify(ctx, path) error`.
 Der Daemon ruft sie nach der Prüfung der Datei vor jedem Start auf.
 Ein Fehler stoppt den Start.
 Der Standard `appui.NoopVerifier` tut nichts.
-Die Prüfung der Code-Signatur und der Team-ID gehört nicht zu Issue 40 und bleibt offen, bis G5 geschlossen ist.
+Die Prüfung der Code-Signatur und der Team-ID gehört nicht zu Issue 40 und bleibt offen, bis {{ ref("G5") }} geschlossen ist.
 
 **Ort der App.**
-Der Schalter `--ui-app`, der Schlüssel `paths.ui_app` der Konfiguration und die Suche neben dem Binary `a38` stehen in der [Referenz der Befehle](../reference/80-befehle-fuer-den-menschen.md).
+Der Schalter `--ui-app`, der Schlüssel `paths.ui_app` der Konfiguration und die Suche (Bundle von `a38`, neben `a38`, `/Applications`, `~/Applications`) stehen in der [Referenz der Befehle](../reference/80-befehle-fuer-den-menschen.md).
 
 **Änderungen an den gemeinsamen Paketen.**
 `approval.ValidateDecision` und `approval.CheckAppFile` sind neu.
@@ -503,7 +503,7 @@ session_name:
 paths:
   socket_dir: ~/.local/state/a38/run
   audit_file: ~/.local/state/a38/audit.db
-  # ui_app: ~/bin/a38-approve   # ohne Wert: Suche neben dem Binary a38
+  # ui_app: ~/Applications/Passierschein.app/Contents/MacOS/Passierschein   # ohne Wert: Suche, siehe Referenz
 ```
 
 Nur `version` ist Pflicht.

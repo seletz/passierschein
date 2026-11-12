@@ -1,0 +1,9 @@
+id: D50
+zustand: eingeloest
+titel: Die Freigabe-App heißt Passierschein, das Kommandozeilenwerkzeug a38
+bezug: '#40'
+schluessel: '#40/app-name'
+lauf: '2.0'
+branch: feat/40-ui-app
+reserviert_am: '2026-11-12'
+eingeloest_am: '2026-11-12'
