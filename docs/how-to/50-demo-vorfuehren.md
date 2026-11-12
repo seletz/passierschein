@@ -12,6 +12,8 @@ Der Hauptweg: Ein Agent in Claude Code fragt, `a38 mcp` gibt die Anfrage an den 
 Die Demo läuft lokal auf dem Mac, ohne VM.
 Aufbau und Abbau sind je ein Befehl.
 
+Den Ablauf zum Mitlesen und Vorführen, Schritt für Schritt mit Bildern, zeigt das Tutorial [Live-Demo](../tutorials/20-live-demo.md).
+
 !!! info "Was die Demo nutzt"
     - Daemon `a38 serve` mit dem 1Password-Backend ({{ ref("F12") }}) und der Freigabe-App „Passierschein“ ({{ ref("F11") }}).
     - Test-Vault `passierschein.dev` mit den Items `datenbank-dev` (Felder `username`, `password`) und `objektspeicher-dev` (Feld `access-key`). Alle Werte sind erfunden.

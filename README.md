@@ -28,6 +28,7 @@ beschreibt Service Account, Token-Datei und Test.
 
 Eine Demo des Stands baust du mit einem Befehl auf und ab.
 Die Anleitung [Demo vorführen](docs/how-to/50-demo-vorfuehren.md) enthält
+- [Live-Demo als Tutorial](docs/tutorials/20-live-demo.md): der Ablauf Schritt für Schritt mit Bildern.
 den Ablaufplan mit Agent, Popup, Touch ID, Audit-Log und Störung.
 
 Was in Stufe 1 funktioniert:
