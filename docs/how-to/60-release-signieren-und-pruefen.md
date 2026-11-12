@@ -81,8 +81,8 @@ Er legt keinen Tag und kein Release an.
 
 3. Das Ergebnis lesen. Der Schritt „Check Passierschein.app“ zeigt je Programm Bezeichner, Flags, Team-ID und die Kette der Zertifikate. Er endet mit `passes (developer-id)`.
 
-Ein Lauf kostet etwa zehn bis zwanzig Minuten auf einem macOS-Runner.
-Der größte Teil ist die Wartezeit auf den Notardienst.
+Der erste Lauf am 2026-11-12 dauerte elf Minuten, davon etwa vier auf dem macOS-Runner.
+Der Notardienst antwortete für die App nach 25 Sekunden; er kann deutlich länger brauchen.
 
 Die App des Laufs liegt sieben Tage als Artefakt `signed-snapshot-app` am Lauf.
 Zum Prüfen lädst du sie in ein leeres Verzeichnis:

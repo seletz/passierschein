@@ -32,7 +32,7 @@ Die Nachricht enthält je Zugangsdatum nur Kennung, Vault, Titel und Feld.
 
 !!! warning "Nicht geprüft"
     - Vollbild-App, Wechsel des Arbeitsbereichs, Zeitablauf und die Meldungen am Bildschirm ({{ ref("G33") }}).
-    - Der Entwicklungsbau trägt nur eine Ad-hoc-Signatur. Das Release signiert und notarisiert das Bundle mit der Developer ID ([Release](50-release.md#signatur-und-notarisierung)). Der erste Lauf mit der echten Developer ID steht aus ({{ ref("G5") }}).
+    - Der Entwicklungsbau trägt nur eine Ad-hoc-Signatur. Das Release signiert und notarisiert das Bundle mit der Developer ID ([Release](50-release.md#signatur-und-notarisierung)). Der signierte Snapshot ist am 2026-11-12 mit der echten Developer ID grün ([Lauf 43208639784](https://github.com/seletz/passierschein/actions/runs/43208639784)). Der Praxistest eines echten Release auf dem Mac steht aus ({{ ref("G5") }}).
 
 ## Aufbau des Codes
 

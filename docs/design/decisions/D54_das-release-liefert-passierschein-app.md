@@ -29,6 +29,6 @@ beleg:
 
 **Begründung:** Das ZIP mit `ditto` ist der Weg von Apple und erhält Signatur und Ticket. Ein Bundle für beide Architekturen ist ein Download für jeden Mac. Der Entwurf verhindert ein halb fertiges Release. Eine neue Signatur von `a38` mit `codesign` gibt einen Weg für Ad-hoc und Developer ID, einen festen Bezeichner und eine Signatur über beide Teile des Universal-Binarys.
 
-**Grenze:** Der erste Lauf mit der echten Developer ID ist offen ({{ ref("G5") }}). Das einzelne `a38` aus dem tar-Archiv und `a38` im Bundle haben verschiedene Bezeichner.
+**Grenze:** Der signierte Snapshot mit der echten Developer ID ist am 2026-11-12 grün ([Lauf 43208639784](https://github.com/seletz/passierschein/actions/runs/43208639784)). Ein echtes Release und der Praxistest auf dem Mac sind offen ({{ ref("G5") }}). Das einzelne `a38` aus dem tar-Archiv und `a38` im Bundle haben verschiedene Bezeichner.
 
 **Quelle:** [Issue 68](https://github.com/seletz/passierschein/issues/68), Vorschlag aus der Entwicklung.

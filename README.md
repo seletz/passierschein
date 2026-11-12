@@ -46,8 +46,8 @@ Was in Stufe 1 funktioniert:
 - Backend aus einer YAML-Datei (`--backend fake`) und Freigabe ohne Mensch
   (`--ui auto-approve`, `auto-deny`, `script`) für Tests und zum Lernen
 
-**Release mit signierter App ist gebaut, der erste Lauf mit der echten
-Developer ID ist offen.** Das Release liefert `Passierschein.app` mit `a38`
+**Release mit signierter App ist gebaut.** Der signierte Snapshot mit der
+echten Developer ID ist grün; ein echtes Release ist offen. Das Release liefert `Passierschein.app` mit `a38`
 im Bundle als ZIP, signiert mit der Developer ID, notarisiert und mit
 angeheftetem Ticket. Der Daemon prüft die Signatur der App, wenn `a38`
 selbst mit der Developer ID signiert ist. Die Anleitung
