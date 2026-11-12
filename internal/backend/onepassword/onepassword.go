@@ -64,7 +64,7 @@ import (
 
 	"github.com/seletz/passierschein/internal/backend"
 	"github.com/seletz/passierschein/internal/protocol"
-	"github.com/seletz/passierschein/internal/tokenfile"
+	"github.com/seletz/passierschein/internal/token"
 )
 
 // Defaults of [Options].
@@ -82,7 +82,7 @@ type Options struct {
 	// backend asks for no other vault.
 	Vaults []string
 	// Token is the token of the service account.
-	Token tokenfile.Token
+	Token token.Token
 	// Version is the version of a38. The SDK sends it to 1Password as
 	// the version of the integration.
 	Version string
@@ -108,7 +108,7 @@ type ids struct {
 type Backend struct {
 	allowed map[string]bool
 	order   []string
-	token   tokenfile.Token
+	token   token.Token
 	version string
 	log     *slog.Logger
 	timeout time.Duration

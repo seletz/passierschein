@@ -9,7 +9,7 @@ import (
 	sdk "github.com/1password/onepassword-sdk-go"
 
 	"github.com/seletz/passierschein/internal/protocol"
-	"github.com/seletz/passierschein/internal/tokenfile"
+	"github.com/seletz/passierschein/internal/token"
 )
 
 // integrationName is the name of a38 that the SDK sends to 1Password.
@@ -17,7 +17,7 @@ const integrationName = "a38"
 
 // connectSDK builds the client of the SDK with the token of the service
 // account. It never uses the desktop app integration (D39).
-func connectSDK(ctx context.Context, token tokenfile.Token, version string) (api, error) {
+func connectSDK(ctx context.Context, token token.Token, version string) (api, error) {
 	c, err := sdk.NewClient(ctx,
 		sdk.WithServiceAccountToken(token.Reveal()),
 		sdk.WithIntegrationInfo(integrationName, version),

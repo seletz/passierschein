@@ -26,6 +26,7 @@ import (
 
 	"github.com/seletz/passierschein/internal/backend"
 	"github.com/seletz/passierschein/internal/protocol"
+	"github.com/seletz/passierschein/internal/token"
 	"github.com/seletz/passierschein/internal/tokenfile"
 )
 
@@ -104,10 +105,10 @@ func (g *vaultGuard) callCount() int {
 
 // newIntegrationBackend returns the backend with only the test vault in
 // the configuration, and the guard around the SDK.
-func newIntegrationBackend(t *testing.T, tok tokenfile.Token) (*Backend, *vaultGuard) {
+func newIntegrationBackend(t *testing.T, tok token.Token) (*Backend, *vaultGuard) {
 	t.Helper()
 	g := &vaultGuard{t: t}
-	connect := func(ctx context.Context, tok tokenfile.Token, version string) (api, error) {
+	connect := func(ctx context.Context, tok token.Token, version string) (api, error) {
 		a, err := connectSDK(ctx, tok, version)
 		if err != nil {
 			return nil, err

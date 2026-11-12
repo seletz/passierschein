@@ -15,11 +15,12 @@ import (
 
 	"github.com/seletz/passierschein/internal/backend"
 	"github.com/seletz/passierschein/internal/protocol"
+	"github.com/seletz/passierschein/internal/token"
 	"github.com/seletz/passierschein/internal/tokenfile"
 )
 
 // testToken returns a token with the marker, read from a 0600 file.
-func testToken(t *testing.T) tokenfile.Token {
+func testToken(t *testing.T) token.Token {
 	t.Helper()
 	dir, err := os.MkdirTemp("/tmp", "a38-")
 	if err != nil {
@@ -167,7 +168,7 @@ type harness struct {
 func newHarness(t *testing.T) *harness {
 	t.Helper()
 	h := &harness{api: newFakeAPI(), log: &bytes.Buffer{}, now: time.Date(2026, 11, 12, 8, 0, 0, 0, time.UTC)}
-	connect := func(_ context.Context, tok tokenfile.Token, _ string) (api, error) {
+	connect := func(_ context.Context, tok token.Token, _ string) (api, error) {
 		h.mu.Lock()
 		defer h.mu.Unlock()
 		h.connects++

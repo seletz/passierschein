@@ -310,7 +310,7 @@ func (c tokenFileCheck) Run(_ context.Context, st *State) []Result {
 		return []Result{finding(c.Name(), "the token file is not safe", path+": "+errText(err),
 			"make it a regular file of your user and run: chmod 600 "+path+"; then restart the daemon")}
 	}
-	return []Result{ok(c.Name(), "%s: regular file of the user, mode 0600 (content not read)", path)}
+	return []Result{ok(c.Name(), "%s: regular file of the user, mode 0600 (content not read; interim source, the target is the keychain)", path)}
 }
 
 // uiCheck reports the approval UI state as far as it is known.

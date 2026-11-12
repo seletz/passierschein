@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/seletz/passierschein/internal/protocol"
-	"github.com/seletz/passierschein/internal/tokenfile"
+	"github.com/seletz/passierschein/internal/token"
 )
 
 // api is the small part of the 1Password SDK that the backend uses. It
@@ -24,7 +24,7 @@ type api interface {
 }
 
 // connectFunc builds the client of the SDK. It can call the network.
-type connectFunc func(ctx context.Context, token tokenfile.Token, version string) (api, error)
+type connectFunc func(ctx context.Context, token token.Token, version string) (api, error)
 
 // vaultInfo is the overview of one vault.
 type vaultInfo struct {

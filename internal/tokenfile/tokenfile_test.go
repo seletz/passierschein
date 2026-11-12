@@ -1,16 +1,16 @@
 package tokenfile
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/seletz/passierschein/internal/token"
 )
 
 // marker is a fake token. No output of the package may contain it.
@@ -133,30 +133,16 @@ func TestCheckInfoOwner(t *testing.T) {
 	}
 }
 
-func TestTokenNeverPrints(t *testing.T) {
-	// D34, G3: the token prints as [redacted] in each form.
-	tok := newToken(marker)
-	var logged strings.Builder
-	slog.New(slog.NewTextHandler(&logged, nil)).Info("start", "token", tok)
-	js, err := json.Marshal(struct{ T Token }{tok})
-	if err != nil {
-		t.Fatal(err)
+func TestFileSource(t *testing.T) {
+	// D51: the token file is a token.Source.
+	path := filepath.Join(shortDir(t), "onepassword-token")
+	write(t, path, marker+"\n", 0o600)
+	var src token.Source = File{Path: path}
+	tok, err := src.Token()
+	if err != nil || tok.Reveal() != marker {
+		t.Fatalf("Token() = %v, %v", tok, err)
 	}
-	txt, err := tok.MarshalText()
-	if err != nil {
-		t.Fatal(err)
-	}
-	outs := []string{
-		fmt.Sprint(tok), fmt.Sprintf("%v %+v %#v %s %q %x", tok, tok, tok, tok, tok, tok),
-		fmt.Sprintf("%v", struct{ T Token }{tok}), fmt.Sprintf("%+v", &struct{ t Token }{tok}),
-		logged.String(), string(js), string(txt), tok.String(), tok.GoString(),
-	}
-	for _, out := range outs {
-		if strings.Contains(out, marker) || strings.Contains(out, "beispiel-marker") {
-			t.Errorf("output contains the token: %q", out)
-		}
-	}
-	if !strings.Contains(outs[0], "[redacted]") {
-		t.Errorf("fmt output = %q, want [redacted]", outs[0])
+	if _, err := (File{Path: path + ".fehlt"}).Token(); !errors.Is(err, ErrMissing) {
+		t.Errorf("missing file: %v", err)
 	}
 }

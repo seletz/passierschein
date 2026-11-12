@@ -78,7 +78,8 @@ Die Abhängigkeitsregel gilt in jedem Fall.
 | `internal/doctor` | Prüfungen von `a38 doctor`; `cmd/a38/doctor.go` | 25 |
 | `internal/skill` | eingebettete Anleitung für Agents; `cmd/a38/llm.go` | 26 |
 | `internal/backend/onepassword` | `Backend` über das Go-SDK von 1Password mit einem Service Account; nur im macOS-Build von `a38` ([1Password-Backend](#1password-backend)) | 50 |
-| `internal/tokenfile` | Token-Datei des Service Accounts: Prüfung von Besitzer und Rechten, Lesen, Typ `Token` mit der Ausgabe `[redacted]` | 50 |
+| `internal/token` | Typ `Token` mit der Ausgabe `[redacted]`, Schnittstelle `Source` einer Quelle des Tokens | 50 |
+| `internal/tokenfile` | Token-Datei als Quelle (Übergang bis zum Schlüsselbund): Prüfung von Besitzer und Rechten, Lesen | 50 |
 
 Vier Pakete aus dem ersten Entwurf entstehen in diesem Issue nicht: `internal/grant`, `internal/policy`, `internal/bundle` und ein Sitzungsregister.
 Kein anderes Paket braucht heute einen Typ aus ihnen.
@@ -136,8 +137,9 @@ Die Standardbibliothek ist immer erlaubt.
 | `daemon` | alle Pakete oberhalb dieser Zeile; nur `daemon` wählt die Umsetzungen aus |
 | `client` | `protocol` |
 | `mcp` | `protocol`, `config`, `version`, `client` |
-| `tokenfile` | kein Paket von `a38` |
-| `backend/onepassword` | `backend`, `protocol`, `tokenfile`; das SDK von 1Password nur in `sdk_darwin.go` |
+| `token` | kein Paket von `a38` |
+| `tokenfile` | `token` |
+| `backend/onepassword` | `backend`, `protocol`, `token`; das SDK von 1Password nur in `sdk_darwin.go` |
 | `doctor` | `protocol`, `config`, `client`, `audit`, `audit/sqlite` (nur lesend), `approval` (nur die Prüfung der Datei der Freigabe-App), `backend` (nur die Namen der Arten), `tokenfile` (nur die Prüfung der Datei) |
 | `skill` | `protocol` |
 | `cmd/a38` | jedes Paket |
@@ -631,9 +633,15 @@ Ein Fehler in der Datei ist ein Fehler der Einrichtung und bleibt gleich, bis de
 Einen Fehler des Tokens oder des Netzes zeigt der laufende Daemon besser als eine Schleife von Neustarts.
 Die Wahl folgt dem Wunsch nach einem ruhigen Dienst ({{ ref("D48") }}): Ein gesperrtes oder nicht erreichbares Backend ist ein Fehler der Anfrage und keine Störung des Daemons.
 
-**Token:** Die Konfiguration nennt die Token-Datei (`backend.onepassword.token_file`).
-Der Daemon liest sie einmal beim Start.
-Er hält das Token nur im Arbeitsspeicher, im Typ `tokenfile.Token`.
+**Token ({{ ref("D51") }}):** Das Ziel ist der Schlüsselbund von macOS, gebunden an das signierte Programm `a38`; der Mensch legt das Token mit einem Befehl von `a38` dort ab ([Spike in Issue 53](https://github.com/seletz/passierschein/issues/53)).
+Heute ist die Token-Datei die einzige Quelle, als Übergang für Entwicklung und Tests.
+Ihre Schwäche: Jeder Prozess desselben Benutzers kann sie lesen, auch ein Agent ({{ ref("RI5") }}, {{ ref("G3") }}).
+Der Daemon holt das Token über die Schnittstelle `token.Source` (Paket `internal/token`).
+Die Datei ist die Quelle `tokenfile.File`; nur der Konstruktor `tokenSource` in `cmd/a38/serve_onepassword_darwin.go` wählt sie.
+Eine Quelle im Schlüsselbund ersetzt nur diesen Konstruktor.
+Die Konfiguration nennt die Token-Datei (`backend.onepassword.token_file`).
+Der Daemon liest das Token einmal beim Start.
+Er hält das Token nur im Arbeitsspeicher, im Typ `token.Token`.
 Der Typ gibt in `fmt`, `slog` und JSON nur `[redacted]` aus.
 Es gibt keine Umgebungsvariable für das Token, denn jeder Kindprozess erbt die Umgebung.
 

@@ -13,7 +13,10 @@
 //     belongs to the user of the daemon and has the mode 0600 exactly.
 //     Otherwise the daemon does not start with the 1Password backend.
 //   - The daemon reads the file once at its start and keeps the token in
-//     memory only, in a [Token].
+//     memory only, in a [token.Token].
+//   - The file is the interim source for development and tests (D51). The
+//     target is the macOS keychain; a keychain source implements
+//     [token.Source] like [File].
 //   - There is no environment variable for the token: a child process
 //     inherits the environment.
 //
@@ -22,14 +25,14 @@ package tokenfile
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
-	"log/slog"
 	"os"
 	"syscall"
+
+	"github.com/seletz/passierschein/internal/token"
 )
 
 // MaxSize is the largest token file in bytes that Read accepts. A service
@@ -54,48 +57,17 @@ var (
 	ErrTooLarge = errors.New("the token file is larger than a token")
 )
 
-// redacted replaces the token in each output.
-const redacted = "[redacted]"
-
-// Token holds the token of a service account. Formatting with package
-// fmt, logging with package slog, json.Marshal and MarshalText all give
-// "[redacted]". Only [Token.Reveal] returns the token.
-type Token struct {
-	// A pointer, so that fmt prints an address and not the token when a
-	// Token is an unexported field of a different struct.
-	v *string
+// File is the token source of a token file (D51: interim source for
+// development and tests; the target is the macOS keychain).
+type File struct {
+	// Path is the token file.
+	Path string
 }
 
-func newToken(s string) Token { return Token{v: &s} }
+// Token reads the token file with [Read].
+func (f File) Token() (token.Token, error) { return Read(f.Path) }
 
-// Reveal returns the token. Call it only to give the token to the SDK.
-func (t Token) Reveal() string {
-	if t.v == nil {
-		return ""
-	}
-	return *t.v
-}
-
-// Empty reports whether the token is empty.
-func (t Token) Empty() bool { return t.Reveal() == "" }
-
-// String returns "[redacted]".
-func (t Token) String() string { return redacted }
-
-// GoString returns "[redacted]".
-func (t Token) GoString() string { return redacted }
-
-// Format writes "[redacted]" for each verb.
-func (t Token) Format(f fmt.State, _ rune) { _, _ = f.Write([]byte(redacted)) }
-
-// LogValue returns "[redacted]" for package slog.
-func (t Token) LogValue() slog.Value { return slog.StringValue(redacted) }
-
-// MarshalJSON writes "[redacted]".
-func (t Token) MarshalJSON() ([]byte, error) { return json.Marshal(redacted) }
-
-// MarshalText writes "[redacted]".
-func (t Token) MarshalText() ([]byte, error) { return []byte(redacted), nil }
+var _ token.Source = File{}
 
 // CheckInfo checks the file information of a token file: a regular file
 // of the user uid with the mode 0600 and no special bit. fi must come from
@@ -135,37 +107,37 @@ func Check(path string) error {
 // white space at the start and the end. It opens the file without following
 // a symbolic link and checks the open file, so that the file cannot change
 // between the check and the read.
-func Read(path string) (Token, error) {
+func Read(path string) (token.Token, error) {
 	if err := Check(path); err != nil {
-		return Token{}, err
+		return token.Token{}, err
 	}
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if err != nil {
 		if errors.Is(err, syscall.ELOOP) {
-			return Token{}, ErrSymlink
+			return token.Token{}, ErrSymlink
 		}
-		return Token{}, statError(err)
+		return token.Token{}, statError(err)
 	}
 	defer func() { _ = f.Close() }()
 	fi, err := f.Stat()
 	if err != nil {
-		return Token{}, errors.New("cannot read the information of the token file")
+		return token.Token{}, errors.New("cannot read the information of the token file")
 	}
 	if err := CheckInfo(fi, os.Getuid()); err != nil {
-		return Token{}, err
+		return token.Token{}, err
 	}
 	data, err := io.ReadAll(io.LimitReader(f, MaxSize+1))
 	if err != nil {
-		return Token{}, errors.New("cannot read the token file")
+		return token.Token{}, errors.New("cannot read the token file")
 	}
 	if len(data) > MaxSize {
-		return Token{}, ErrTooLarge
+		return token.Token{}, ErrTooLarge
 	}
 	data = bytes.TrimSpace(data)
 	if len(data) == 0 {
-		return Token{}, ErrEmpty
+		return token.Token{}, ErrEmpty
 	}
-	return newToken(string(data)), nil
+	return token.New(string(data)), nil
 }
 
 // statError turns an error of os.Lstat or os.Open into a finding. The

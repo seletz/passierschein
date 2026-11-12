@@ -13,10 +13,12 @@ Das Backend liest über das Go-SDK von 1Password mit dem Token eines Service Acc
 Es gilt nur unter macOS ({{ ref("D42") }}).
 Den Aufbau erklärt die [Architektur](../explanation/architektur.md#1password-backend).
 
-!!! warning "Arbeitsannahme"
-    Ort und Schutz des Tokens sind im Design offen ({{ ref("G3") }}).
-    Die Token-Datei ist ein Vorschlag aus der Entwicklung ({{ ref("D51") }}).
-    Stefan bestätigt ihn.
+!!! warning "Die Token-Datei ist ein Übergang"
+    Das Ziel für das Token ist der Schlüsselbund von macOS, gebunden an das signierte Programm `a38` ({{ ref("D51") }}).
+    Du fügst das Token dann im Terminal in einen Befehl von `a38` ein, und `a38` legt es im Schlüsselbund ab.
+    Den Weg klärt der [Spike in Issue 53](https://github.com/seletz/passierschein/issues/53).
+    Bis dahin ist die Token-Datei die einzige Quelle, für die Entwicklung und für Tests.
+    Ihre Schwäche: Jeder Prozess deines Benutzers kann die Datei lesen, auch ein Agent auf dem Mac ({{ ref("RI5") }}, {{ ref("G3") }}).
 
 ## Was der Service Account kann und was nicht
 
@@ -25,13 +27,21 @@ Den Aufbau erklärt die [Architektur](../explanation/architektur.md#1password-ba
 - Seine Rechte und seine Vaults sind nach dem Anlegen fest. Ein weiterer Vault braucht einen neuen Service Account.
 - Mit dem Recht „Read Items“ ändert, legt und löscht er nichts.
 - 1Password begrenzt die Zahl der Anfragen je Stunde ([Rate Limits](https://www.1password.dev/service-accounts/rate-limits)).
-- Wer das Token hat, liest alle Items der gewählten Vaults, bis du das Token widerrufst. Jeder Prozess deines Benutzers kann die Token-Datei lesen.
+- Wer das Token hat, liest alle Items der gewählten Vaults, bis du das Token widerrufst. Jeder Prozess deines Benutzers kann die Token-Datei lesen, auch ein Agent. Gib deshalb nur einen Test-Vault oder dev-Vaults frei.
 
 `a38` prüft zusätzlich selbst: Das Backend fragt nur nach den Vaults der Konfiguration ({{ ref("D12") }}).
 
 ## Service Account anlegen
 
+Es gibt zwei Wege: die Weboberfläche oder die 1Password-CLI in deinem eigenen Terminal.
 Die offizielle Anleitung steht unter [Get started with 1Password Service Accounts](https://www.1password.dev/service-accounts/get-started).
+
+!!! danger "Das Token gehört nur in die Token-Datei"
+    Füge das Token nirgends sonst ein: nicht in einen Chat, nicht in einen Agent, nicht in ein Issue, nicht in eine Shell-Variable.
+    Ein Agent führt diese Schritte nie aus; du führst sie selbst in deinem Terminal aus.
+
+### Weg 1: Weboberfläche
+
 Die Schritte in der Weboberfläche:
 
 1. Melde dich bei 1Password.com an.
@@ -44,12 +54,32 @@ Die Schritte in der Weboberfläche:
 8. Wähle **Create Account**.
 9. 1Password zeigt das Token genau einmal. Speichere es mit **Save in 1Password** in deinem eigenen Vault.
 
-Verwende nicht die 1Password-CLI, um das Token zu erzeugen.
-Ein Token aus der CLI scheitert im SDK ([Fehler 289](https://github.com/1Password/onepassword-sdk-go/issues/289)).
+Lege danach die Token-Datei an, wie im nächsten Abschnitt beschrieben.
+
+### Weg 2: 1Password-CLI
+
+Die CLI schreibt das Token mit `--raw` direkt in die Token-Datei.
+Das Token erscheint so nie im Terminal:
+
+```sh
+mkdir -p ~/.config/a38
+umask 077
+op service-account create a38-passierschein-dev \
+  --vault passierschein.dev:read_items \
+  --raw > ~/.config/a38/onepassword-token
+chmod 600 ~/.config/a38/onepassword-token
+```
+
+`read_items` gibt nur das Recht zu lesen.
+Die [CLI-Referenz](https://www.1password.dev/cli/reference/management-commands/service-account) nennt die weiteren Schalter, zum Beispiel `--expires-in`.
+
+Geprüft am 2026-11-12: Ein Token aus `op service-account create … --raw`, in die Token-Datei geschrieben, funktioniert mit dem SDK v0.4.1.
+Der Integrationstest ist damit bestanden.
 
 ## Token-Datei ablegen
 
-Der Daemon liest das Token aus einer Datei.
+Der Daemon liest das Token heute aus einer Datei.
+Mit Weg 2 ist sie schon angelegt; prüfe dann nur die Rechte mit `ls -l`.
 Der Standardpfad ist `~/.config/a38/onepassword-token`.
 Mit gesetztem `XDG_CONFIG_HOME` ist er `$XDG_CONFIG_HOME/a38/onepassword-token`.
 

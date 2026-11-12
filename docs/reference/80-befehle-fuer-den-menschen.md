@@ -49,7 +49,9 @@ Der Mensch startet ihn, nicht der Agent.
 |---|---|---|
 | `backend.onepassword.token_file` | `$XDG_CONFIG_HOME/a38/onepassword-token`, ohne die Variable `~/.config/a38/onepassword-token` | Token-Datei des Service Accounts. Nur `--backend 1password` liest sie. |
 
-Die Token-Datei ist eine reguläre Datei, gehört dem Benutzer und hat genau den Modus `0600` ({{ ref("D51") }}, Annahme).
+Die Token-Datei ist ein Übergang für Entwicklung und Tests; das Ziel ist der Schlüsselbund von macOS ({{ ref("D51") }}).
+Die Token-Datei ist eine reguläre Datei, gehört dem Benutzer und hat genau den Modus `0600`.
+Jeder Prozess desselben Benutzers kann sie lesen, auch ein Agent ({{ ref("RI5") }}).
 Sonst startet der Daemon mit `--backend 1password` nicht, und die Meldung nennt den Befund.
 Der Daemon liest die Datei einmal beim Start.
 Ein ungültiges Token oder ein fehlendes Netz verhindern den Start nicht: Jede Anfrage endet dann mit `backend_locked` oder `backend_unavailable`.
