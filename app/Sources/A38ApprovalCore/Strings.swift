@@ -111,9 +111,9 @@ public enum UIText {
 
     // MARK: Notice
 
-    public static let noticeDaemonFaultTitle = "a38 is locked: daemon fault"
+    public static let noticeDaemonFaultTitle = "Passierschein: daemon fault"
     public static let noticeDaemonFaultDetail = "a38 delivers no credentials to any session until you lift the lock."
-    public static let noticeProjectTitle = "a38: invalid project configuration"
+    public static let noticeProjectTitle = "Passierschein: invalid project configuration"
     public static func noticeProjectDetail(_ project: String) -> String {
         "a38 rejects all requests of project \(project). Other projects keep working."
     }

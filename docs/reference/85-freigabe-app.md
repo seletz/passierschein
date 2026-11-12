@@ -119,8 +119,8 @@ Ihre einzige Aktion ist „Close“.
 
 | Art | Banner | Inhalt |
 |---|---|---|
-| `daemon_fault` | rot, „a38 is locked: daemon fault“ | Folge für alle Sitzungen, Text des Daemons, Code, Zeit, Kennung, nächste Schritte: `a38 doctor`, Ursache beheben, `a38 fault clear` oder Neustart von `a38 serve` |
-| `project_config_invalid` | orange, „a38: invalid project configuration“ | betroffenes Projekt, Text des Daemons, Code, Zeit, Kennung, nächste Schritte: `a38 doctor`, Projekt in der Konfiguration korrigieren, `a38 serve` neu starten |
+| `daemon_fault` | rot, „Passierschein: daemon fault“ | Folge für alle Sitzungen, Text des Daemons, Code, Zeit, Kennung, nächste Schritte: `a38 doctor`, Ursache beheben, `a38 fault clear` oder Neustart von `a38 serve` |
+| `project_config_invalid` | orange, „Passierschein: invalid project configuration“ | betroffenes Projekt, Text des Daemons, Code, Zeit, Kennung, nächste Schritte: `a38 doctor`, Projekt in der Konfiguration korrigieren, `a38 serve` neu starten |
 
 Die Meldung bleibt offen, bis der Mensch sie schließt.
 
