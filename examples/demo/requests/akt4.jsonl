@@ -1,0 +1,6 @@
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"demo-handaufruf","version":"1"}}}
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"request_credentials","arguments":{"references":["op://passierschein.dev/datenbank-dev/username","op://passierschein.dev/datenbank-dev/password"],"task":"Run the database migration of demo-projekt","reason":"migrate.sh needs the database user and password"}}}
+# wait Approved. Press Enter to ask for the object storage key (deviation popup: deny it with Esc).
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"request_credentials","arguments":{"references":["op://passierschein.dev/objektspeicher-dev/access-key"],"task":"Upload the build artifact of demo-projekt","reason":"upload.sh needs the access key of the object storage"}}}
+# wait Press Enter to end the session.

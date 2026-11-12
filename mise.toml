@@ -189,3 +189,42 @@ description = "Check that every darwin binary in dist/ carries a Developer ID si
 # renovate: datasource=go depName=github.com/anchore/quill
 tools = { "go:github.com/anchore/quill/cmd/quill" = "0.7.1", jq = "1.8.2" }
 run = "bash scripts/signatures-check.sh"
+
+# Demo kit (examples/demo/, docs/how-to/50-demo-vorfuehren.md). macOS only,
+# by hand, never in CI. Default: the real demo, installed into the home
+# directory (~/.local/bin/a38, ~/Applications/Passierschein.app,
+# ~/.config/a38/config.yaml, ~/develop/demo-projekt). DEMO_BACKEND=fake on
+# each task: the rehearsal in /tmp/a38-probe, which touches nothing else.
+[tasks."demo:setup"]
+description = "macOS only: build and install the demo (a38, app, config, demo project with .mcp.json and skill); never overwrites what it did not install; DEMO_BACKEND=fake for the rehearsal in /tmp"
+run = "bash scripts/demo.sh setup"
+
+[tasks."demo:preflight"]
+description = "Check the demo with PASS/FAIL lines; starts nothing and reads no token"
+run = "bash scripts/demo.sh preflight"
+
+[tasks."demo:start"]
+description = "macOS only: preflight, then run the daemon of the demo in the foreground (rehearsal: DEMO_UI=auto-approve|auto-deny|debug-app)"
+run = "bash scripts/demo.sh start"
+
+[tasks."demo:status"]
+description = "Show a38 doctor, grants, fault status, the last audit entries and a38 audit verify of the demo"
+run = "bash scripts/demo.sh status"
+
+[tasks."demo:request"]
+description = "Send one act of examples/demo/requests to a38 mcp without an agent; values are masked: mise run demo:request -- akt2"
+# renovate: datasource=github-releases depName=jqlang/jq extractVersion=^jq-(?<version>.+)$
+tools = { jq = "1.8.2" }
+run = "bash scripts/demo.sh request"
+
+[tasks."demo:fault"]
+description = "Make the audit directory of the demo read-only: the next request raises the global lock"
+run = "bash scripts/demo.sh fault"
+
+[tasks."demo:fault:fix"]
+description = "Restore the mode of the audit directory of the demo; then run a38 fault clear"
+run = "bash scripts/demo.sh fault-fix"
+
+[tasks."demo:teardown"]
+description = "Remove what demo:setup installed; keeps the config and the audit log (DEMO_PURGE=1 moves the config to .bak and removes the state directory)"
+run = "bash scripts/demo.sh teardown"

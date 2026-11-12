@@ -26,6 +26,10 @@ Schlüsselbund von macOS.
 Die Anleitung [1Password-Backend einrichten](docs/how-to/30-1password-backend-einrichten.md)
 beschreibt Service Account, Token-Datei und Test.
 
+Eine Demo des Stands baust du mit einem Befehl auf und ab.
+Die Anleitung [Demo vorführen](docs/how-to/50-demo-vorfuehren.md) enthält
+den Ablaufplan mit Agent, Popup, Touch ID, Audit-Log und Störung.
+
 Was in Stufe 1 funktioniert:
 
 - `a38 serve`: der Daemon mit Agent-Socket, Admin-Socket, Bündelung, Policy,
