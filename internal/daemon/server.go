@@ -119,8 +119,8 @@ func (s *Server) Listen() (err error) {
 	var listeners []*net.UnixListener
 	defer func() {
 		if err != nil {
-			for _, l := range listeners {
-				_ = l.Close()
+			for i, l := range listeners {
+				closeListener(l, paths[i])
 			}
 			_ = lock.Close()
 		}
@@ -156,9 +156,8 @@ func (s *Server) Serve(ctx context.Context) error {
 	<-ctx.Done()
 	s.mu.Lock()
 	s.closed = true
-	// Closing a listener removes its socket file.
-	_ = s.agentL.Close()
-	_ = s.adminL.Close()
+	closeListener(s.agentL, s.AgentSocket())
+	closeListener(s.adminL, s.AdminSocket())
 	for c := range s.conns {
 		_ = c.Close()
 	}

@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"net"
 	"os"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -95,28 +97,66 @@ func removeStale(path string) error {
 
 // listen creates the Unix socket at path with the mode 0600. An old socket
 // must be removed before.
+//
+// The socket is bound under a temporary name next to path, gets its mode
+// there, and is renamed to path when it listens. bind(2) creates the file
+// and listen(2) follows later: a client that connects in between is refused
+// with ECONNREFUSED. With the rename the file at path exists only when the
+// socket accepts connections, so "the file exists" is a real readiness
+// signal. The caller holds the lock of the directory, so no other daemon
+// uses the temporary name.
+//
+// The listener does not remove the file when it closes (the file has a
+// different name now). Close the listener with [closeListener].
 func listen(path string) (*net.UnixListener, error) {
-	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
+	tmp := tempSocketPath(path)
+	if len(tmp) > maxSocketPath {
+		return nil, fmt.Errorf("daemon: the socket path %s is longer than %d bytes", tmp, maxSocketPath)
+	}
+	// A crashed daemon may have left the temporary file.
+	if err := os.Remove(tmp); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, fmt.Errorf("daemon: cannot remove the old socket %s: %w", tmp, err)
+	}
+	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: tmp, Net: "unix"})
 	if err != nil {
 		return nil, fmt.Errorf("daemon: cannot create the socket %s: %w", path, err)
 	}
+	l.SetUnlinkOnClose(false)
 	fail := func(err error) (*net.UnixListener, error) {
 		_ = l.Close()
+		_ = os.Remove(tmp)
 		return nil, err
 	}
 	// The directory has the mode 0700, so no other user reaches the socket
 	// before the change of the mode.
-	if err := os.Chmod(path, socketMode); err != nil {
+	if err := os.Chmod(tmp, socketMode); err != nil {
 		return fail(fmt.Errorf("daemon: cannot set the mode of the socket %s: %w", path, err))
 	}
-	fi, err := os.Lstat(path)
+	fi, err := os.Lstat(tmp)
 	if err != nil {
 		return fail(fmt.Errorf("daemon: cannot read the socket %s: %w", path, err))
 	}
 	if fi.Mode().Perm() != socketMode {
 		return fail(fmt.Errorf("daemon: the socket %s has the mode %04o; it must be %04o", path, fi.Mode().Perm(), socketMode))
 	}
+	if err := os.Rename(tmp, path); err != nil {
+		return fail(fmt.Errorf("daemon: cannot publish the socket %s: %w", path, err))
+	}
 	return l, nil
+}
+
+// tempSocketPath returns the temporary name of a socket under which listen
+// binds it. The name is as long as path when the base name ends in ".sock".
+func tempSocketPath(path string) string {
+	base := filepath.Base(path)
+	return filepath.Join(filepath.Dir(path), "."+strings.TrimSuffix(base, ".sock")+".new")
+}
+
+// closeListener closes a listener of [listen] and removes the socket file
+// at path.
+func closeListener(l *net.UnixListener, path string) {
+	_ = l.Close()
+	_ = os.Remove(path)
 }
 
 // checkSocketPath fails if a socket path is too long for the platform.

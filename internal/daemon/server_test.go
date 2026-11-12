@@ -3,12 +3,14 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/seletz/passierschein/internal/client"
 	"github.com/seletz/passierschein/internal/protocol"
@@ -785,5 +787,54 @@ func TestNewRejectsMissingParts(t *testing.T) {
 	}
 	if err := srv.Serve(context.Background()); err == nil {
 		t.Error("Serve() without Listen() error = nil")
+	}
+}
+
+func TestSocketFileMeansListening(t *testing.T) {
+	// Readiness: when the socket file exists, a connection is accepted. A
+	// socket that is bound under its final name is refused between bind(2)
+	// and listen(2); the daemon publishes the file only when it listens
+	// (flake of TestServeRuns, 2026-11-12). The test polls for the file
+	// without a pause and connects at once.
+	for round := 0; round < 50; round++ {
+		cfg := testConfig(t, nil)
+		srv, err := New(Options{Config: cfg, Agent: &fakeBroker{}, Admin: &fakeBroker{}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		dialErr := make(chan error, 1)
+		go func() {
+			deadline := time.Now().Add(testTimeout)
+			for time.Now().Before(deadline) {
+				if _, err := os.Lstat(srv.AgentSocket()); err == nil {
+					c, err := net.Dial("unix", srv.AgentSocket())
+					if err == nil {
+						_ = c.Close()
+					}
+					dialErr <- err
+					return
+				}
+			}
+			dialErr <- errors.New("the socket file did not appear")
+		}()
+		if err := srv.Listen(); err != nil {
+			t.Fatal(err)
+		}
+		if err := <-dialErr; err != nil {
+			t.Fatalf("round %d: connect after the file appeared: %v", round, err)
+		}
+		// Close the sockets; Serve with a done context removes the files.
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		if err := srv.Serve(ctx); err != nil {
+			t.Fatal(err)
+		}
+		entries, err := os.ReadDir(cfg.Paths.SocketDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, e := range entries {
+			t.Errorf("file %q is left in the socket directory after the stop", e.Name())
+		}
 	}
 }

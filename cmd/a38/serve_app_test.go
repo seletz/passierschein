@@ -74,19 +74,8 @@ func startServeApp(t *testing.T, appPath string) (socketDir string, log *syncBuf
 		cancel()
 		<-done
 	})
-	// Wait for the log line after Listen, not for the socket file: the file
-	// exists from bind(2) on, and a connect before listen(2) is refused (a
-	// flake seen in CI on 2026-11-12).
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		if strings.Contains(log.String(), "daemon started") {
-			return socketDir, log
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("the agent socket does not exist; log:\n%s", log.String())
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	waitDaemonStarted(t, log, nil)
+	return socketDir, log
 }
 
 // T14 (part 1, Go side), T6, T9: a38 serve --ui app with the fake backend

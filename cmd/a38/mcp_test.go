@@ -244,8 +244,8 @@ func TestMCPProcessesEndToEnd(t *testing.T) {
 	}
 }
 
-// startServe starts "a38 serve" as a process and waits for the agent
-// socket. The returned function stops the daemon and waits for its end.
+// startServe starts "a38 serve" as a process and waits for the line
+// "daemon started" (waitDaemonStarted). The returned function stops the daemon and waits for its end.
 func startServe(t *testing.T, bin, cfgPath, socketDir string, args ...string) func() {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -267,16 +267,8 @@ func startServe(t *testing.T, bin, cfgPath, socketDir string, args ...string) fu
 		})
 	}
 	t.Cleanup(stop)
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		if _, err := os.Stat(filepath.Join(socketDir, "agent.sock")); err == nil {
-			return stop
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("no agent socket; stderr:\n%s", serveErr.String())
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	waitDaemonStarted(t, &serveErr, nil)
+	return stop
 }
 
 // auditTypes reads the event types with "a38 audit list --json".
