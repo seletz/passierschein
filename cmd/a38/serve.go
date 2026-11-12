@@ -185,7 +185,11 @@ func newBroker(f serveFlags, cfg *config.Config, log *slog.Logger) (*broker.Brok
 	if mode == approval.ModeApp {
 		appPath = resolveUIApp(f.uiApp, cfg.Paths.UIApp, executablePath, homeDir)
 		log.Info("approval app chosen", "path", appPath)
-		app, err := appui.New(appui.Options{Path: appPath, Clock: clk, Logger: log})
+		// G5: with a Developer ID signature of a38 the app must carry a
+		// Developer ID signature of the same team; for an ad-hoc signed or
+		// unsigned a38 the check is off (one log line here).
+		verifier := appui.NewSignatureVerifier(context.Background(), appui.SignatureOptions{Self: executablePath(), Logger: log})
+		app, err := appui.New(appui.Options{Path: appPath, Clock: clk, Logger: log, Verifier: verifier})
 		if err != nil {
 			return nil, nil, nil, err
 		}
