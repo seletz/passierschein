@@ -28,4 +28,6 @@ Offene Fragen:
 - Liefert das Backend beim Auflösen eine feste Kennung, die der Grant speichert?
 - Wie verhält sich der Daemon bei zwei Items mit demselben Namen?
 
+Stand 2026-11-12: {{ ref("D52") }} beantwortet beide Fragen für das 1Password-Backend: `Resolve` bindet die festen Kennungen an die Referenz, `Read` liest nur über sie, und doppelte Titel enden mit `backend_unavailable`. Die Tests `TestReadByID` und `TestDuplicateTitlesFailClosed` belegen das. {{ ref("D52") }} ist eine Annahme der Entwicklung. Offen bleibt die Bestätigung durch Stefan.
+
 **Quelle:** Entwicklung von Stufe 1, Broker und MCP-Server (Issues 21, 22, 24), 2026-11-11.
