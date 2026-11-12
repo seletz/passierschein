@@ -20,10 +20,18 @@ Das App-Bundle heißt `Passierschein.app`.
 Die App kennt keinen Secret-Wert.
 Die Nachricht enthält je Zugangsdatum nur Kennung, Vault, Titel und Feld.
 
+!!! success "Praxistest vom 2026-11-12"
+    Stefan hat die App mit dem Daemon und dem echten 1Password-Backend am Bildschirm geprüft ({{ ref("G4") }}):
+
+    - Der echte Dialog von Touch ID gibt frei. Der Dialog nennt die App „Passierschein“.
+    - Das Popup schwebt unter OmniWM über den gekachelten Fenstern. OmniWM ordnet nichts um.
+    - Das Popup nimmt beim Erscheinen den Tastaturfokus nicht weg.
+    - Die Eingabetaste und die Leertaste lösen nichts aus. Esc lehnt ab.
+    - Die Angaben des Agents sind lesbar. Der Name der Sitzung stimmt.
+    - Eine Teilauswahl liefert nur den angehakten Eintrag. Eine Wiederholung unter einem Grant zeigt kein Popup.
+
 !!! warning "Nicht geprüft"
-    - Den echten Dialog von Touch ID hat noch niemand mit der App ausgelöst ({{ ref("G4") }}).
-    - Die Sicht unter OmniWM, über Vollbild-Apps und auf allen Arbeitsflächen ist nicht geprüft ({{ ref("G4") }}).
-    - Esc, Eingabetaste und Leertaste sind nur im Code geregelt. Ein Mensch hat sie am Bildschirm nicht geprüft ({{ ref("T14") }}, Teil 2).
+    - Vollbild-App, Wechsel des Arbeitsbereichs, Zeitablauf und die Meldungen am Bildschirm ({{ ref("G33") }}).
     - Das App-Bundle trägt nur eine Ad-hoc-Signatur. Developer ID und Notarisierung fehlen ({{ ref("G5") }}).
 
 ## Aufbau des Codes
@@ -215,6 +223,14 @@ Die Einstellungen am `LAContext`:
 Der Text für den Dialog nennt nur geprüfte Fakten: „approve 2 credentials for project beispielprojekt“.
 „Back“ lässt das Popup offen und zeigt einen Hinweis.
 Ist Touch ID nicht verfügbar, endet die App mit `auth_unavailable` und Exit-Code 12.
+
+### Sprache des Dialogs
+
+macOS baut den Dialog aus seinem eigenen Rahmen in der Sprache des Systems und aus dem Text der App.
+Der Text der App und der Knopf zum Abbrechen folgen deshalb der Sprache des Systems ({{ ref("G34") }}).
+Ist die erste bevorzugte Sprache Deutsch, lautet der Text „1 Zugangsdatum für das Projekt … freigeben“ und der Knopf „Zurück“.
+Sonst lautet der Text „approve 1 credential for project …“ und der Knopf „Back“.
+Das Popup selbst bleibt englisch.
 
 ## Testschalter
 

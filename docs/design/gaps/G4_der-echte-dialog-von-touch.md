@@ -3,13 +3,19 @@ render_macros: true
 id: 'G4'
 titel: 'Der echte Dialog von Touch ID und die Sicht unter OmniWM sind nicht geprüft'
 bereich: 'Freigabe'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 1
 headless: true
 type: Gap
 kind: design
-status: offen
+status: geschlossen
+beleg:
+  wer: Stefan
+  datum: '2026-11-12'
+  durch: [G33]
+  quelle: ['#39']
+  notiz: 'Praxistest am 2026-11-12: Touch ID, OmniWM, Fokus und Tasten geprüft; der Rest steht im Folge-Gap'
 register:
   owner: Stefan
 ---

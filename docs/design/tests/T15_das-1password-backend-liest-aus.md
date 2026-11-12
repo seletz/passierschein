@@ -8,7 +8,7 @@ stand: '2026-11-12'
 order: 2
 headless: true
 status: aktiv
-umsetzung: teilweise
+umsetzung: vorhanden
 beweist: [F12, D39]
 ---
 # T15 — Das 1Password-Backend liest aus einem Test-Vault und meldet den gesperrten Zustand

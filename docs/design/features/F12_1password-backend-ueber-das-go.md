@@ -9,7 +9,7 @@ order: 2
 headless: true
 status: aktiv
 stufe: 3
-umsetzung: teilweise
+umsetzung: vorhanden
 implementiert: [D1, D12, D39]
 use_cases: [UC1, UC11]
 ---

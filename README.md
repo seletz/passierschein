@@ -17,10 +17,12 @@ Bildschirm und unter OmniWM und die Signatur. Die
 Anleitung [Freigabe-App lokal ausprobieren](docs/how-to/40-freigabe-app-ausprobieren.md)
 zeigt, wie du die App ohne Touch ID startest.
 
-**Stufe 3 ist gebaut, der Praxistest ist offen.** Das 1Password-Backend
+**Stufe 3 ist gebaut und im Praxistest bestanden.** Das 1Password-Backend
 liest über das Go-SDK mit dem Token eines Service Accounts
 (`a38 serve --backend 1password --ui app`, nur macOS). Der Integrationstest
-gegen den Vault `passierschein.dev` wartet auf den Lauf mit Stefans Token.
+gegen den Test-Vault und der Praxistest mit der echten App sind am
+2026-11-12 bestanden. Das Token liegt heute in einer Datei; das Ziel ist der
+Schlüsselbund von macOS.
 Die Anleitung [1Password-Backend einrichten](docs/how-to/30-1password-backend-einrichten.md)
 beschreibt Service Account, Token-Datei und Test.
 
@@ -43,7 +45,7 @@ Noch nicht vorhanden: die Signatur der App,
 `a38 tui`, `a38 service install`, der Hook gegen `op`, der Betrieb mit Agents
 in der VM und die Auslieferung außerhalb von dev.
 
-24 von 28 Testfällen des Designs sind durch automatische Tests belegt, 4 teilweise. Die
+25 von 28 Testfällen des Designs sind belegt, 3 teilweise. Unter den belegten ist T15 ein manueller Lauf mit Token. Die
 Übersicht steht in der [Testabdeckung](docs/reference/90-testabdeckung.md).
 
 ## Zweck
