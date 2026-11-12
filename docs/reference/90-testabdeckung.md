@@ -72,7 +72,7 @@ Die Pakete stehen ohne den Präfix `internal/`.
 
 ## Was die Lücken bedeuten
 
-- {{ ref("T14") }} ist teilweise. Teil 1 ist automatisch (Swift-Tests, Go-Tests, `mise run app:e2e`). Teil 2 bleibt manuell am Bildschirm, mit dem echten Touch ID und unter OmniWM ({{ ref("G4") }}).
+- {{ ref("T14") }} ist teilweise. Teil 1 ist automatisch (Swift-Tests, Go-Tests, `mise run app:e2e`). Teil 2 hat Stefan am 2026-11-12 am Bildschirm geprüft: echter Dialog von Touch ID, Sicht unter OmniWM, Tastaturfokus, Eingabetaste, Leertaste und Esc ({{ ref("G4") }}). Offen sind Vollbild, Wechsel des Arbeitsbereichs, Zeitablauf und die Meldungen ({{ ref("G33") }}).
 - {{ ref("T15") }} bleibt offen, bis das 1Password-Backend entsteht.
 - {{ ref("T21") }} bleibt teilweise, bis die Freigabe-App die Leermarke für einen fehlenden Namen zeigt.
 - {{ ref("T18") }} ist ein Fall der Release-Kette. Der Teil mit den Secrets lässt sich nur im Workflow prüfen.

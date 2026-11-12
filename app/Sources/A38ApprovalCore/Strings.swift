@@ -103,10 +103,26 @@ public enum UIText {
 
     /// The system shows: "<app name>" is trying to <reason>. The reason has
     /// verified facts only, never a claim of the agent.
-    public static func authReason(count: Int, project: String) -> String {
-        "approve \(count) credential\(count == 1 ? "" : "s") for project \(project)"
+    ///
+    /// macOS builds the dialog from its own frame in the language of the
+    /// system and from this text. The text and the cancel title follow the
+    /// language of the system, so that the dialog has one language. The
+    /// popup itself stays English.
+    public static func authReason(count: Int, project: String,
+                                  language: SystemLanguage = .current) -> String {
+        switch language {
+        case .german:
+            return "\(count) \(count == 1 ? "Zugangsdatum" : "Zugangsdaten") für das Projekt \(project) freigeben"
+        case .english:
+            return "approve \(count) credential\(count == 1 ? "" : "s") for project \(project)"
+        }
     }
-    public static let authCancelTitle = "Back"
+    public static func authCancelTitle(language: SystemLanguage = .current) -> String {
+        switch language {
+        case .german: return "Zurück"
+        case .english: return "Back"
+        }
+    }
     public static let authStopped = "Touch ID was stopped. Try again or deny the request."
 
     // MARK: Notice
@@ -149,5 +165,23 @@ public enum UIText {
         if minutes > 0 { parts.append("\(minutes) min") }
         if rest > 0 { parts.append("\(rest) s") }
         return parts.joined(separator: " ")
+    }
+}
+
+/// The language of the system dialog of Touch ID. Only the texts that the
+/// app gives to that dialog depend on it.
+public enum SystemLanguage: Sendable, Equatable {
+    case german
+    case english
+
+    /// German if the first preferred language of the user is German, else
+    /// English.
+    public static var current: SystemLanguage {
+        from(preferredLanguages: Locale.preferredLanguages)
+    }
+
+    public static func from(preferredLanguages: [String]) -> SystemLanguage {
+        guard let first = preferredLanguages.first?.lowercased() else { return .english }
+        return first == "de" || first.hasPrefix("de-") || first.hasPrefix("de_") ? .german : .english
     }
 }

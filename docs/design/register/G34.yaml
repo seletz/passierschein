@@ -1,0 +1,9 @@
+id: G34
+zustand: eingeloest
+titel: Der Dialog von Touch ID mischt die Sprache des Systems mit englischem Text
+bezug: '#39'
+schluessel: '#39/touchid-sprache'
+lauf: '2.0'
+branch: docs/39-praxistest-g4
+reserviert_am: '2026-11-12'
+eingeloest_am: '2026-11-12'
