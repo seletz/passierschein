@@ -58,7 +58,7 @@ Die Bereiche stehen in dieser Reihenfolge:
 
 1. Banner mit Fall, Symbol und Farbe.
 2. Geprüfte Fakten: Projekt, Kennung der Sitzung, Herkunft, Prozess mit PID und UID, Arbeitsverzeichnis, bei einer Abweichung der bestehende Grant.
-3. Angaben des Agents mit der Überschrift „NOT verified“, gestrichelt umrandet, grau und kursiv: Name der Sitzung, Agent, Aufgabe, Begründung ({{ ref("D4") }}, {{ ref("D25") }}).
+3. Angaben des Agents mit der Überschrift „NOT verified“, gestrichelt umrandet: Name der Sitzung, Agent, Aufgabe, Begründung ({{ ref("D4") }}, {{ ref("D25") }}). Die Überschrift und der Rahmen sind orange. Die Werte haben die volle Textfarbe und sind nicht kursiv. Grün kennzeichnet die geprüften Fakten, Orange die ungeprüften Angaben. Der Spike-Bericht zeigt die Angaben noch grau und kursiv; Stefan hat das am 2026-11-12 wegen des schlechten Kontrasts geändert.
 4. Zugangsdaten: ein Kontrollkästchen je Eintrag mit Titel und Feld, gruppiert nach Vault, mit Zähler „n of m selected“.
 5. Laufzeit und Umfang des Grants.
 6. Fußzeile: „Deny (Esc)“ links, Restzeit in der Mitte, Bestätigung rechts.

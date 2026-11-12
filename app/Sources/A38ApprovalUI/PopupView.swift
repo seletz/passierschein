@@ -75,15 +75,22 @@ struct PopupView: View {
 
     // MARK: Claims of the agent
 
+    /// The colour of the claims: the heading and the frame. Green marks the
+    /// verified facts, orange marks the claims that the daemon did not verify.
+    private static let claimsColor = Color.orange
+
     private var claimsSection: some View {
         VStack(alignment: .leading, spacing: 4) {
             Label(UIText.claimsHeading, systemImage: "questionmark.bubble")
                 .font(.subheadline.bold())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Self.claimsColor)
             Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 8, verticalSpacing: 3) {
                 ForEach(model.claimRows) { row in
                     GridRow {
-                        Text(row.label + ":")
+                        Text(row.label).foregroundStyle(.secondary)
+                        // The values have the full text colour: the human
+                        // must be able to read them. The colour of the
+                        // heading and the frame marks them as not verified.
                         // The session name is never cut (D25). Each other
                         // claim is cut to three lines.
                         Text(row.value)
@@ -91,19 +98,19 @@ struct PopupView: View {
                             .truncationMode(.tail)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .opacity(row.missing ? 0.7 : 1)
+                            .foregroundStyle(.primary)
+                            .opacity(row.missing ? 0.6 : 1)
                     }
                 }
             }
-            .font(.callout.italic())
-            .foregroundStyle(.secondary)
+            .font(.callout)
         }
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(
             RoundedRectangle(cornerRadius: 6)
                 .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Self.claimsColor.opacity(0.7))
         )
     }
 
