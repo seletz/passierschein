@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "type": "notice",
+  "notice_id": "notice-beispiel0002",
+  "kind": "project_config_invalid",
+  "code": "config_invalid",
+  "project": "beispielprojekt",
+  "message": "The project beispielprojekt names the vault beispiel.infra.k8s-dev, which is not in the list of vaults. Correct the configuration file and restart a38 serve.",
+  "occurred_at": "2026-11-12T09:42:00Z"
+}

@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "type": "notice",
+  "notice_id": "notice-beispiel0001",
+  "kind": "daemon_fault",
+  "code": "audit_failed",
+  "message": "The daemon cannot write the audit log: no space left on the device. Delivery is locked for all sessions. Run a38 doctor and remove the cause, then lift the lock with a38 fault clear or restart a38 serve.",
+  "occurred_at": "2026-11-12T09:41:07.123456789+01:00"
+}

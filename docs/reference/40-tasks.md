@@ -29,6 +29,18 @@ Aufruf: `mise run <task>`.
 | `check` | Führt alle Checks der CI aus. |
 | `hooks:install` | Richtet den Git-Hook `pre-commit` ein. |
 
+## Freigabe-App
+
+Die Tasks laufen nur auf macOS mit Xcode.
+Sie gehören nicht zu `check`, weil die CI auf Linux läuft.
+Die Einzelheiten stehen in der [Referenz der Freigabe-App](85-freigabe-app.md).
+
+| Task | Zweck |
+|---|---|
+| `app:build` | Baut die Freigabe-App „Passierschein“ als Debug und Release, legt das App-Bundle `app/.build/bundle/Passierschein.app` an und prüft, dass der Release-Build die Testschalter ablehnt. |
+| `app:test` | Führt die Tests der Freigabe-App aus, ohne Fenster und ohne Touch ID. |
+| `app:run:sample` | Zeigt ein Beispiel aus `app/Samples` im Debug-Build mit gefälschter Authentifizierung. |
+
 ## Pull Requests
 
 | Task | Zweck |
@@ -73,6 +85,8 @@ keinen Zugriff.
 - Unter `[tools]` stehen die Werkzeuge für alle Tasks: Go, uv, goreleaser,
   golangci-lint, govulncheck und gitleaks.
 - Ein Werkzeug für genau einen Task steht an diesem Task unter `tools`.
+- Swift steht an jedem Task der Freigabe-App unter `tools`, nicht unter
+  `[tools]`. So installiert die CI auf Linux kein Swift.
 - Die Version von Zensical steht in `pyproject.toml` und `uv.lock`.
 
 Der Task `tools:check` prüft diese Regeln:
@@ -81,5 +95,4 @@ Der Task `tools:check` prüft diese Regeln:
 - Jeder Schritt `run:` eines Workflows ruft genau einen mise-Task auf.
 - Jede Action ist auf einen Commit-Hash festgelegt. Die Version steht als
   Kommentar dahinter.
-
-Die Swift-Version kommt in `mise.toml`, sobald das Repo Swift-Code enthält.
+- Jeder Task `app:*` legt dieselbe Swift-Version fest.

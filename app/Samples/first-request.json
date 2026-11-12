@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "type": "approval_request",
+  "request_id": "req-first-0001",
+  "timeout_seconds": 120,
+  "verified": {
+    "session_id": "s-7f3a9c21",
+    "origin": "local",
+    "project": "beispielprojekt",
+    "peer_pid": 4242,
+    "peer_uid": 501,
+    "process": "/usr/local/bin/agent-cli",
+    "cwd": "/Users/beispiel/develop/beispielprojekt"
+  },
+  "claims": {
+    "session_name": "beispiel-koordinator",
+    "agent": "coding-agent",
+    "task": "Run the database migration tests",
+    "reason": "The tests need the login for the dev database."
+  },
+  "credentials": [
+    {
+      "id": "c1",
+      "vault": "beispiel.app.k8s-dev",
+      "title": "datenbank-dev",
+      "field": "password",
+      "environment": "dev"
+    },
+    {
+      "id": "c2",
+      "vault": "beispiel.app.k8s-dev",
+      "title": "objektspeicher-dev",
+      "field": "access-key",
+      "environment": "dev"
+    }
+  ],
+  "grant": {
+    "ttl_seconds": 14400,
+    "scope": {
+      "project": "beispielprojekt",
+      "vaults": [
+        "beispiel.app.k8s-dev"
+      ]
+    }
+  }
+}

@@ -5,6 +5,7 @@
 #
 # - mise.toml pins go (equal to the go directive in go.mod), uv, goreleaser,
 #   gitleaks and cyclonedx-gomod to exact X.Y.Z versions.
+# - Each app task (approval app, macOS only) pins the same exact swift.
 # - mise verifies aqua downloads with cosign and SLSA provenance: aqua.cosign
 #   and aqua.slsa must stay true.
 # - Every `run:` of a workflow is a single `mise run <task>`.
@@ -40,6 +41,14 @@ cyclonedx=$(sed -nE "s/.*\"github:CycloneDX\/cyclonedx-gomod\" = \"($semver)\".*
 [ -n "$cyclonedx" ] || fail "mise.toml: no exact cyclonedx-gomod pin in the release tasks"
 [ "$(echo "$cyclonedx" | wc -l | tr -d ' ')" = "1" ] || fail "mise.toml: the release tasks pin different cyclonedx-gomod versions"
 
+# The app tasks (macOS only) pin the Swift toolchain at the task.
+swift=$(sed -nE "s/.*tools = \{ \"swift\" = \"($semver)\" \}.*/\1/p" "$MISE" | sort -u)
+app_tasks=$(grep -cE '^\[tasks\."app:' "$MISE" || true)
+swift_pins=$(grep -cE 'tools = \{ "swift" = "' "$MISE" || true)
+[ -n "$swift" ] || fail "mise.toml: no exact swift pin in the app tasks (tools = { \"swift\" = \"X.Y.Z\" })"
+[ "$(echo "$swift" | wc -l | tr -d ' ')" = "1" ] || fail "mise.toml: the app tasks pin different swift versions"
+[ "$app_tasks" = "$swift_pins" ] || fail "mise.toml: $app_tasks app tasks, but $swift_pins swift pins; each app task pins swift"
+
 for s in aqua.cosign aqua.slsa; do
   grep -qE "^${s//./\\.} = true\$" "$MISE" || fail "mise.toml: [settings] must keep $s = true (verified tool downloads)"
 done
@@ -61,6 +70,6 @@ for wf in "$ROOT"/.github/workflows/*.yml; do
 done
 
 if [ "$status" -eq 0 ]; then
-  echo "pinned: go $go_mise, uv $(pin uv), goreleaser $(pin goreleaser), gitleaks $(pin gitleaks), cyclonedx-gomod $cyclonedx; workflows run only mise tasks and pinned actions"
+  echo "pinned: go $go_mise, uv $(pin uv), goreleaser $(pin goreleaser), gitleaks $(pin gitleaks), cyclonedx-gomod $cyclonedx, swift $swift (app tasks); workflows run only mise tasks and pinned actions"
 fi
 exit "$status"

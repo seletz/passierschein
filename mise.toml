@@ -90,6 +90,31 @@ depends = ["fmt", "vet", "lint", "test", "vuln", "secrets", "tools:check", "deps
 description = "Check the design set (docs/design) with dg-register; local only, needs the globally installed dg-register (mise global)"
 run = "dg-register check"
 
+# The approval app (app/, Swift) builds on macOS only. These tasks are not
+# part of `check`: the CI runner is Linux. Each app task pins the Swift
+# toolchain (core:swift of mise, swift.org release); it needs Xcode for the
+# macOS SDK. tools:check keeps the pins equal.
+[tasks."app:build"]
+description = "macOS only: build the approval app (debug and release), assemble app/.build/bundle/Passierschein.app (ad-hoc signed), check that the release rejects the test switches"
+# renovate: datasource=github-releases depName=swiftlang/swift extractVersion=^swift-(?<version>.+)-RELEASE$
+tools = { "swift" = "6.4.2" }
+run = "bash scripts/app-build.sh"
+
+[tasks."app:test"]
+description = "macOS only: run the tests of the approval app (swift test, headless, fake authenticator, no Touch ID)"
+# renovate: datasource=github-releases depName=swiftlang/swift extractVersion=^swift-(?<version>.+)-RELEASE$
+tools = { "swift" = "6.4.2" }
+run = """
+bash scripts/app-swift-check.sh
+cd app && swift test
+"""
+
+[tasks."app:run:sample"]
+description = "macOS only: show a sample of app/Samples in the debug build with the fake authenticator: mise run app:run:sample -- <sample> [test switches]"
+# renovate: datasource=github-releases depName=swiftlang/swift extractVersion=^swift-(?<version>.+)-RELEASE$
+tools = { "swift" = "6.4.2" }
+run = "bash scripts/app-run-sample.sh"
+
 [tasks."pr:screenshot"]
 description = "Render the output of a command as a PNG for a pull request: mise run pr:screenshot -- out.png -- <command>"
 # renovate: datasource=pypi depName=playwright
