@@ -125,7 +125,7 @@ OK       delivery lock      delivery is open
 OK       audit file         …/audit.db exists and is writable
 OK       audit chain        intact, … entries
 OK       backend            ok
-OK       1password token    …: regular file of the user, mode 0600 (content not read; …)
+OK       1password token    source file: …, regular file of the user, mode 0600 (content not read; …)
 OK       approval UI        mode app, …/Passierschein
 
 No findings.

@@ -76,7 +76,7 @@ description = "Check the tool pins of mise.toml and that the workflows run only 
 run = "bash scripts/tool-versions-check.sh"
 
 [tasks."deps:linux:check"]
-description = "Check that the linux build of a38 has no 1Password package (self-test first, then go list -deps)"
+description = "Check that the linux build of a38 has no 1Password package and no keychain code (self-test first, then go list -deps)"
 run = """
 bash scripts/linux-deps-check.sh --self-test
 bash scripts/linux-deps-check.sh

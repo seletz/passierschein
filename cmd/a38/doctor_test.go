@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -44,6 +45,7 @@ type fakeEnv struct {
 	backend    doctor.Component
 	marker     string // not used by any check; it must never appear
 	auditExist bool
+	tokenStore *fakeStore
 }
 
 func healthyEnv(t *testing.T) *fakeEnv {
@@ -102,6 +104,12 @@ func (e *fakeEnv) VerifyAudit(context.Context, string) (audit.Verification, erro
 	return e.verify, e.verifyErr
 }
 func (e *fakeEnv) Backend(*protocol.StatusResult) doctor.Component { return e.backend }
+func (e *fakeEnv) TokenStore() doctor.TokenStore {
+	if e.tokenStore == nil {
+		e.tokenStore = newFakeStore()
+	}
+	return e.tokenStore
+}
 func (e *fakeEnv) UI(*protocol.StatusResult) doctor.Component {
 	return doctor.Component{State: doctor.StateUnknown, Detail: "not reported"}
 }
@@ -147,6 +155,16 @@ func TestDoctor(t *testing.T) {
 		{"configuration does not load", func(e *fakeEnv) {
 			e.cfgErr = errors.New("line 3: unknown key")
 		}, 1, []string{"the configuration does not load", "line 3: unknown key", "fix the configuration"}},
+		// Issue 59, D51: the keychain is the default source of the token.
+		{"keychain item missing with 1password daemon", func(e *fakeEnv) {
+			e.status.Backend = &protocol.BackendStatus{Kind: "1password", State: protocol.BackendOK}
+		}, 1, []string{"the keychain has no token of the 1Password backend", "no item a38-test-fake/a38-test", "run a38 config onepassword-token set"}},
+		{"keychain item present with 1password daemon", func(e *fakeEnv) {
+			e.status.Backend = &protocol.BackendStatus{Kind: "1password", State: protocol.BackendOK}
+			v := markerValue
+			e.tokenStore = newFakeStore()
+			e.tokenStore.value = &v
+		}, 0, nil},
 		{"project only the daemon rejects", func(e *fakeEnv) {
 			e.status.InvalidProjects = []protocol.InvalidProject{{Project: "anderes-projekt", Reason: "no vault"}}
 		}, 1, []string{`the daemon rejects the project "anderes-projekt"`, "no vault", "restart the daemon"}},
@@ -160,6 +178,9 @@ func TestDoctor(t *testing.T) {
 				args = append(args, "--json")
 			}
 			t.Run(name, func(t *testing.T) {
+				if strings.HasPrefix(tt.name, "keychain") && runtime.GOOS != "darwin" {
+					t.Skip("the token check is part of the macOS build only")
+				}
 				e := healthyEnv(t)
 				tt.change(e)
 				var stdout, stderr bytes.Buffer
@@ -195,5 +216,28 @@ func TestDoctor(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestDoctorTokenNote(t *testing.T) {
+	// Issue 59: the ad-hoc signature of a38 is a note, not a finding (G5).
+	if runtime.GOOS != "darwin" {
+		t.Skip("the token check is part of the macOS build only")
+	}
+	e := healthyEnv(t)
+	v := markerValue
+	e.tokenStore = newFakeStore()
+	e.tokenStore.value = &v
+	var stdout, stderr bytes.Buffer
+	code := runDoctorWith(nil, &stdout, &stderr, func(string) doctor.Env { return e })
+	out := stdout.String()
+	if code != 0 || !strings.Contains(out, "NOTE     1password token") || !strings.Contains(out, "each new build of a38 needs a confirmation") {
+		t.Errorf("code %d, output:\n%s", code, out)
+	}
+	if !strings.Contains(out, "item a38-test-fake/a38-test exists") || strings.Contains(out, markerValue) {
+		t.Errorf("output:\n%s", out)
+	}
+	if e.tokenStore.reads != 0 {
+		t.Error("the doctor read the token")
 	}
 }

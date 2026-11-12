@@ -31,6 +31,7 @@
 //	  audit_file: ~/.local/state/a38/audit.db
 //	backend:
 //	  onepassword:
+//	    token_source: keychain
 //	    token_file: ~/.config/a38/onepassword-token
 //
 // Only "version" is necessary. Each other value has a default.
@@ -138,11 +139,34 @@ type Backend struct {
 
 // OnePassword holds the settings of the 1Password backend (F12).
 type OnePassword struct {
+	// TokenSource is the source of the token of the service account
+	// (D51): the macOS keychain (default) or the token file.
+	TokenSource TokenSource
 	// TokenFile is the file with the token of the service account. Only
-	// "a38 serve --backend 1password" reads it. The file must be a regular
-	// file of the user with the mode 0600 (G3, working assumption).
+	// "a38 serve --backend 1password" with the source file reads it. The
+	// file must be a regular file of the user with the mode 0600.
 	TokenFile string
 }
+
+// TokenSource is the source of the token of the service account (D51).
+type TokenSource string
+
+// The sources of the token.
+const (
+	// TokenSourceKeychain: the item of the macOS keychain that
+	// "a38 config onepassword-token set" creates. It is the default.
+	TokenSourceKeychain TokenSource = "keychain"
+	// TokenSourceFile: the token file (backend.onepassword.token_file),
+	// the fallback for development and CI.
+	TokenSourceFile TokenSource = "file"
+)
+
+// DefaultTokenSource is the source of the token if the configuration does
+// not name one.
+const DefaultTokenSource = TokenSourceKeychain
+
+// Valid reports whether s is keychain or file. The comparison is exact.
+func (s TokenSource) Valid() bool { return s == TokenSourceKeychain || s == TokenSourceFile }
 
 // Vault is one vault of the vault list.
 type Vault struct {

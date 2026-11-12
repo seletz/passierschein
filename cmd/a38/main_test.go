@@ -31,6 +31,11 @@ func TestRun(t *testing.T) {
 		{"grants without configuration", []string{"grants", "list", "--config", "/tmp/a38-missing/config.yaml"}, 1, "", "cannot read the configuration file"},
 		{"fault without subcommand", []string{"fault"}, 2, "", "a38 fault status"},
 		{"fault without configuration", []string{"fault", "status", "--config", "/tmp/a38-missing/config.yaml"}, 1, "", "cannot read the configuration file"},
+		{"config without subcommand", []string{"config"}, 2, "", "onepassword-token"},
+		{"config help", []string{"config", "--help"}, 0, "onepassword-token", ""},
+		{"config unknown subcommand", []string{"config", "vaults"}, 2, "", `unknown subcommand "vaults"`},
+		{"config token without subcommand", []string{"config", "onepassword-token"}, 2, "", "a38 config onepassword-token set"},
+		{"old token command is gone", []string{"token", "status"}, 2, "", `unknown command "token"`},
 		{"doctor without configuration", []string{"doctor", "--config", "/tmp/a38-missing/config.yaml"}, 1, "FINDING", ""},
 		{"llm without flag", []string{"llm"}, 2, "", "usage: a38 llm --skill"},
 		{"llm with unknown flag", []string{"llm", "--other"}, 2, "", "usage: a38 llm --skill"},
@@ -57,7 +62,7 @@ func TestRun(t *testing.T) {
 func TestUsageListsEachCommand(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	run([]string{"--help"}, &stdout, &stderr)
-	for _, name := range []string{"serve", "mcp", "audit", "grants", "fault", "doctor", "llm", "version"} {
+	for _, name := range []string{"serve", "mcp", "audit", "grants", "fault", "config", "doctor", "llm", "version"} {
 		if !strings.Contains(stdout.String(), "\n  "+name+" ") {
 			t.Errorf("the usage text does not list the command %q", name)
 		}

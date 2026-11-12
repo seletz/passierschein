@@ -11,8 +11,6 @@ import (
 	"github.com/seletz/passierschein/internal/backend"
 	"github.com/seletz/passierschein/internal/backend/onepassword"
 	"github.com/seletz/passierschein/internal/config"
-	"github.com/seletz/passierschein/internal/token"
-	"github.com/seletz/passierschein/internal/tokenfile"
 	"github.com/seletz/passierschein/internal/version"
 )
 
@@ -20,28 +18,11 @@ import (
 // 1Password backend.
 const startCheckTimeout = 30 * time.Second
 
-// tokenSource returns the source of the token of the service account.
-// Today it is the token file, the interim source for development and tests
-// (D51). The target is the macOS keychain (spike in issue 53); a keychain
-// source replaces this constructor only.
-func tokenSource(cfg *config.Config) token.Source {
-	return fileSource{tokenfile.File{Path: cfg.Backend.OnePassword.TokenFile}}
-}
-
-// fileSource names the configuration key in each error of the token file.
-type fileSource struct{ f tokenfile.File }
-
-func (s fileSource) Token() (token.Token, error) {
-	tok, err := s.f.Token()
-	if err != nil {
-		return token.Token{}, fmt.Errorf("token file %s: %w (backend.onepassword.token_file)", s.f.Path, err)
-	}
-	return tok, nil
-}
-
-// newOnePassword builds the 1Password backend with the token file of the
-// configuration (G3, working assumption). A token file that is missing or
-// has the wrong owner or mode stops the start: the human must fix it.
+// newOnePassword builds the 1Password backend with the token of the
+// configured source (D51): the keychain item or the token file. A missing
+// keychain item, or a token file that is missing or has the wrong owner or
+// mode, stops the start: the human must fix it. The daemon reads the
+// token once, here.
 //
 // A bad token or a missing network does not stop the start: the daemon
 // runs, each request ends with backend_locked or backend_unavailable, and

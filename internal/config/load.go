@@ -45,7 +45,8 @@ type rawFile struct {
 	} `yaml:"paths"`
 	Backend struct {
 		OnePassword struct {
-			TokenFile yaml.Node `yaml:"token_file"`
+			TokenSource yaml.Node `yaml:"token_source"`
+			TokenFile   yaml.Node `yaml:"token_file"`
 		} `yaml:"onepassword"`
 	} `yaml:"backend"`
 }
@@ -130,6 +131,11 @@ func Parse(data []byte) (*Config, error) {
 	cfg.Paths.AuditFile = pathValue(raw.Paths.AuditFile, DefaultAuditFile, "paths.audit_file", fail)
 	// An empty UIApp means: search next to the a38 binary.
 	cfg.Paths.UIApp = pathValue(raw.Paths.UIApp, func() (string, error) { return "", nil }, "paths.ui_app", fail)
+	if src, err := stringValue(raw.Backend.OnePassword.TokenSource, string(DefaultTokenSource)); err != nil {
+		fail("backend.onepassword.token_source: %v", err)
+	} else if cfg.Backend.OnePassword.TokenSource = TokenSource(src); !cfg.Backend.OnePassword.TokenSource.Valid() {
+		fail("backend.onepassword.token_source: the value must be %q or %q", TokenSourceKeychain, TokenSourceFile)
+	}
 	cfg.Backend.OnePassword.TokenFile = pathValue(raw.Backend.OnePassword.TokenFile, DefaultTokenFile, "backend.onepassword.token_file", fail)
 	if cfg.Paths.SocketDir != "" && len(cfg.AgentSocket()) > maxSocketPath {
 		fail("paths.socket_dir: the path of a socket is longer than %d bytes", maxSocketPath)

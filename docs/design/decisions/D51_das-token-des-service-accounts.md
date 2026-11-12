@@ -1,7 +1,7 @@
 ---
 render_macros: true
 id: 'D51'
-titel: 'Das Token liegt künftig im Schlüsselbund, bis dahin in einer Datei mit Modus 0600'
+titel: 'Das Token liegt im Schlüsselbund, eine Datei mit Modus 0600 ist der Ausweichweg'
 bereich: 'Backends'
 lauf: '2.0'
 stand: '2026-11-12'
@@ -10,27 +10,34 @@ headless: true
 status: gueltig
 use_cases: [UC11]
 beleg:
-  notiz: Ziel Schlüsselbund von Stefan am 2026-11-12 festgelegt (Spike Issue 53); Token-Datei als Übergang ist ein Vorschlag aus der Entwicklung, zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-12'
+  notiz: 'Abgenommen in PR 61: keychain als Standard, nur Terminal, nur Metadaten, a38 config onepassword-token, Eintrag a38.onepassword/service-account, --replace; Datei für Entwicklung und CI'
 ---
-# D51 — Das Token liegt künftig im Schlüsselbund, bis dahin in einer Datei mit Modus 0600
+# D51 — Das Token liegt im Schlüsselbund, eine Datei mit Modus 0600 ist der Ausweichweg
 
 {{ design_kopf(page) }}
 
 **Entscheidung:**
 
-1. **Ziel:** Das Token des Service Accounts liegt im Schlüsselbund von macOS, gebunden an das signierte Programm `a38`. Der Mensch fügt das Token im Terminal in einen Befehl von `a38` ein; `a38` legt es im Schlüsselbund ab. Name und Einzelheiten des Befehls klärt der [Spike in Issue 53](https://github.com/seletz/passierschein/issues/53). Stefan hat das Ziel am 2026-11-12 festgelegt.
-2. **Übergang:** Bis dahin ist eine Token-Datei die einzige umgesetzte Quelle, für die Entwicklung und für Tests. Die Konfiguration nennt sie im Schlüssel `backend.onepassword.token_file`. Der Standard ist `$XDG_CONFIG_HOME/a38/onepassword-token`, ohne die Variable `~/.config/a38/onepassword-token`.
-3. Die Datei ist eine reguläre Datei, gehört dem Benutzer des Daemons und hat genau den Modus `0600`. Ein symbolischer Link, ein Verzeichnis, ein anderer Besitzer, ein anderer Modus oder eine leere Datei verhindern den Start mit dem 1Password-Backend. Die Meldung nennt den Befund und nie den Inhalt.
-4. Der Daemon liest das Token einmal beim Start, über die Schnittstelle `token.Source`. Eine Quelle im Schlüsselbund ersetzt nur den Konstruktor der Quelle; das Backend bleibt unverändert.
-5. Der Daemon hält das Token nur im Arbeitsspeicher, in einem Typ mit der Ausgabe `[redacted]`. Das Token steht nie im Log, in einer Fehlermeldung, im Audit-Log oder im Status.
-6. Es gibt keine Umgebungsvariable für das Token.
-7. `a38 doctor` prüft Existenz, Besitzer und Modus der Datei und liest den Inhalt nicht.
+1. **Ziel und Standard:** Das Token des Service Accounts liegt im Anmelde-Schlüsselbund von macOS, im Eintrag mit dem Dienst `a38.onepassword` und dem Konto `service-account`. Der Mensch fügt das Token im Terminal in `a38 config onepassword-token set` ein; `a38` legt den Eintrag selbst über Security.framework an, nie über `/usr/bin/security`. Der Schlüsselbund vertraut dann nur dem Build von `a38`, der den Eintrag angelegt hat. Stefan hat das Ziel am 2026-11-12 festgelegt und den Bau freigegeben. Umgesetzt in [Issue 59](https://github.com/seletz/passierschein/issues/59), nach dem [Spike in Issue 53](https://github.com/seletz/passierschein/issues/53).
+2. **Quelle per Konfiguration:** Der Schlüssel `backend.onepassword.token_source` wählt die Quelle: `keychain` (Standard) oder `file`. Ein anderer Wert verhindert das Laden der Konfiguration.
+3. **Ausweichweg:** Die Token-Datei bleibt für Entwicklung und CI. Die Konfiguration nennt sie im Schlüssel `backend.onepassword.token_file`. Der Standard ist `$XDG_CONFIG_HOME/a38/onepassword-token`, ohne die Variable `~/.config/a38/onepassword-token`. Die Datei ist eine reguläre Datei, gehört dem Benutzer des Daemons und hat genau den Modus `0600`. Ein symbolischer Link, ein Verzeichnis, ein anderer Besitzer, ein anderer Modus oder eine leere Datei verhindern den Start mit dem 1Password-Backend.
+4. **Befehle:** Die Gruppe `a38 config` enthält `a38 config onepassword-token set | status | delete`. `set` liest das Token nur vom Terminal, ohne Echo; ist die Standardeingabe kein Terminal, liest der Befehl nichts und endet mit dem Exit-Code 2. Das Token ist nie ein Argument, nie eine Umgebungsvariable und kommt nie aus einer Datei oder einer Pipe. Ein vorhandener Eintrag wird nur mit `--replace` ersetzt. `status` liest das Token nie und zeigt deshalb nie einen Dialog. `delete` löscht den Eintrag.
+5. **Nur Metadaten:** Kein Befehl zeigt das Token oder einen daraus abgeleiteten Wert (Länge, Prüfsumme, Fingerabdruck). `status` und `a38 doctor` zeigen nur, was der Schlüsselbund ohne den Wert liefert: Existenz, Datum der Anlage und der Änderung, vertraute Programme, Partitionsliste; dazu die Signatur von `a38`. Die Token-Datei prüfen sie nur über Besitzer und Rechte.
+6. Der Daemon liest das Token einmal beim Start, über die Schnittstelle `token.Source`, aus genau einer Quelle. Fehlt der Eintrag im Schlüsselbund, startet der Daemon mit dem 1Password-Backend nicht; die Meldung nennt `a38 config onepassword-token set`. Die Meldung nennt nie das Token.
+7. Der Daemon hält das Token nur im Arbeitsspeicher, in einem Typ mit der Ausgabe `[redacted]`. Das Token steht nie im Log, in einer Fehlermeldung, im Audit-Log oder im Status.
+8. Es gibt keine Umgebungsvariable für das Token.
+9. `a38 doctor` prüft die Quelle, ohne das Token zu lesen: den Eintrag und seine Zugriffsliste, die Signatur von `a38` als Hinweis, eine übrige Token-Datei als Befund; bei der Quelle `file` Existenz, Besitzer und Modus der Datei.
 
-**Schwäche der Datei:** Jeder Prozess desselben Benutzers kann die Datei lesen, auch ein Agent, der auf dem Mac läuft. Der Modus `0600` schützt nur vor anderen Benutzern. Wer die Datei liest, liest alle Items der freigegebenen Vaults, bis der Mensch das Token widerruft. Die Datei kann in eine Datensicherung gelangen. Das ist ein Fall von {{ ref("RI5") }} und der Grund für das Ziel Schlüsselbund ({{ ref("G3") }}). Die Rechte des Service Accounts (nur Lesen, nur die freigegebenen Vaults, {{ ref("D39") }}) begrenzen den Schaden.
+**Grenze bis zur Signatur ({{ ref("G5") }}):** Ohne Developer ID bindet der Schlüsselbund den Eintrag an den Hash des Builds. Jeder neue Build von `a38` braucht eine Bestätigung in einem Dialog von macOS. Ein anderes Programm kann denselben Dialog auslösen; der Mensch kann beide nicht unterscheiden. Der Schutz gegen einen Prozess desselben Benutzers beginnt erst mit der Signatur mit Developer ID und Hardened Runtime. Bis dahin bleibt {{ ref("G3") }} im Teil der Signatur offen, und {{ ref("RI5") }} bleibt bestehen.
 
-**Begründung:** Die Datei ist einfach, braucht kein CGO und reicht für Entwicklung und Test. Ein Eintrag im Schlüsselbund, gebunden an das signierte Programm, ist für einen anderen Prozess desselben Benutzers nicht ohne Rückfrage lesbar. Ein Kindprozess erbt die Umgebung, auch ein Agent; eine Umgebungsvariable gäbe das Token weiter. Eine Prüfung von Besitzer und Modus fängt eine falsch angelegte Datei vor dem ersten Start ab.
+**Schwäche der Datei:** Jeder Prozess desselben Benutzers kann die Datei lesen, auch ein Agent, der auf dem Mac läuft. Der Modus `0600` schützt nur vor anderen Benutzern. Wer die Datei liest, liest alle Items der freigegebenen Vaults, bis der Mensch das Token widerruft. Die Datei kann in eine Datensicherung gelangen. Das ist ein Fall von {{ ref("RI5") }}. Die Rechte des Service Accounts (nur Lesen, nur die freigegebenen Vaults, {{ ref("D39") }}) begrenzen den Schaden.
 
-**Offen:** Wie `a38` ohne CGO den Schlüsselbund nutzt und wie die Bindung an das signierte Programm aussieht, klärt Issue 53. Die Entscheidung engt {{ ref("G3") }} ein.
+**Begründung:** Ein Eintrag im Schlüsselbund, den `a38` selbst anlegt, ist für ein anderes Programm desselben Benutzers nicht still lesbar; das hat der Spike gemessen. Der Weg über `purego` braucht kein CGO. Die Datei ist einfach und reicht für Entwicklung und CI, wo jeder Neubau sonst einen Dialog auslöste. Ein Kindprozess erbt die Umgebung, auch ein Agent; eine Umgebungsvariable gäbe das Token weiter.
 
-**Quelle:** Entwicklung der Stufe 3, [Issue 50](https://github.com/seletz/passierschein/issues/50). Ziel Schlüsselbund: Stefan, 2026-11-12. Die Token-Datei als Übergang ist ein Vorschlag aus der Entwicklung, zu bestätigen durch Stefan.
+**Bestätigt:** Stefan hat am 2026-11-12 die Umsetzung abgenommen (PR 61): die Quelle `keychain` als Standard, das Lesen des Tokens nur vom Terminal, nur Metadaten in jeder Ausgabe, den Befehl `a38 config onepassword-token`, den Eintrag `a38.onepassword` mit dem Konto `service-account` und das Ersetzen mit `--replace`. Die Token-Datei bleibt für Entwicklung und CI.
+
+**Offen:** Die Bindung an die Developer ID gehört zu {{ ref("G5") }}.
+
+**Quelle:** Entwicklung der Stufe 3, [Issue 50](https://github.com/seletz/passierschein/issues/50); Spike [Issue 53](https://github.com/seletz/passierschein/issues/53); Umsetzung [Issue 59](https://github.com/seletz/passierschein/issues/59). Ziel Schlüsselbund und Freigabe des Baus: Stefan, 2026-11-12.

@@ -27,7 +27,7 @@ Drei Arten von Prozessen entstehen daraus.
 |---|---|---|
 | `a38 serve` | Daemon | Der Prozess stellt den Agent-Socket und den Admin-Socket bereit. Er prüft die Policy, bündelt, fragt die Freigabe an, vergibt Grants, schreibt das Audit-Log und liefert aus. Nur dieser Prozess spricht mit dem Backend ({{ ref("D1") }}). |
 | `a38 mcp` | Agent | Der Prozess ist ein MCP-Server über stdio (MCP: Model Context Protocol). Das Agent-Werkzeug startet ihn je Sitzung. Er übersetzt die zwei MCP-Werkzeuge in Nachrichten für den Agent-Socket ({{ ref("D41") }}). Er verbindet sich erst beim ersten Aufruf eines Werkzeugs mit dem Daemon und sendet dann den Namen der Sitzung und den Namen des MCP-Clients in `hello`. Ist der Daemon nicht erreichbar, antwortet er mit `daemon_unavailable` und versucht es beim nächsten Aufruf erneut. Er enthält keinen Code für ein Backend. |
-| Admin-Befehle | Mensch | `a38 grants`, `a38 fault` und `a38 doctor` sprechen mit dem Daemon über den Admin-Socket ({{ ref("D44") }}). `a38 audit` liest die Audit-Datei direkt. `a38 llm` und `a38 version` brauchen keinen Daemon. |
+| Admin-Befehle | Mensch | `a38 grants`, `a38 fault` und `a38 doctor` sprechen mit dem Daemon über den Admin-Socket ({{ ref("D44") }}). `a38 audit` liest die Audit-Datei direkt. `a38 config onepassword-token` legt das Token des Service Accounts im Schlüsselbund ab ({{ ref("D51") }}). `a38 llm` und `a38 version` brauchen keinen Daemon. |
 
 Die Freigabe-UI ist in Stufe 1 kein eigener Prozess der Auslieferung.
 Die Varianten `auto-approve` und `auto-deny` laufen im Daemon.
@@ -83,8 +83,9 @@ Die Abhängigkeitsregel gilt in jedem Fall.
 | `internal/doctor` | Prüfungen von `a38 doctor`; `cmd/a38/doctor.go` | 25 |
 | `internal/skill` | eingebettete Anleitung für Agents; `cmd/a38/llm.go` | 26 |
 | `internal/backend/onepassword` | `Backend` über das Go-SDK von 1Password mit einem Service Account; nur im macOS-Build von `a38` ([1Password-Backend](#1password-backend)) | 50 |
-| `internal/token` | Typ `Token` mit der Ausgabe `[redacted]`, Schnittstelle `Source` einer Quelle des Tokens | 50 |
-| `internal/tokenfile` | Token-Datei als Quelle (Übergang bis zum Schlüsselbund): Prüfung von Besitzer und Rechten, Lesen | 50 |
+| `internal/token` | Typ `Token` mit der Ausgabe `[redacted]`; Schnittstellen `Source` und `Store`; Prüfung der Form eines Tokens | 50, 59 |
+| `internal/tokenfile` | Token-Datei als Quelle (Ausweichweg für Entwicklung und CI): Prüfung von Besitzer und Rechten, Lesen | 50 |
+| `internal/keychain` | ein Eintrag im Schlüsselbund von macOS über Security.framework mit `purego`, ohne cgo: anlegen, lesen, löschen, beschreiben; Signatur von `a38`; nur im macOS-Build | 59 |
 
 Vier Pakete aus dem ersten Entwurf entstehen in diesem Issue nicht: `internal/grant`, `internal/policy`, `internal/bundle` und ein Sitzungsregister.
 Kein anderes Paket braucht heute einen Typ aus ihnen.
@@ -144,8 +145,9 @@ Die Standardbibliothek ist immer erlaubt.
 | `mcp` | `protocol`, `config`, `version`, `client` |
 | `token` | kein Paket von `a38` |
 | `tokenfile` | `token` |
+| `keychain` | `token`; `purego` nur in Dateien mit `_darwin` |
 | `backend/onepassword` | `backend`, `protocol`, `token`; das SDK von 1Password nur in `sdk_darwin.go` |
-| `doctor` | `protocol`, `config`, `client`, `audit`, `audit/sqlite` (nur lesend), `approval` (nur die Prüfung der Datei der Freigabe-App), `backend` (nur die Namen der Arten), `tokenfile` (nur die Prüfung der Datei) |
+| `doctor` | `protocol`, `config`, `client`, `audit`, `audit/sqlite` (nur lesend), `approval` (nur die Prüfung der Datei der Freigabe-App), `backend` (nur die Namen der Arten), `token` (nur Typen), `tokenfile` (nur die Prüfung der Datei); nie `keychain` |
 | `skill` | `protocol` |
 | `cmd/a38` | jedes Paket |
 
@@ -153,7 +155,7 @@ Vier Regeln folgen aus der Tabelle:
 
 1. `protocol` ist das gemeinsame Vokabular. Es importiert nichts von `a38`.
 2. Kein Paket importiert eine Umsetzung eines anderen Pakets. Nur `daemon` und `cmd/a38` verdrahten Umsetzungen.
-3. `mcp` importiert weder `backend` noch `daemon`. Der linux-Build von `a38 mcp` enthält so keinen Code für 1Password ({{ ref("D2") }}, {{ ref("T13") }}). Nur `cmd/a38/serve_onepassword_darwin.go` importiert `backend/onepassword`. Der linux-Build von `a38` enthält deshalb weder das Backend noch das SDK.
+3. `mcp` importiert weder `backend` noch `daemon`. Der linux-Build von `a38 mcp` enthält so keinen Code für 1Password ({{ ref("D2") }}, {{ ref("T13") }}). Nur `cmd/a38/serve_onepassword_darwin.go` importiert `backend/onepassword`. Der linux-Build von `a38` enthält deshalb weder das Backend noch das SDK. Ebenso importiert nur `cmd/a38/token_store_darwin.go` das Paket `keychain`; der linux-Build enthält weder `keychain` noch `purego` ({{ ref("D53") }}). `doctor` erhält den Eintrag über eine schmale Schnittstelle ohne Methode zum Lesen des Werts.
 4. Kein Paket ruft `time.Now`, `time.After` oder `time.NewTimer` direkt auf. Es erhält eine `clock.Clock`.
 
 ## Datenfluss einer Anfrage
@@ -582,7 +584,8 @@ Unter Linux bricht `a38 serve --backend 1password` mit „not available on this 
 Die Logik des Pakets hat keine Build-Bedingung.
 So laufen ihre Unit-Tests auch auf dem Linux-Runner der CI.
 `mise run deps:linux:check` prüft den linux-Build ({{ ref("T13") }}).
-Der Selbsttest der Prüfung zeigt mit dem darwin-Build und mit einem linux-Build ohne Build-Bedingung, dass die Prüfung das Backend und das SDK findet.
+Die Prüfung verbietet auch `purego` und das Paket `keychain`.
+Der Selbsttest der Prüfung zeigt mit dem darwin-Build und mit einem linux-Build ohne Build-Bedingung, dass die Prüfung das Backend, das SDK, `keychain` und `purego` findet.
 
 **Schmale Schnittstelle:** Das Backend ruft das SDK nur über die interne Schnittstelle `api` auf.
 Sie hat drei Aufrufe: Vaults auflisten, Items eines Vaults auflisten, ein Item lesen.
@@ -632,28 +635,42 @@ Der Daemon prüft beim Start im Hintergrund den Zustand und schreibt ihn ins Log
 
 | Lage beim Start | Verhalten |
 |---|---|
-| Token-Datei fehlt, ist ein Link, ist keine reguläre Datei, gehört einem anderen Benutzer oder hat nicht `0600` | Der Daemon startet nicht. Die Meldung nennt den Befund. |
+| Quelle `keychain`: der Eintrag fehlt, der Schlüsselbund lehnt ab oder antwortet zwei Minuten nicht | Der Daemon startet nicht. Die Meldung nennt den Befund und `a38 config onepassword-token set`. |
+| Quelle `file`: die Token-Datei fehlt, ist ein Link, ist keine reguläre Datei, gehört einem anderen Benutzer oder hat nicht `0600` | Der Daemon startet nicht. Die Meldung nennt den Befund. |
 | Token ungültig | Der Daemon startet. Jede Anfrage endet mit `backend_locked`. `a38 doctor` zeigt den Zustand. |
 | kein Netz | Der Daemon startet. Jede Anfrage endet mit `backend_unavailable`, bis das Netz wieder da ist. |
 
-Ein Fehler in der Datei ist ein Fehler der Einrichtung und bleibt gleich, bis der Mensch ihn behebt.
+Ein Fehler der Quelle ist ein Fehler der Einrichtung und bleibt gleich, bis der Mensch ihn behebt.
 Einen Fehler des Tokens oder des Netzes zeigt der laufende Daemon besser als eine Schleife von Neustarts.
 Die Wahl folgt dem Wunsch nach einem ruhigen Dienst ({{ ref("D48") }}): Ein gesperrtes oder nicht erreichbares Backend ist ein Fehler der Anfrage und keine Störung des Daemons.
 
-**Token ({{ ref("D51") }}):** Das Ziel ist der Schlüsselbund von macOS, gebunden an das signierte Programm `a38`; der Mensch legt das Token mit einem Befehl von `a38` dort ab ([Spike in Issue 53](https://github.com/seletz/passierschein/issues/53)).
-Heute ist die Token-Datei die einzige Quelle, als Übergang für Entwicklung und Tests.
-Ihre Schwäche: Jeder Prozess desselben Benutzers kann sie lesen, auch ein Agent ({{ ref("RI5") }}, {{ ref("G3") }}).
+**Token ({{ ref("D51") }}):** Das Token liegt im Schlüsselbund von macOS, im Eintrag `a38.onepassword` (Konto `service-account`) des Anmelde-Schlüsselbunds.
+Der Mensch legt es mit `a38 config onepassword-token set` dort ab; `status` und `delete` ergänzen den Befehl.
+Die Token-Datei bleibt als Ausweichweg für Entwicklung und CI ({{ ref("RI5") }}, {{ ref("G3") }}).
+Der Schlüssel `backend.onepassword.token_source` wählt die Quelle: `keychain` (Standard) oder `file`.
 Der Daemon holt das Token über die Schnittstelle `token.Source` (Paket `internal/token`).
-Die Datei ist die Quelle `tokenfile.File`; nur der Konstruktor `tokenSource` in `cmd/a38/serve_onepassword_darwin.go` wählt sie.
-Eine Quelle im Schlüsselbund ersetzt nur diesen Konstruktor.
-Die Konfiguration nennt die Token-Datei (`backend.onepassword.token_file`).
+Nur `tokenSource` in `cmd/a38/token_source.go` wählt die Quelle; das Backend kennt sie nicht.
 Der Daemon liest das Token einmal beim Start.
 Er hält das Token nur im Arbeitsspeicher, im Typ `token.Token`.
 Der Typ gibt in `fmt`, `slog` und JSON nur `[redacted]` aus.
 Es gibt keine Umgebungsvariable für das Token, denn jeder Kindprozess erbt die Umgebung.
 
+**Schlüsselbund ([Spike](spikes/50-token-im-schluesselbund.md)):**
+
+- `internal/keychain` ruft `SecItemAdd`, `SecItemCopyMatching` und `SecItemDelete` über `purego` auf, ohne cgo. Das Paket legt den Eintrag selbst an, nie über `/usr/bin/security`. Der Schlüsselbund vertraut dann nur dem Programm, das den Eintrag angelegt hat.
+- Ohne Developer ID bindet der Schlüsselbund den Eintrag an den Hash des Builds (`cdhash`). Ein anderer Build löst beim Lesen einen Dialog aus. `kSecUseAuthenticationUIFail` verhindert diesen Dialog nicht.
+- `Describe` liest nur die Attribute und die Zugriffsliste. Das zeigte im Spike nie einen Dialog. `a38 doctor` nutzt nur `Describe` und die Signatur.
+- `a38 config onepassword-token status` liest den Wert nie; er zeigt nur Metadaten. Kein Befehl zeigt das Token oder einen daraus abgeleiteten Wert.
+- `a38 config onepassword-token set` liest das Token nur vom Terminal, ohne Echo; eine Pipe oder Datei lehnt er mit dem Exit-Code 2 ab.
+- `a38 config` ist eine Gruppe mit einer Tabelle von Unterbefehlen (`cmd/a38/config.go`); weitere Unterbefehle für die Konfiguration kommen dort hinzu.
+- Die Signatur von `a38` liest das Paket mit `SecCodeCopySelf` und `SecCodeCopySigningInformation`, ohne Dialog und ohne Kindprozess.
+- Es gibt damit zwei Leser von Signaturen: `keychain` liest die eigene Signatur von `a38` über die Security-API für Anzeige und Partitionsliste, `appui` prüft die Datei der Freigabe-App mit `/usr/bin/codesign` gegen das Team von `a38`; die Zwecke und Build-Grenzen sind verschieden, eine Zusammenlegung ist offen.
+- Ein Test legt nur Einträge `a38-test-…` an. In einem Test-Binary verweigert `keychain.Store` den Eintrag des Produkts. Die Tests von `cmd/a38` nutzen eine Fälschung des Eintrags.
+- Die Grenzen bis zur Signatur mit Developer ID nennt {{ ref("G5") }}: Jeder neue Build braucht eine Bestätigung, und ein anderes Programm kann denselben Dialog auslösen.
+
 **Status:** `status_result` nennt im Feld `backend.kind` die Art des Backends.
-`a38 doctor` prüft damit die Token-Datei nur, wenn sie gebraucht wird.
+`a38 doctor` prüft damit die Quelle des Tokens nur, wenn sie gebraucht wird.
+Der Status nennt die Quelle des Tokens nicht.
 
 ## Teststrategie
 
@@ -701,6 +718,12 @@ Jede Abhängigkeit braucht einen Grund.
 | `modernc.org/sqlite` | v1.62.0 | Audit-Log; SQLite in reinem Go, ohne cgo | Empfehlung für Issue 17 |
 | `github.com/modelcontextprotocol/go-sdk` | v1.8.0 | MCP-Server über stdio; das offizielle Go-SDK | in `go.mod` (Issue 24) |
 | `github.com/1password/onepassword-sdk-go` | v0.4.1 | 1Password-Backend mit Service Account; baut mit `CGO_ENABLED=0`; bringt `extism` und `wazero` mit; nur im macOS-Build | in `go.mod` (Issue 50) |
+| `github.com/ebitengine/purego` | v0.11.3 | Aufruf von Security.framework ohne cgo für den Schlüsselbund; nur im macOS-Build, nur in `internal/keychain` | in `go.mod` (Issue 59) |
+
+`purego` ist die einzige neue Abhängigkeit für den Schlüsselbund.
+Jede Go-Bibliothek für den Schlüsselbund braucht entweder cgo oder `/usr/bin/security`; der zweite Weg schützt das Token nicht ([Spike](spikes/50-token-im-schluesselbund.md)).
+Der eigene Code über `purego` ist klein und bleibt im Paket `internal/keychain`.
+`golang.org/x/sys` schaltet zusätzlich das Echo des Terminals für `a38 config onepassword-token set` ab.
 
 `go.yaml.in/yaml` ist der gepflegte Nachfolger von `gopkg.in/yaml.v3`.
 Die Version v4.0.0 ist eine Woche alt (Stand 2026-11-11).
