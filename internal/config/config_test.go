@@ -47,6 +47,9 @@ session_name:
 paths:
   socket_dir: /home/beispiel/a38/run
   audit_file: ~/a38/audit.db
+backend:
+  onepassword:
+    token_file: ~/a38/onepassword-token
 `
 
 // setHome gives the test a fixed home directory and no XDG variables.
@@ -78,6 +81,8 @@ func TestParseDefaults(t *testing.T) {
 			SocketDir: "/home/beispiel/.local/state/a38/run",
 			AuditFile: "/home/beispiel/.local/state/a38/audit.db",
 		},
+		// G3 (assumption of stage 3): the default token file.
+		Backend: Backend{OnePassword: OnePassword{TokenFile: "/home/beispiel/.config/a38/onepassword-token"}},
 	}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("Parse(minimal) =\n%+v\nwant\n%+v", cfg, want)
@@ -118,6 +123,7 @@ func TestParseExample(t *testing.T) {
 		Bundle:      Bundle{Window: 1500 * time.Millisecond, MaxEntries: 3},
 		SessionName: SessionNameRules{MaxLength: 20, AllowedCharacters: "abcdefghijklmnopqrstuvwxyz-."},
 		Paths:       Paths{SocketDir: "/home/beispiel/a38/run", AuditFile: "/home/beispiel/a38/audit.db"},
+		Backend:     Backend{OnePassword: OnePassword{TokenFile: "/home/beispiel/a38/onepassword-token"}},
 	}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("Parse(example) =\n%+v\nwant\n%+v", cfg, want)
@@ -216,6 +222,9 @@ func TestParseRejects(t *testing.T) {
 		{"unknown key", minimal + "vault: []\n", "vault"},
 		{"unknown key in a vault", vault("  - {name: beispiel.app.k8s-dev, environment: dev, pattern: k8s}\n"), "pattern"},
 		{"two documents", minimal + "---\nversion: 1\n", "one YAML document"},
+		{"relative token file", minimal + "backend:\n  onepassword:\n    token_file: token\n", "backend.onepassword.token_file"},
+		{"empty token file", minimal + "backend:\n  onepassword:\n    token_file: \"\"\n", "backend.onepassword.token_file"},
+		{"unknown backend key", minimal + "backend:\n  onepassword:\n    token: x\n", "token"},
 
 		// T22 (part): cases in which the daemon does not start. The message
 		// names the vault.
@@ -501,6 +510,15 @@ func TestDefaultPaths(t *testing.T) {
 			}
 			if got, err := DefaultAuditFile(); err != nil || got != tt.wantAudit {
 				t.Errorf("DefaultAuditFile() = %q, %v; want %q", got, err, tt.wantAudit)
+			}
+			// G3: the token file lies next to the default configuration
+			// file, also if A38_CONFIG names another file.
+			wantToken := filepath.Join(filepath.Dir(tt.wantConfig), "onepassword-token")
+			if tt.env["A38_CONFIG"] != "" {
+				wantToken = "/home/beispiel/.config/a38/onepassword-token"
+			}
+			if got, err := DefaultTokenFile(); err != nil || got != wantToken {
+				t.Errorf("DefaultTokenFile() = %q, %v; want %q", got, err, wantToken)
 			}
 		})
 	}

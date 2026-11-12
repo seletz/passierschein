@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -78,7 +79,12 @@ bundle:
 paths:
   socket_dir: %s
   audit_file: %s
-`, wd, socketDir, filepath.Join(dir, "audit.db"))
+# A token file in the test directory: a test never reads the token file
+# of the user (rule for 1Password, 2026-11-12).
+backend:
+  onepassword:
+    token_file: %s
+`, wd, socketDir, filepath.Join(dir, "audit.db"), filepath.Join(dir, "onepassword-token"))
 	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -102,6 +108,9 @@ func TestServeFlags(t *testing.T) {
 		{"unknown ui", []string{"--config", cfg, "--backend", "fake", "--ui", "popup"}, "--ui must be one of"},
 		{"real backend with fake approval", []string{"--config", cfg, "--backend", "1password", "--ui", "auto-approve"}, "--backend 1password needs --ui app"},
 		{"real backend with script", []string{"--config", cfg, "--backend", "1password", "--ui", "script"}, "--backend 1password needs --ui app"},
+		// T9: each faked approval with the real backend kind stops the
+		// start before the token file is read and before a socket opens.
+		{"real backend with auto-deny", []string{"--config", cfg, "--backend", "1password", "--ui", "auto-deny"}, "--backend 1password needs --ui app"},
 		{"argument", []string{"--config", cfg, "--backend", "fake", "--ui", "auto-deny", "extra"}, "unexpected argument"},
 		{"unknown flag", []string{"--verbose"}, "flag provided but not defined"},
 		{"fake backend without file", []string{"--config", cfg, "--backend", "fake", "--ui", "auto-deny"}, "--backend fake needs --fake-file"},
@@ -163,10 +172,53 @@ func TestServeStartFailures(t *testing.T) {
 		wantStderr string
 	}{
 		{"missing fake file", []string{"--backend", "fake", "--fake-file", "/tmp/a38-missing/fake.yaml", "--ui", "auto-approve"}, "fake backend"},
-		{"1password backend", []string{"--backend", "1password", "--ui", "app"}, "not implemented"},
+	}
+	// D42, G3: the 1Password backend does not start without a good token
+	// file; on linux it does not exist at all.
+	opArgs := []string{"--backend", "1password", "--ui", "app", "--ui-app", "/tmp/a38-missing/Passierschein"}
+	tokenFile := filepath.Join(filepath.Dir(cfg), "onepassword-token")
+	opCases := []struct {
+		name, want string
+		prepare    func(t *testing.T)
+	}{
+		{"1password without token file", "token file does not exist", func(*testing.T) {}},
+		{"1password with token file mode 0644", "mode 0600", func(t *testing.T) {
+			writeMode(t, tokenFile, 0o644)
+		}},
+		{"1password with token file as directory", "not a regular file", func(t *testing.T) {
+			if err := os.Mkdir(tokenFile, 0o700); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{"1password with token file as link", "symbolic link", func(t *testing.T) {
+			writeMode(t, tokenFile+".real", 0o600)
+			if err := os.Symlink(tokenFile+".real", tokenFile); err != nil {
+				t.Fatal(err)
+			}
+		}},
+	}
+	for _, c := range opCases {
+		want := c.want
+		if runtime.GOOS != "darwin" {
+			want = "not available on this platform"
+		}
+		tests = append(tests, struct {
+			name       string
+			args       []string
+			wantStderr string
+		}{c.name, opArgs, want})
+	}
+	prepare := map[string]func(t *testing.T){}
+	for _, c := range opCases {
+		prepare[c.name] = c.prepare
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			_ = os.RemoveAll(tokenFile)
+			_ = os.Remove(tokenFile + ".real")
+			if p := prepare[tt.name]; p != nil {
+				p(t)
+			}
 			var stdout, stderr bytes.Buffer
 			args := append([]string{"--config", cfg}, tt.args...)
 			if code := serve(context.Background(), args, &stdout, &stderr); code != exitFailure {
@@ -174,6 +226,9 @@ func TestServeStartFailures(t *testing.T) {
 			}
 			if !strings.Contains(stderr.String(), tt.wantStderr) {
 				t.Errorf("stderr = %q, want %q", stderr.String(), tt.wantStderr)
+			}
+			if strings.Contains(stderr.String(), "kein-token") {
+				t.Error("stderr contains the content of the token file")
 			}
 			if _, err := os.Stat(filepath.Join(socketDir, "agent.sock")); !os.IsNotExist(err) {
 				t.Error("a socket exists after a failed start")
@@ -256,5 +311,16 @@ func TestServeRuns(t *testing.T) {
 	}
 	if strings.Contains(log, "beispiel-wert-serve") {
 		t.Error("the log contains the value")
+	}
+}
+
+// writeMode writes a fake token file with the mode.
+func writeMode(t *testing.T, path string, mode os.FileMode) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte("ops_beispiel-kein-token\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, mode); err != nil {
+		t.Fatal(err)
 	}
 }

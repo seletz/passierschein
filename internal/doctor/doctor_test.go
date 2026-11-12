@@ -193,3 +193,81 @@ func TestSystemEnvUIApp(t *testing.T) {
 		})
 	}
 }
+
+func TestTokenFileCheck(t *testing.T) {
+	// G3 (working assumption of stage 3), F20: the doctor checks the token
+	// file of the 1Password backend without reading it.
+	const content = "ops_beispiel-kein-token"
+	tests := []struct {
+		name    string
+		goos    string
+		kind    string
+		prepare func(t *testing.T, path string)
+		wantOK  bool
+		want    string
+	}{
+		{"linux", "linux", "", nil, true, "macOS build only"},
+		{"fake backend", "darwin", "fake", nil, true, "backend fake"},
+		{"missing, daemon down", "darwin", "", nil, true, "only a38 serve --backend 1password needs it"},
+		{"missing, 1password daemon", "darwin", "1password", nil, false, "does not exist"},
+		{"good file", "darwin", "1password", func(t *testing.T, p string) { writeFile(t, p, content, 0o600) }, true, "mode 0600"},
+		{"mode 0644", "darwin", "", func(t *testing.T, p string) { writeFile(t, p, content, 0o644) }, false, "0644"},
+		{"directory", "darwin", "1password", func(t *testing.T, p string) { mustMkdir(t, p, 0o700) }, false, "not a regular file"},
+		{"symbolic link", "darwin", "1password", func(t *testing.T, p string) {
+			writeFile(t, p+".real", content, 0o600)
+			if err := os.Symlink(p+".real", p); err != nil {
+				t.Fatal(err)
+			}
+		}, false, "symbolic link"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := shortDir(t)
+			st := stateFor(dir)
+			path := filepath.Join(dir, "onepassword-token")
+			st.Config.Backend.OnePassword.TokenFile = path
+			if tt.kind != "" {
+				st.Status = &protocol.StatusResult{Backend: &protocol.BackendStatus{Kind: tt.kind, State: protocol.BackendOK}}
+			}
+			if tt.prepare != nil {
+				tt.prepare(t, path)
+			}
+			res := tokenFileCheck{SystemEnv{}, tt.goos}.Run(context.Background(), st)
+			if len(res) != 1 || res[0].OK != tt.wantOK {
+				t.Fatalf("result = %+v", res)
+			}
+			text := res[0].Detail + res[0].Finding + res[0].Cause + res[0].NextStep
+			if !strings.Contains(text, tt.want) {
+				t.Errorf("text %q does not contain %q", text, tt.want)
+			}
+			if strings.Contains(text, "kein-token") {
+				t.Error("the doctor shows the content of the token file")
+			}
+		})
+	}
+}
+
+func TestBackendCheckOnePassword(t *testing.T) {
+	// F12, F20: for the 1Password backend the doctor names the token as
+	// the cause of the state locked.
+	for _, state := range []string{protocol.BackendLocked, protocol.BackendUnreachable} {
+		st := &State{Status: &protocol.StatusResult{Backend: &protocol.BackendStatus{Kind: "1password", State: state, Reason: "x"}}}
+		res := backendCheck{SystemEnv{}}.Run(context.Background(), st)
+		if len(res) != 1 || res[0].OK {
+			t.Fatalf("%s: %+v", state, res)
+		}
+		if !strings.Contains(res[0].Cause+res[0].NextStep, "1Password") && !strings.Contains(res[0].NextStep, "token") {
+			t.Errorf("%s: no hint for 1Password: %+v", state, res[0])
+		}
+	}
+}
+
+func writeFile(t *testing.T, path, content string, mode os.FileMode) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, mode); err != nil {
+		t.Fatal(err)
+	}
+}

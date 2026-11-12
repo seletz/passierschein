@@ -96,6 +96,13 @@ func WithUIApp(path string) Option {
 	return func(b *Broker) { b.uiApp = path }
 }
 
+// WithBackendKind tells the broker the kind of the backend. The status
+// shows it, so that a38 doctor can check the token file of the 1Password
+// backend.
+func WithBackendKind(k backend.Kind) Option {
+	return func(b *Broker) { b.backendKind = k }
+}
+
 // Broker is the decision half of the daemon. All methods are safe for
 // concurrent use.
 type Broker struct {
@@ -113,6 +120,8 @@ type Broker struct {
 	uiMode approval.Mode
 	// uiApp is the path of the approval app from WithUIApp, or empty.
 	uiApp string
+	// backendKind is the kind of the backend for the status.
+	backendKind backend.Kind
 
 	// slot lets only one approval request reach the UI at a time (D30).
 	// The UI that the caller gives is also a queue with the timeout;

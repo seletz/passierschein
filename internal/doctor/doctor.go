@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"runtime"
 	"strings"
 	"time"
 
@@ -80,6 +81,7 @@ func Checks(env Env) []Check {
 		auditSpaceCheck{env},
 		auditChainCheck{env},
 		backendCheck{env},
+		tokenFileCheck{env, runtime.GOOS},
 		uiCheck{env},
 	}
 }
