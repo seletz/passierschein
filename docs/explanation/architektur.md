@@ -1,11 +1,11 @@
 ---
 title: Architektur
-description: "Prozesse, Pakete, Abhängigkeitsregel, Protokoll, Konfiguration und Teststrategie von a38 in Stufe 1."
+description: "Prozesse, Pakete, Abhängigkeitsregel, Protokoll, Konfiguration und Teststrategie von a38 in den Stufen 1 bis 3."
 render_macros: true
 ---
 # Architektur
 
-Diese Seite beschreibt den Aufbau des Codes von `a38` für die Stufe 1.
+Diese Seite beschreibt den Aufbau des Codes von `a38` (Stufen 1 bis 3, Stand nach dem Release `v0.1.0`).
 Die verbindlichen Aussagen stehen im [Design-Set](../design/index.md).
 Diese Seite zeigt, wie der Code das Design umsetzt und wo welche Aufgabe liegt.
 
@@ -29,10 +29,10 @@ Drei Arten von Prozessen entstehen daraus.
 | `a38 mcp` | Agent | Der Prozess ist ein MCP-Server über stdio (MCP: Model Context Protocol). Das Agent-Werkzeug startet ihn je Sitzung. Er übersetzt die zwei MCP-Werkzeuge in Nachrichten für den Agent-Socket ({{ ref("D41") }}). Er verbindet sich erst beim ersten Aufruf eines Werkzeugs mit dem Daemon und sendet dann den Namen der Sitzung und den Namen des MCP-Clients in `hello`. Ist der Daemon nicht erreichbar, antwortet er mit `daemon_unavailable` und versucht es beim nächsten Aufruf erneut. Er enthält keinen Code für ein Backend. |
 | Admin-Befehle | Mensch | `a38 grants`, `a38 fault` und `a38 doctor` sprechen mit dem Daemon über den Admin-Socket ({{ ref("D44") }}). `a38 audit` liest die Audit-Datei direkt. `a38 config onepassword-token` legt das Token des Service Accounts im Schlüsselbund ab ({{ ref("D51") }}). `a38 llm` und `a38 version` brauchen keinen Daemon. |
 
-Die Freigabe-UI ist in Stufe 1 kein eigener Prozess der Auslieferung.
+Die Freigabe-UI hat vier Varianten hinter derselben Schnittstelle.
 Die Varianten `auto-approve` und `auto-deny` laufen im Daemon.
 Die Variante `script` startet ein Skript als Kindprozess ({{ ref("D40") }}).
-Die Freigabe-App in Swift folgt in Stufe 2 hinter derselben Schnittstelle.
+Die Variante `app` startet die Freigabe-App „Passierschein“ in Swift als Kindprozess (`a38 serve --ui app`); Stefan hat sie abgenommen ([PR 46](https://github.com/seletz/passierschein/pull/46)).
 
 Die Unterbefehle `tui` und `service` aus {{ ref("D42") }} gehören zu späteren Stufen.
 Das Binary kennt sie noch nicht.
@@ -425,7 +425,7 @@ Die App zeigt die Restzeit selbst an und endet mit Exit-Code 11, wenn sie abläu
 Eine Meldung bleibt höchstens 10 Minuten offen.
 Danach, und beim Ende des Daemons, beendet der Daemon die App.
 Ein Fehler der App steht nur im Log ({{ ref("D36") }}, {{ ref("D48") }}, {{ ref("D28") }}).
-Die Wahl „dieselbe App, Art `notice`“ ist ein Vorschlag und wartet auf die Bestätigung durch Stefan ({{ ref("G20") }}).
+Stefan hat die Meldung in der App abgenommen ([PR 46](https://github.com/seletz/passierschein/pull/46)). Offen bleiben Häufigkeit und Name des Befehls ({{ ref("G20") }}, {{ ref("G31") }}).
 
 **Prüfung der Datei.**
 Vor jedem Start prüft der Daemon die Datei der App mit `approval.CheckAppFile`: reguläre Datei (ein Link gilt als sein Ziel), Besitzer ist der Benutzer oder `root`, weder Gruppe noch andere dürfen schreiben, der Besitzer darf ausführen, kein Setuid- oder Setgid-Bit.
@@ -467,7 +467,7 @@ Die Abweichungen:
 | `credentials[].deviation` kennt `outside_scope` nicht. | Eine Anfrage außerhalb der Policy erreicht die Freigabe nie ({{ ref("D28") }}). |
 | `grant.scope` ist nur Anzeige. | Ein Grant umfasst genau die angehakten Zugangsdaten und keinen ganzen Vault ({{ ref("D32") }}, {{ ref("G7") }}). |
 | `verified.vm_name` und `verified.ssh_session` fehlen. | Die Herkunft aus der VM gehört zur Stufe 5 ({{ ref("G1") }}). |
-| Der Typ `notice` ist neu. | Der Prototyp kennt nur Anfrage und Entscheidung. Ob die Freigabe-App die Meldung zeigt, ist offen ({{ ref("G20") }}). |
+| Der Typ `notice` ist neu. | Der Prototyp kennt nur Anfrage und Entscheidung. Die Freigabe-App zeigt die Meldung; Stefan hat das abgenommen ([PR 46](https://github.com/seletz/passierschein/pull/46)). |
 
 Der Prototyp ignoriert unbekannte Felder.
 Die neuen Felder brechen ihn deshalb nicht.
@@ -674,7 +674,7 @@ Es gibt keine Umgebungsvariable für das Token, denn jeder Kindprozess erbt die 
 - Die Signatur von `a38` liest das Paket mit `SecCodeCopySelf` und `SecCodeCopySigningInformation`, ohne Dialog und ohne Kindprozess.
 - Es gibt damit zwei Leser von Signaturen: `keychain` liest die eigene Signatur von `a38` über die Security-API für Anzeige und Partitionsliste, `appui` prüft die Datei der Freigabe-App mit `/usr/bin/codesign` gegen das Team von `a38`; die Zwecke und Build-Grenzen sind verschieden, eine Zusammenlegung ist offen.
 - Ein Test legt nur Einträge `a38-test-…` an. In einem Test-Binary verweigert `keychain.Store` den Eintrag des Produkts. Die Tests von `cmd/a38` nutzen eine Fälschung des Eintrags.
-- Die Grenzen bis zur Signatur mit Developer ID nennt {{ ref("G5") }}: Jeder neue Build braucht eine Bestätigung, und ein anderes Programm kann denselben Dialog auslösen.
+- Die Grenzen ohne Developer ID nennt {{ ref("G5") }}: Jeder neue Build braucht eine Bestätigung, und ein anderes Programm kann denselben Dialog auslösen. Das Release `v0.1.0` ist mit der Developer ID signiert; nach der Dokumentation von macOS bleibt der Eintrag dann bei einem Update gültig. Der Praxistest steht aus ({{ ref("G5") }}).
 
 **Status:** `status_result` nennt im Feld `backend.kind` die Art des Backends.
 `a38 doctor` prüft damit die Quelle des Tokens nur, wenn sie gebraucht wird.
@@ -737,7 +737,7 @@ Der eigene Code über `purego` ist klein und bleibt im Paket `internal/keychain`
 Die Version v4.0.0 ist eine Woche alt (Stand 2026-11-11).
 Die Version v3 ist erprobt und reicht für beide Dateien.
 
-Das MCP-SDK steht seit Issue 24 in `go.mod`. Das SQLite-Modul steht noch nicht darin.
+Das MCP-SDK steht seit Issue 24 und das SQLite-Modul seit dem Audit-Log in `go.mod`.
 Das Issue, das ein Modul braucht, nimmt es auf und prüft dabei die aktuelle Version.
 `modernc.org/sqlite` gehört nur in den Daemon und in `a38 audit`.
 Das MCP-SDK gehört nur in `internal/mcp`.
@@ -745,7 +745,7 @@ Das MCP-SDK gehört nur in `internal/mcp`.
 ## Was diese Seite nicht entscheidet
 
 - Die Form des Startwerts für den Namen der Sitzung ist in Issue 24 gewählt: das Argument `--session-name` und die Umgebungsvariable `A38_SESSION_NAME` von `a38 mcp`, das Argument hat Vorrang ({{ ref("G19") }}). Wer den Wert je Sitzung setzt, bleibt offen.
-- Der Name des Admin-Befehls zum Aufheben der Sperre ist offen ({{ ref("G20") }}). Das Protokoll nennt die Nachricht `fault_clear`. Issue 25 wählt auf der Kommandozeile `a38 fault clear` und `a38 fault status`; Stefan bestätigt den Namen.
-- Ob die Freigabe-App die Meldung zeigt, ist offen ({{ ref("G20") }}). In Stufe 1 erhält das Skript der Oberfläche die Meldung.
+- Der Name des Admin-Befehls zum Aufheben der Sperre ist offen ({{ ref("G20") }}, {{ ref("G31") }}). Das Protokoll nennt die Nachricht `fault_clear`. Issue 25 wählt auf der Kommandozeile `a38 fault clear` und `a38 fault status`; Stefan bestätigt den Namen.
+- Die Freigabe-App zeigt die Meldung (abgenommen, [PR 46](https://github.com/seletz/passierschein/pull/46)); offen sind Häufigkeit und Form der Aktionen ({{ ref("G20") }}).
 - Ob ein Agent die Namen der Items über ein Werkzeug findet, ist offen ({{ ref("G6") }}). Das Protokoll hat dafür keine Nachricht. `Backend.Vaults` listet nur Vaults.
 - Ob eine Verbindung je Agent die richtige Sitzung ist, ist offen ({{ ref("G2") }}). Der Code setzt {{ ref("D25") }} um.

@@ -1,6 +1,6 @@
 ---
 title: Release signieren und prüfen
-description: "Die fünf Secrets für Signatur und Notarisierung setzen, mit dem signierten Snapshot testen, die Signatur eines heruntergeladenen Release prüfen und die App installieren."
+description: "Die fünf Secrets für Signatur und Notarisierung setzen, mit dem signierten Snapshot testen, die Signatur eines heruntergeladenen Release prüfen."
 render_macros: true
 tags:
   - Thema/Release
@@ -8,7 +8,8 @@ tags:
 # Release signieren und prüfen
 
 Diese Anleitung richtet die Signatur mit der Developer ID und die Notarisierung bei Apple ein.
-Sie zeigt auch, wie du ein heruntergeladenes Release prüfst und installierst.
+Sie zeigt auch, wie du ein heruntergeladenes Release prüfst.
+Die Installation für Anwender beschreibt [a38 aus dem Release installieren](15-a38-aus-dem-release-installieren.md).
 Den Ablauf des Release beschreibt die Referenz [Release](../reference/50-release.md).
 Die Entscheidungen stehen in {{ ref("D18") }}, {{ ref("D46") }} und {{ ref("D54") }}.
 
@@ -178,28 +179,11 @@ macOS holt das Ticket beim ersten Start bei Apple.
 
 ## App installieren
 
-1. ZIP auspacken und das Bundle nach `/Applications` legen:
+Die Installation für Anwender steht in [a38 aus dem Release installieren](15-a38-aus-dem-release-installieren.md).
+Sie zeigt Download, Prüfsumme, Auspacken, den Link für `a38`, Token, Update und `mise`.
 
-    ```sh
-    ditto -x -k passierschein-app-v1.2.3-darwin-universal.zip /Applications
-    ```
-
-2. `a38` aus dem Bundle in den `PATH` legen:
-
-    ```sh
-    mkdir -p ~/.local/bin
-    ln -s /Applications/Passierschein.app/Contents/MacOS/a38 ~/.local/bin/a38
-    ```
-
-3. Prüfen:
-
-    ```sh
-    a38 --version
-    ```
-
-Der Daemon löst den symbolischen Link auf.
-Er findet die App dann als Geschwister im selben Bundle ({{ ref("D50") }}).
-Eine Konfiguration `paths.ui_app` ist nicht nötig.
+Für Maintainer gilt hier nur der Hintergrund:
+Der Daemon löst den symbolischen Link von `a38` auf und findet die App als Geschwister im selben Bundle ({{ ref("D50") }}).
 
 Mit dem signierten `a38` prüft der Daemon vor jedem Start der App deren Signatur.
 Die App muss die Developer ID desselben Teams tragen.
