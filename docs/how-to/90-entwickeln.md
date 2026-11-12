@@ -94,6 +94,40 @@ Vor einem Pull Request mit Änderungen in `app/` führe `mise run app:build`, `m
 Die Anleitung [Freigabe-App lokal ausprobieren](40-freigabe-app-ausprobieren.md) zeigt den Daemon mit der Debug-App.
 Die Referenz steht unter [Freigabe-App](../reference/85-freigabe-app.md).
 
+## Tests mit dem Schlüsselbund
+
+Die Tests des Pakets `internal/keychain` legen echte Einträge im Anmelde-Schlüsselbund an.
+Jeder Eintrag heißt `a38-test-…` und hat einen Dummy-Wert.
+Dasselbe Test-Binary legt ihn an, liest ihn und löscht ihn.
+Ein anderes Programm liest ihn nie, denn das würde einen Dialog von macOS zeigen.
+Den Eintrag `a38.onepassword` verweigert das Paket in jedem Test-Binary.
+
+Setze `A38_KEYCHAIN_TEST_LOG` auf eine Datei, um die Namen der Einträge mitzuschreiben.
+Prüfe danach, dass keiner übrig ist:
+
+```sh
+A38_KEYCHAIN_TEST_LOG=/tmp/a38-keychain-tests.log go test ./internal/keychain/
+for s in $(cat /tmp/a38-keychain-tests.log); do
+  security find-generic-password -s "$s" >/dev/null 2>&1 && echo "left: $s"
+done
+```
+
+Ohne `security … -w` liest der Befehl nur die Attribute und zeigt keinen Dialog.
+
+Für einen Versuch mit dem gebauten `bin/a38` nennt `A38_TEST_KEYCHAIN_SERVICE` einen Testeintrag statt `a38.onepassword`.
+Der Name muss mit `a38-test-` beginnen.
+Nutze nur einen Dummy-Wert:
+
+```sh
+export A38_TEST_KEYCHAIN_SERVICE=a38-test-versuch
+printf 'test-dummy-wert-1-versuch\n' | bin/a38 token set
+bin/a38 token status
+bin/a38 token delete
+```
+
+Ein neuer Build von `bin/a38` liest den Eintrag eines alten Builds nur nach einem Dialog.
+Lösche den Testeintrag deshalb mit demselben Build, der ihn angelegt hat.
+
 ## Mit Worktrees arbeiten
 
 Niemand arbeitet direkt auf dem Branch `develop`. Jede Änderung entsteht in
