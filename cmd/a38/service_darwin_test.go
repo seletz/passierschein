@@ -309,3 +309,55 @@ func TestServiceDoctorStateWithoutPlist(t *testing.T) {
 		t.Errorf("state = %+v", s)
 	}
 }
+
+func TestServiceStateOfAsksLaunchctlOnlyWithPlist(t *testing.T) {
+	// Issue 70: the doctor asks launchd only if the home directory has the
+	// plist. A fake home with the plist reaches the fake launchctl; a home
+	// without it calls nothing.
+	w := newServiceWorld(t)
+	m, _ := w.deps().manager()
+	s := serviceStateOf(context.Background(), m)
+	if s.Installed || len(w.lc.Calls) != 0 {
+		t.Fatalf("without plist: state %+v, launchctl calls %q", s, w.lc.Calls)
+	}
+	if code, out, errOut := w.run(t, "install", "--config", w.cfgPath); code != exitOK {
+		t.Fatalf("install: %d\n%s%s", code, out, errOut)
+	}
+	w.lc.Reset()
+	s = serviceStateOf(context.Background(), m)
+	if !s.Installed || !s.Running || !slices.Equal(w.lc.Subcommands(), []string{"print", "print-disabled"}) {
+		t.Fatalf("with plist: state %+v, launchctl calls %q", s, w.lc.Subcommands())
+	}
+}
+
+func TestDoctorInTestsAsksNoLaunchd(t *testing.T) {
+	// Issue 70: in the test binary the doctor gets no service state, so no
+	// test asks the real launchd.
+	if s := newServiceState(context.Background()); s != nil {
+		t.Fatalf("newServiceState = %+v; tests must not reach the real service lookup", s)
+	}
+}
+
+func TestBuiltDoctorSeesTemporaryHome(t *testing.T) {
+	// Issue 70: the test-built a38 runs with a temporary HOME. Its doctor
+	// finds no plist there, and so it calls no launchctl.
+	bin := buildA38(t)
+	cfgPath, _, _ := writeConfig(t)
+	out, _ := a38Cmd(context.Background(), t, bin, "doctor", "--config", cfgPath, "--json").Output()
+	var rep doctor.Report
+	if err := json.Unmarshal(out, &rep); err != nil {
+		t.Fatalf("doctor --json: %v\n%s", err, out)
+	}
+	found := false
+	for _, r := range rep.Results {
+		if r.Check == "service" {
+			found = true
+			if !r.OK || !strings.Contains(r.Detail, "not installed") {
+				t.Errorf("service result = %+v", r)
+			}
+		}
+	}
+	if !found {
+		t.Errorf("no service result:\n%s", out)
+	}
+}

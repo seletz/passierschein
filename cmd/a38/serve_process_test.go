@@ -41,7 +41,7 @@ type daemonProc struct {
 func startDaemon(t *testing.T, bin, cfgPath, socketDir, fakeFile string) *daemonProc {
 	t.Helper()
 	p := &daemonProc{stderr: &syncBuffer{}}
-	p.cmd = exec.Command(bin, "serve", "--config", cfgPath, "--backend", "fake", "--fake-file", fakeFile, "--ui", "auto-approve")
+	p.cmd = a38Cmd(context.Background(), t, bin, "serve", "--config", cfgPath, "--backend", "fake", "--fake-file", fakeFile, "--ui", "auto-approve")
 	p.cmd.Stderr = p.stderr
 	if err := p.cmd.Start(); err != nil {
 		t.Fatal(err)
@@ -100,7 +100,7 @@ func requestPass(t *testing.T, socketDir, name string) *client.Conn {
 // auditEntries reads the audit log with "a38 audit list --json".
 func auditEntries(t *testing.T, bin, cfgPath string) []audit.Entry {
 	t.Helper()
-	out, err := exec.Command(bin, "audit", "list", "--config", cfgPath, "--json").Output()
+	out, err := a38Cmd(context.Background(), t, bin, "audit", "list", "--config", cfgPath, "--json").Output()
 	if err != nil {
 		t.Fatalf("a38 audit list: %v", err)
 	}
@@ -256,7 +256,7 @@ func TestServeInvalidVaultList(t *testing.T) {
 			if err := os.WriteFile(cfgPath, []byte(data), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			cmd := exec.Command(bin, "serve", "--config", cfgPath, "--backend", "fake", "--fake-file", fakeFile, "--ui", "auto-approve")
+			cmd := a38Cmd(context.Background(), t, bin, "serve", "--config", cfgPath, "--backend", "fake", "--fake-file", fakeFile, "--ui", "auto-approve")
 			var stderr syncBuffer
 			cmd.Stderr = &stderr
 			err := cmd.Run()

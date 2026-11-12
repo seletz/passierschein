@@ -140,6 +140,12 @@ func serviceDoctorState(ctx context.Context) *doctor.ServiceState {
 	if err != nil {
 		return &doctor.ServiceState{Error: err.Error()}
 	}
+	return serviceStateOf(ctx, m)
+}
+
+// serviceStateOf returns the state of the LaunchAgent of m. Without a
+// plist in the home directory of m it calls no launchctl.
+func serviceStateOf(ctx context.Context, m service.Manager) *doctor.ServiceState {
 	if _, err := os.Lstat(m.Layout.PlistPath()); errors.Is(err, os.ErrNotExist) {
 		return &doctor.ServiceState{PlistPath: m.Layout.PlistPath(), LogPath: m.Layout.LogPath()}
 	}

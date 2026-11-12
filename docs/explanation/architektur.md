@@ -727,6 +727,7 @@ Regeln für einen Test mit Prozessen:
 - Die Konfiguration nennt `paths.socket_dir` und `paths.audit_file` in einem temporären Verzeichnis. Der Pfad eines Sockets bleibt unter 103 Byte; unter macOS ist `t.TempDir()` dafür oft zu lang. Der Test legt das Verzeichnis dann unter `/tmp` an.
 - Der Test wartet auf den Socket und nicht auf eine feste Zeit.
 - Der Test beendet die Kindprozesse in `t.Cleanup`.
+- Der Test startet das Binary nur über `a38Cmd`. Das Kind erhält ein temporäres `HOME`, temporäre XDG-Verzeichnisse, kein `A38_CONFIG` und den Testeintrag `A38_TEST_KEYCHAIN_SERVICE=a38-test-…`. So findet `a38 doctor` im Kind keine plist des Menschen, ruft kein `launchctl` auf und schaut nie auf den Eintrag `a38.onepassword`. `TestOnlyA38CmdStartsTheBinary` prüft, dass kein Test das Binary anders startet.
 - Ein Kennwert im Fake-Backend zeigt, ob ein Secret-Wert in eine Ausgabe gelangt ({{ ref("T8") }}).
 
 ## Abhängigkeiten
