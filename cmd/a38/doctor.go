@@ -20,7 +20,7 @@ prints no secret value.
 // runDoctor checks the state of a38 in the real environment.
 func runDoctor(args []string, stdout, stderr io.Writer) int {
 	return runDoctorWith(args, stdout, stderr, func(configPath string) doctor.Env {
-		env := doctor.SystemEnv{ConfigPath: configPath}
+		env := doctor.SystemEnv{ConfigPath: configPath, ServiceState: newServiceState}
 		// The doctor reads only the metadata of the keychain item, never
 		// its value (D51, issue 59). Without a keychain the field stays nil.
 		if store, err := newTokenStore(); err == nil {

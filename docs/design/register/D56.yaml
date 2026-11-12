@@ -1,0 +1,9 @@
+id: D56
+zustand: eingeloest
+titel: Der Daemon läuft als LaunchAgent ohne automatischen Neustart
+bezug: '#70'
+schluessel: '#70/launchagent'
+lauf: '2.0'
+branch: feat/70-service-launchagent
+reserviert_am: '2026-11-12'
+eingeloest_am: '2026-11-12'

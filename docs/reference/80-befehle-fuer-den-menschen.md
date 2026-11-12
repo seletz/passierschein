@@ -1,6 +1,6 @@
 ---
 title: Befehle für den Menschen
-description: "a38 grants, fault, config, doctor und audit: Argumente, Ausgabe und Exit-Codes."
+description: "a38 grants, fault, config, service, doctor und audit: Argumente, Ausgabe und Exit-Codes."
 tags:
   - Thema/Betrieb
 ---
@@ -116,6 +116,62 @@ Der Daemon selbst startet trotzdem.
 `a38 doctor` meldet den Befund in der Prüfung `approval UI`.
 Die Prüfung der Code-Signatur fehlt noch ({{ ref("G5") }}).
 
+## a38 service
+
+Der Befehl richtet den Daemon als LaunchAgent ein ({{ ref("F15") }}, {{ ref("D56") }}).
+Nur der macOS-Build kennt ihn.
+Unter Linux endet jeder Unterbefehl mit „not available on this platform“ und dem Exit-Code 1 ({{ ref("D53") }}).
+Die Schritte stehen in [Daemon als Dienst einrichten](../how-to/26-daemon-als-dienst-einrichten.md).
+
+| Aufruf | Wirkung |
+|---|---|
+| `a38 service install` | Prüft, ob der Daemon starten kann, schreibt die plist und lädt den Dienst (`launchctl enable`, `launchctl bootstrap gui/<uid>`). Ein zweiter Aufruf mit denselben Angaben ändert nichts. |
+| `a38 service uninstall [--force]` | Beendet den Daemon (`launchctl bootout`) und entfernt die plist. Das Log bleibt. |
+| `a38 service restart` | Startet den Daemon neu (`launchctl kickstart -k`). Ist der Dienst nicht geladen, lädt der Befehl ihn. |
+| `a38 service status [--config <datei>] [--json]` | Zeigt plist, Programm, Zustand bei launchd, letzten Exit-Code, Log und die Antwort des Daemons. Exit-Code 0, wenn der Dienst läuft und das Programm passt, sonst 1. |
+
+Schalter von `install`:
+
+| Schalter | Bedeutung |
+|---|---|
+| `--backend 1password\|fake` | Backend des Daemons. Standard: `1password`. |
+| `--ui app\|auto-approve\|auto-deny` | Freigabe. Standard: `app`. Die anderen Werte nur mit `--backend fake` ({{ ref("D40") }}). |
+| `--fake-file <datei>` | YAML-Datei des Fake-Backends. Pflicht mit `--backend fake`. |
+| `--ui-app <pfad>` | Pfad der Freigabe-App. Ohne den Schalter gilt die Suche von `a38 serve`. |
+| `--config <datei>` | Konfigurationsdatei. Nur mit diesem Schalter oder mit `A38_CONFIG` steht `--config` in der plist. |
+| `--force` | Ersetzt eine plist, die `a38` nicht geschrieben hat. |
+| `--dry-run` | Prüft und zeigt die plist. Ändert nichts. |
+
+Die plist:
+
+| Schlüssel | Wert |
+|---|---|
+| `Label` | `io.github.seletz.passierschein.daemon` |
+| `ProgramArguments` | echter Pfad des aufrufenden `a38` (Links aufgelöst), dann `serve --backend … --ui …` |
+| `RunAtLoad` | `true` |
+| `KeepAlive` | `false`: launchd startet den Daemon nie von selbst neu. |
+| `LimitLoadToSessionType` | `Aqua`: nur in der Sitzung am Bildschirm |
+| `ProcessType` | `Interactive` |
+| `AssociatedBundleIdentifiers` | `io.github.seletz.passierschein` |
+| `ExitTimeOut` | 20 Sekunden zwischen SIGTERM und SIGKILL |
+| `WorkingDirectory` | `/` |
+| `Umask` | `077` |
+| `StandardOutPath`, `StandardErrorPath` | `~/Library/Logs/a38/serve.log` |
+| `EnvironmentVariables` | nur `XDG_CONFIG_HOME` und `XDG_STATE_HOME`, wenn die Shell sie setzt; nie ein Secret |
+
+Ein Kommentar in der plist kennzeichnet sie als Datei von `a38`.
+Fehlt er, ändern `install` und `uninstall` die Datei nur mit `--force`.
+Alle Aufrufe von launchctl laufen über `/bin/launchctl`, ohne Shell und mit einer Zeitgrenze von 15 Sekunden.
+
+Exit-Codes von `a38 serve` unter launchd:
+
+| Code | Bedeutung | Neustart durch launchd |
+|---|---|---|
+| 0 | normales Ende nach SIGTERM (Abmeldung, `uninstall`, `restart`) | nein |
+| 1 | Fehler beim Start oder im Betrieb: Konfiguration, Quelle des Tokens, Verzeichnis der Sockets, Audit-Log; das Log nennt die Ursache | nein |
+| 2 | falscher Aufruf in der plist oder Absturz der Go-Laufzeit | nein |
+| Signal | Absturz oder Ende von außen | nein |
+
 ## a38 grants
 
 | Aufruf | Wirkung |
@@ -202,6 +258,7 @@ Der Exit-Code ist 0 ohne Befund.
 |---|---|
 | `configuration` | Die Konfiguration lädt. Je ungültigem Projekt folgt ein Befund mit dem Namen des Projekts. |
 | `socket modes` | Das Verzeichnis hat den Modus 0700, die Sockets 0600. |
+| `service` | Nur macOS. Der LaunchAgent: nicht eingerichtet (Zeile `OK`, kein Befund), eingerichtet und läuft, eingerichtet und läuft nicht (Befund mit letztem Exit-Code und Log), plist nennt ein fehlendes oder ein anderes `a38` (Befund), plist nicht von `a38` (Befund), abgeschaltet (Befund). |
 | `daemon` | Der Daemon antwortet auf dem Admin-Socket. Die Zeile nennt Version, Sitzungen und Grants. |
 | `delivery lock` | Zustand der Sperre mit Ursache und Beginn. Nächster Schritt: `a38 fault clear`. |
 | `audit file` | Die Datei existiert und ist schreibbar, das Verzeichnis ebenfalls. |

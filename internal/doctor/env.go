@@ -85,6 +85,10 @@ type SystemEnv struct {
 	// no keychain. The package keychain is not a dependency of doctor,
 	// so that the linux build does not contain it (D42, D53).
 	Store TokenStore
+	// ServiceState returns the state of the LaunchAgent; nil on a
+	// platform without launchd. The package service is not a dependency
+	// of doctor (D53).
+	ServiceState func(ctx context.Context) *ServiceState
 }
 
 // TokenStore implements [Env].
