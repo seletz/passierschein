@@ -15,6 +15,7 @@ import (
 	"github.com/seletz/passierschein/internal/client"
 	"github.com/seletz/passierschein/internal/config"
 	"github.com/seletz/passierschein/internal/protocol"
+	"github.com/seletz/passierschein/internal/token"
 )
 
 // ComponentState is the state of a part that the doctor cannot check
@@ -60,13 +61,34 @@ type Env interface {
 	// UI returns the state of the approval UI as far as the status of
 	// the daemon tells it.
 	UI(st *protocol.StatusResult) Component
+	// TokenStore returns the keychain item of the token; nil if the
+	// platform has no keychain.
+	TokenStore() TokenStore
+}
+
+// TokenStore is the part of a [token.Store] that the doctor uses. It has
+// no method that reads the token: the doctor never reads it.
+type TokenStore interface {
+	// Name names the keychain item.
+	Name() string
+	// Describe returns the metadata of the item without its value.
+	Describe() (token.StoreInfo, error)
+	// Signature returns the code signature of the running a38.
+	Signature() (token.Signature, error)
 }
 
 // SystemEnv is the real environment.
 type SystemEnv struct {
 	// ConfigPath is the configuration file; empty means the default.
 	ConfigPath string
+	// Store is the keychain item of the token; nil if the platform has
+	// no keychain. The package keychain is not a dependency of doctor,
+	// so that the linux build does not contain it (D42, D53).
+	Store TokenStore
 }
+
+// TokenStore implements [Env].
+func (e SystemEnv) TokenStore() TokenStore { return e.Store }
 
 // LoadConfig implements [Env].
 func (e SystemEnv) LoadConfig() (*config.Config, error) {

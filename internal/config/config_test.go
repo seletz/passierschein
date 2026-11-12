@@ -49,6 +49,7 @@ paths:
   audit_file: ~/a38/audit.db
 backend:
   onepassword:
+    token_source: file
     token_file: ~/a38/onepassword-token
 `
 
@@ -81,8 +82,9 @@ func TestParseDefaults(t *testing.T) {
 			SocketDir: "/home/beispiel/.local/state/a38/run",
 			AuditFile: "/home/beispiel/.local/state/a38/audit.db",
 		},
-		// G3 (assumption of stage 3): the default token file.
-		Backend: Backend{OnePassword: OnePassword{TokenFile: "/home/beispiel/.config/a38/onepassword-token"}},
+		// D51, issue 59: the keychain is the default source; the token
+		// file keeps its default path for the source file.
+		Backend: Backend{OnePassword: OnePassword{TokenSource: TokenSourceKeychain, TokenFile: "/home/beispiel/.config/a38/onepassword-token"}},
 	}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("Parse(minimal) =\n%+v\nwant\n%+v", cfg, want)
@@ -123,7 +125,7 @@ func TestParseExample(t *testing.T) {
 		Bundle:      Bundle{Window: 1500 * time.Millisecond, MaxEntries: 3},
 		SessionName: SessionNameRules{MaxLength: 20, AllowedCharacters: "abcdefghijklmnopqrstuvwxyz-."},
 		Paths:       Paths{SocketDir: "/home/beispiel/a38/run", AuditFile: "/home/beispiel/a38/audit.db"},
-		Backend:     Backend{OnePassword: OnePassword{TokenFile: "/home/beispiel/a38/onepassword-token"}},
+		Backend:     Backend{OnePassword: OnePassword{TokenSource: TokenSourceFile, TokenFile: "/home/beispiel/a38/onepassword-token"}},
 	}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("Parse(example) =\n%+v\nwant\n%+v", cfg, want)
@@ -225,6 +227,10 @@ func TestParseRejects(t *testing.T) {
 		{"relative token file", minimal + "backend:\n  onepassword:\n    token_file: token\n", "backend.onepassword.token_file"},
 		{"empty token file", minimal + "backend:\n  onepassword:\n    token_file: \"\"\n", "backend.onepassword.token_file"},
 		{"unknown backend key", minimal + "backend:\n  onepassword:\n    token: x\n", "token"},
+		// D51, issue 59: only keychain and file are token sources.
+		{"unknown token source", minimal + "backend:\n  onepassword:\n    token_source: env\n", "backend.onepassword.token_source"},
+		{"token source in capitals", minimal + "backend:\n  onepassword:\n    token_source: Keychain\n", "backend.onepassword.token_source"},
+		{"empty token source", minimal + "backend:\n  onepassword:\n    token_source: \"\"\n", "backend.onepassword.token_source"},
 
 		// T22 (part): cases in which the daemon does not start. The message
 		// names the vault.

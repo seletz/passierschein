@@ -40,10 +40,18 @@ type Result struct {
 	Cause string `json:"cause,omitempty"`
 	// NextStep is what the human does next. Empty if OK.
 	NextStep string `json:"next_step,omitempty"`
+	// Note marks a result with OK true that names a known limit, for
+	// example the unstable signature of a38 (G5). A note is no finding;
+	// it does not change the exit code.
+	Note bool `json:"note,omitempty"`
 }
 
 func ok(check, format string, args ...any) Result {
 	return Result{Check: check, OK: true, Detail: fmt.Sprintf(format, args...)}
+}
+
+func note(check, format string, args ...any) Result {
+	return Result{Check: check, OK: true, Note: true, Detail: fmt.Sprintf(format, args...)}
 }
 
 func finding(check, what, cause, next string) Result {
@@ -81,7 +89,7 @@ func Checks(env Env) []Check {
 		auditSpaceCheck{env},
 		auditChainCheck{env},
 		backendCheck{env},
-		tokenFileCheck{env, runtime.GOOS},
+		tokenSourceCheck{env, runtime.GOOS},
 		uiCheck{env},
 	}
 }
@@ -120,12 +128,16 @@ func Run(ctx context.Context, env Env) Report {
 	return rep
 }
 
-// Render writes the report as text. A line "OK" or "FINDING" starts each
-// result; a finding has the cause and the next step below.
+// Render writes the report as text. A line "OK", "NOTE" or "FINDING"
+// starts each result; a finding has the cause and the next step below.
 func Render(w io.Writer, r Report) {
 	for _, res := range r.Results {
 		if res.OK {
-			_, _ = fmt.Fprintf(w, "OK       %-18s %s\n", res.Check, clean(res.Detail))
+			label := "OK"
+			if res.Note {
+				label = "NOTE"
+			}
+			_, _ = fmt.Fprintf(w, "%-8s %-18s %s\n", label, res.Check, clean(res.Detail))
 			continue
 		}
 		_, _ = fmt.Fprintf(w, "FINDING  %-18s %s\n", res.Check, clean(res.Finding))

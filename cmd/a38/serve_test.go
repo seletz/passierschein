@@ -14,6 +14,7 @@ import (
 
 	"github.com/seletz/passierschein/internal/client"
 	"github.com/seletz/passierschein/internal/protocol"
+	"github.com/seletz/passierschein/internal/token"
 )
 
 // syncBuffer is a buffer that more than one goroutine can write.
@@ -80,9 +81,11 @@ paths:
   socket_dir: %s
   audit_file: %s
 # A token file in the test directory: a test never reads the token file
-# of the user (rule for 1Password, 2026-11-12).
+# of the user (rule for 1Password, 2026-11-12). The source is the file,
+# so that no test and no built binary touches the keychain (issue 59).
 backend:
   onepassword:
+    token_source: file
     token_file: %s
 `, wd, socketDir, filepath.Join(dir, "audit.db"), filepath.Join(dir, "onepassword-token"))
 	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
@@ -322,5 +325,48 @@ func writeMode(t *testing.T, path string, mode os.FileMode) {
 	}
 	if err := os.Chmod(path, mode); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestServeKeychainSource: with the source keychain (the default) a
+// missing keychain item stops the start; the message names
+// "a38 token set" (D51, issue 59). The test uses a fake store; it never
+// touches the keychain.
+func TestServeKeychainSource(t *testing.T) {
+	cfgFile, socketDir, _ := writeConfig(t)
+	data, err := os.ReadFile(cfgFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tt := range []struct{ name, from, to string }{
+		{"default source", "    token_source: file\n", ""},
+		{"source keychain", "    token_source: file\n", "    token_source: keychain\n"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := filepath.Join(filepath.Dir(cfgFile), "keychain.yaml")
+			if err := os.WriteFile(cfg, []byte(strings.Replace(string(data), tt.from, tt.to, 1)), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			store := newFakeStore()
+			old := newTokenStore
+			newTokenStore = func() (token.Store, error) { return store, nil }
+			t.Cleanup(func() { newTokenStore = old })
+
+			var stdout, stderr bytes.Buffer
+			args := []string{"--config", cfg, "--backend", "1password", "--ui", "app", "--ui-app", "/tmp/a38-missing/Passierschein"}
+			if code := serve(context.Background(), args, &stdout, &stderr); code != exitFailure {
+				t.Errorf("exit code = %d, want %d", code, exitFailure)
+			}
+			want := `store the token with "a38 token set"`
+			if runtime.GOOS != "darwin" {
+				want = "not available on this platform"
+			}
+			if !strings.Contains(stderr.String(), want) {
+				t.Errorf("stderr = %q, want %q", stderr.String(), want)
+			}
+			if _, err := os.Stat(filepath.Join(socketDir, "agent.sock")); !os.IsNotExist(err) {
+				t.Error("a socket exists after a failed start")
+			}
+		})
 	}
 }
