@@ -15,7 +15,7 @@ Der Spike hat 1Password nicht benutzt. Er hat kein Token gelesen und keine Token
 
 ## Frage
 
-Heute liegt das Token des Service Accounts in einer Datei mit dem Modus `0600`. Diese Arbeitsannahme heißt im Design D51. D51 liegt auf einem anderen Zweig und ist hier nicht verlinkt. Der Agent läuft in den Stufen 1 bis 4 unter demselben Benutzer wie der Daemon ({{ ref("RI5") }}). Er kann die Datei lesen und den Daemon umgehen ({{ ref("G3") }}). Stefan hat am 2026-11-12 festgelegt: Das Ziel ist der macOS-Schlüsselbund. Der Mensch fügt das Token über einen Befehl von `a38` im Terminal ein.
+Heute liegt das Token des Service Accounts in einer Datei mit dem Modus `0600`. Diese Arbeitsannahme heißt im Design {{ ref("D51") }}. Der Agent läuft in den Stufen 1 bis 4 unter demselben Benutzer wie der Daemon ({{ ref("RI5") }}). Er kann die Datei lesen und den Daemon umgehen ({{ ref("G3") }}). Stefan hat am 2026-11-12 festgelegt: Das Ziel ist der macOS-Schlüsselbund. Der Mensch fügt das Token über einen Befehl von `a38` im Terminal ein.
 
 Der Spike beantwortet die Punkte des Issues:
 
@@ -195,7 +195,7 @@ Wo das Token sonst landen kann:
 - **[Annahme]** Der erste Start nach der Anmeldung findet einen entsperrten Schlüsselbund. Der Daemon liest das Token ohne Dialog, wenn die Zugriffsliste ihn nennt.
 - **[Annahme]** Ist der Schlüsselbund gesperrt oder fehlt ein vertrautes Programm, kann der Daemon keinen Dialog sinnvoll erwarten. Er braucht eine Frist. Nach der Frist startet er ohne Backend, meldet den Grund im Status und zeigt eine Meldung über die App (`notice`). Er liefert dann nichts aus (fail closed, {{ ref("D35") }}).
 - **[Annahme]** In einer SSH-Sitzung ohne Anmeldung am Bildschirm ist der Anmelde-Schlüsselbund gesperrt. Ein Lesen scheitert mit `errSecInteractionNotAllowed` (`-25308`) oder fordert in der Sitzung am Bildschirm einen Dialog an. `a38 token set` über SSH ist deshalb nicht vorgesehen. Der Daemon läuft als LaunchAgent ohnehin in der Sitzung am Bildschirm.
-- Der Daemon liest das Token nur beim Start. Ein gesperrter Bildschirm danach ändert nichts. Das deckt sich mit D51.
+- Der Daemon liest das Token nur beim Start. Ein gesperrter Bildschirm danach ändert nichts. Das deckt sich mit {{ ref("D51") }}.
 
 ## 6. Bedrohungen, die bleiben
 
@@ -224,7 +224,7 @@ Folge für die Security Boundaries: Die Zeile „Das Token des Service Accounts 
 
 | Weg | ohne CGO | Was ein fremder Prozess bekommt | Nach einem Update von `a38` | Aufwand |
 |---|---|---|---|---|
-| Token-Datei `0600` (D51) | ja | den Wert, still | – | vorhanden |
+| Token-Datei `0600` ({{ ref("D51") }}) | ja | den Wert, still | – | vorhanden |
 | A: `purego`, dateibasierter Schlüsselbund, ad-hoc | ja | einen Dialog (gemessen) | Dialog für `a38` | klein |
 | A: `purego`, dateibasierter Schlüsselbund, Developer ID und Hardened Runtime | ja | einen Dialog (Annahme) | kein Dialog (Annahme) | klein, plus Signatur aus {{ ref("G5") }} |
 | B: `/usr/bin/security` | ja | den Wert, still, über `security` (gemessen) | – | klein |
@@ -238,7 +238,7 @@ Folge für die Security Boundaries: Die Zeile „Das Token des Service Accounts 
 
 - `internal/keychain` (nur darwin) über `purego`: `Set`, `Get`, `Delete`, `Status` für einen festen Eintrag. Das Paket gibt den Wert nur als Typ mit der Ausgabe `[redacted]` zurück.
 - `a38 token set|status|delete` nach Abschnitt 4.
-- Konfiguration: `backend.onepassword.token_source` mit `keychain` als Standard und `file` als Rückfall. Der Schlüssel `token_file` aus D51 bleibt für `file`.
+- Konfiguration: `backend.onepassword.token_source` mit `keychain` als Standard und `file` als Rückfall. Der Schlüssel `token_file` aus {{ ref("D51") }} bleibt für `file`.
 - `a38 doctor` nach Abschnitt 4.
 - Wert: Der Agent liest das Token nicht mehr mit `cat`. Ein Lesen über `security` geht nicht still. Ein fremdes Programm löst einen Dialog aus.
 - Grenze: Nach jedem Update fragt macOS bei `a38` nach. Der Mensch gewöhnt sich an diesen Dialog. Die Security Boundaries bleiben bei **not-provided**.
@@ -258,7 +258,7 @@ Folge für die Security Boundaries: Die Zeile „Das Token des Service Accounts 
 
 ### Folgen für das Design
 
-- D51 (Token-Datei) wird ergänzt: Die Datei bleibt als Rückfall `token_source: file`. Ein neuer Beschluss im Lauf 2 legt den Schlüsselbund als Standard fest. Stefan entscheidet; der Spike legt kein Artefakt an.
+- {{ ref("D51") }} (Token-Datei) wird ergänzt: Die Datei bleibt als Rückfall `token_source: file`. Ein neuer Beschluss im Lauf 2 legt den Schlüsselbund als Standard fest. Stefan entscheidet; der Spike legt kein Artefakt an.
 - `CGO_ENABLED=0` bleibt. `purego` ist die einzige neue Abhängigkeit.
 - {{ ref("G3") }} verliert die Frage „Wo liegt das Token?“.
 - {{ ref("G5") }} bekommt eine neue Frage: Signiert der Release-Job auch `a38` mit Hardened Runtime, und mit welchem Bezeichner?
