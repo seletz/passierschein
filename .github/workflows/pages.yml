@@ -1,9 +1,10 @@
 name: Pages
 
 # Publish the documentation of develop on GitHub Pages after each push.
-# The release workflow publishes the documentation of a tag in the same way;
-# the newest deployment is the one that is online. The start page names the
-# version, the build date and the commit.
+# This is the only workflow that publishes the documentation. The release
+# workflow does not: the environment github-pages allows deployments only
+# from develop, not from a tag. The start page names the version, the build
+# date and the commit.
 on:
   push:
     branches:

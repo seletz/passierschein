@@ -11,9 +11,10 @@ Jinja. An error in a macro stops the build.
   matter.
 - ``design_index`` lists the artefacts of one family, one table per area.
 
-The version comes from the environment variable ``DOCS_VERSION`` (the release
-workflow sets it to the tag). Without it, the version comes from
-``git describe``. Outside a git checkout, the version is ``dev``.
+The version comes from the environment variable ``DOCS_VERSION`` (for a
+manual build). Without it, the version comes from ``git describe``. After a
+release it reads ``0.1.0-3-gabc1234``, and the banner names the last release.
+Outside a git checkout, the version is ``dev``.
 """
 
 from __future__ import annotations
@@ -31,6 +32,10 @@ _DESIGN_DIR = "design"
 
 #: A released version: no commits after the tag, no ``-dirty`` marker.
 _RELEASE = re.compile(r"^\d+\.\d+\.\d+$")
+
+#: A version after a release: ``git describe`` gives ``<tag>-<n>-g<hash>``,
+#: with ``-dirty`` for a changed checkout.
+_AFTER_RELEASE = re.compile(r"^(\d+\.\d+\.\d+)-(\d+)-g[0-9a-f]+(?:-dirty)?$")
 
 _FRONTMATTER = re.compile(r"\A---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
@@ -112,11 +117,29 @@ def version_banner_text(root: Path, repo_url: str) -> str:
     """
     version = docs_version(root)
     commit = _git(root, "rev-parse", "--short", "HEAD") or "unbekannt"
+    return f"{version_label(version, repo_url)} · gebaut am {build_date()} · Commit `{commit}`"
+
+
+def version_label(version: str, repo_url: str) -> str:
+    """Return the version part of the banner.
+
+    :param version: result of :func:`docs_version`.
+    :param repo_url: URL of the repository, without a slash at the end.
+    :returns: a release version links to its release. A version after a
+        release (``0.1.0-3-gabc1234``) names the last release and the number
+        of commits since. Any other version is a development state.
+    """
     if _RELEASE.match(version):
-        text = f"**Version {version}** ([Release]({repo_url}/releases/tag/v{version}))"
-    else:
-        text = f"**Version {version}** (Entwicklungsstand, kein Release)"
-    return f"{text} · gebaut am {build_date()} · Commit `{commit}`"
+        return f"**Version {version}** ([Release]({repo_url}/releases/tag/v{version}))"
+    after = _AFTER_RELEASE.match(version)
+    if after:
+        tag, count = after.groups()
+        commits = "1 Commit" if count == "1" else f"{count} Commits"
+        return (
+            f"**Version {version}** (Entwicklungsstand, kein Release; "
+            f"letztes Release [{tag}]({repo_url}/releases/tag/v{tag}), {commits} danach)"
+        )
+    return f"**Version {version}** (Entwicklungsstand, kein Release)"
 
 
 def _frontmatter(md: Path) -> dict:

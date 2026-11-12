@@ -10,11 +10,12 @@ render_macros: true
 Passierschein ist ein Credential-Broker für Coding Agents. Das
 Kommandozeilenwerkzeug heißt `a38`.
 
-!!! warning "Stand: Stufe 3 gebaut, Praxistest offen"
-    Stufe 1 läuft lokal mit einem Fake-Backend und einer gefälschten Freigabe.
-    Stufe 2 bringt die Freigabe-App mit Touch ID.
-    Stufe 3 bringt das 1Password-Backend mit einem Service Account (nur macOS).
-    Der Praxistest mit echtem Touch ID und echtem 1Password ist offen.
+!!! info "Stand: Release v0.1.0 veröffentlicht"
+    Das erste Release `v0.1.0` ist am 2026-11-12 erschienen: die App Passierschein mit `a38`, signiert und notarisiert.
+    Die Stufen 1 bis 3 sind gebaut: Fake-Backend, Freigabe-App mit Touch ID und 1Password-Backend mit einem Service Account (nur macOS).
+    Der Praxistest mit Touch ID und 1Password ist bestanden. Der Praxistest des Release auf dem Mac ist offen.
+    Diese Site zeigt den Stand von `develop`; die Zeile oben nennt Version, Datum und Commit.
+    Die Anleitung [a38 aus dem Release installieren](how-to/15-a38-aus-dem-release-installieren.md) zeigt den Weg.
     Das [Tutorial](tutorials/10-erste-schritte.md) führt durch den Ablauf mit dem Fake-Backend.
 
 ## Zweck

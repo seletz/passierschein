@@ -360,5 +360,5 @@ rm -rf /tmp/a38-tutorial
 - [a38 als MCP-Server anmelden](../how-to/22-mcp-server-anmelden.md): den Server in Claude Code eintragen.
 - [Störung finden und beheben](../how-to/24-stoerung-finden-und-beheben.md): `a38 doctor` und die globale Sperre.
 - [Befehle für den Menschen](../reference/80-befehle-fuer-den-menschen.md): alle Argumente und Exit-Codes.
-- [Testabdeckung der Stufe 1](../reference/90-testabdeckung.md): was die Tests belegen.
+- [Testabdeckung](../reference/90-testabdeckung.md): was die Tests belegen.
 - [Design](../design/index.md): Entscheidungen, Features und Testfälle.

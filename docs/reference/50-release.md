@@ -1,6 +1,6 @@
 ---
 title: Release
-description: "Ablauf eines Release, Jobs, Artefakte mit der App Passierschein, SBOM, Prüfsummen, Signatur und Notarisierung, Provenienz und Veröffentlichung der Doku."
+description: "Ablauf eines Release, Jobs, die 11 Dateien eines Release mit der App Passierschein, SBOM, Prüfsummen, Signatur und Notarisierung, Provenienz und Veröffentlichung der Doku."
 render_macros: true
 tags:
   - Thema/Release
@@ -15,8 +15,12 @@ tags:
 4. Der Workflow `release.yml` startet mit dem Tag.
 5. Die Jobs bauen, signieren und prüfen alle Dateien in einen Entwurf des Release.
 6. Der letzte Job veröffentlicht den Entwurf, wenn jede Datei da ist.
-7. Der Workflow baut die Doku des Tags und veröffentlicht sie auf GitHub
-   Pages.
+
+Das Release veröffentlicht die Doku nicht.
+Die Doku erscheint nach jedem Push auf `develop` ([Doku auf GitHub Pages](#doku-auf-github-pages)).
+
+Das erste Release ist `v0.1.0` (2026-11-12): <https://github.com/seletz/passierschein/releases/tag/v0.1.0>.
+Die App ist mit der Developer ID signiert, notarisiert und hat ein angeheftetes Ticket.
 
 Die Versionen folgen [SemVer](https://semver.org/lang/de/). Der Text des
 Release entsteht aus den Commits seit dem letzten Tag. Die Commits folgen
@@ -29,7 +33,6 @@ Release entsteht aus den Commits seit dem letzten Tag. Die Commits folgen
 | `release` | `ubuntu-latest` | `mise run check`, `release:secrets:check`, goreleaser (`release:publish`) mit quill für das darwin-`a38`, `release:sbom:check`, `release:signatures:check`. goreleaser legt das Release als Entwurf an. Die darwin-Archive, ihre SBOMs und die Prüfsummendatei gehen als Workflow-Artefakt an den nächsten Job. |
 | `app` | `xcode-27` (macOS) | `release:app`, `release:app:sign`, `release:app:notarize`, `release:app:check`, `release:app:package`, `release:sbom:check`, `release:app:upload`. Das ZIP der App, seine SBOM und die erweiterte Prüfsummendatei kommen in den Entwurf. |
 | `publish` | `ubuntu-latest` | `release:assets:check` prüft, dass der Entwurf jede Datei hat und die Prüfsummendatei jede Datei nennt. Danach folgen die Build-Provenienz und `release:finalize`. Erst dieser Task veröffentlicht den Entwurf. |
-| `docs`, `pages` | `ubuntu-latest` | Doku des Tags auf GitHub Pages |
 
 Gründe für diese Reihenfolge ({{ ref("D54") }}):
 
@@ -43,7 +46,8 @@ Pull Requests und `develop` bauen das Bundle im Workflow `macos.yml` mit einer A
 
 ## Artefakte
 
-Ein Release enthält diese Dateien:
+Ein Release enthält 11 Dateien: vier tar-Archive mit vier SBOMs (je eine je Plattform), das ZIP der App mit seiner SBOM und die Prüfsummendatei.
+Die Tabelle zeigt die Muster:
 
 | Datei | Inhalt |
 |---|---|
@@ -155,15 +159,14 @@ Der Schritt läuft deshalb nur, wenn das Repo öffentlich ist.
 
 Die Doku steht unter <https://seletz.github.io/passierschein/>.
 
-Zwei Workflows veröffentlichen sie:
+Nur der Workflow `pages.yml` veröffentlicht sie, nach jedem Push auf `develop` (Stefan, 2026-11-12).
+Der Release-Workflow veröffentlicht die Doku nicht.
+Die Umgebung `github-pages` erlaubt Veröffentlichungen nur vom Branch `develop`, nicht von einem Tag.
+Der erste Versuch im Release-Lauf von `v0.1.0` scheiterte daran.
 
-- Der Workflow `pages.yml` veröffentlicht den Stand von `develop` nach jedem
-  Push (Stefan, 2026-11-12).
-- Der Release-Workflow veröffentlicht die Doku eines Tags.
-
-Online ist immer die jüngste Veröffentlichung. Die Startseite zeigt die
-Version, das Build-Datum und den Commit-Hash. Nach einem Release zeigt die
-Site deshalb die Doku des Tags, bis der nächste Push auf `develop` folgt.
+Online ist der Stand von `develop`.
+Die Startseite nennt die Version, das Build-Datum und den Commit.
+Nach einem Release steht dort zum Beispiel `0.1.0-3-g1a2b3c4`: das letzte Release `0.1.0`, drei Commits danach.
 
 Voraussetzung: GitHub Pages ist im Repo aktiviert, mit der Quelle „GitHub
 Actions“. Eine Site auf GitHub Pages ist öffentlich, auch wenn das Repo
@@ -172,15 +175,10 @@ privat ist.
 ## Installation
 
 Die App installierst du aus dem ZIP nach `/Applications`.
-`a38` legst du als symbolischen Link aus dem Bundle in den `PATH`:
-
-```sh
-ln -s /Applications/Passierschein.app/Contents/MacOS/a38 ~/.local/bin/a38
-```
-
+`a38` legst du als symbolischen Link aus dem Bundle in den `PATH`.
 Der Daemon findet die App dann im eigenen Bundle ({{ ref("D50") }}).
-Die Schritte stehen in [Release signieren und prüfen](../how-to/60-release-signieren-und-pruefen.md#app-installieren).
+Die Schritte, die Prüfung, das Token und das Update stehen in [a38 aus dem Release installieren](../how-to/15-a38-aus-dem-release-installieren.md).
 
 Für Linux und für `a38` allein gibt es das tar-Archiv.
-Die Verteilung läuft dafür zunächst über `mise` mit dem Backend `github:`.
+`mise` mit dem Backend `github:seletz/passierschein` wählt auf macOS das tar-Archiv, nicht das ZIP der App (getestet am 2026-11-12).
 Homebrew folgt, wenn das Repo öffentlich ist.
