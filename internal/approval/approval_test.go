@@ -2,12 +2,15 @@ package approval
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/seletz/passierschein/internal/config"
 	"github.com/seletz/passierschein/internal/session"
 )
 
@@ -34,6 +37,9 @@ func TestModeFaked(t *testing.T) {
 // TestPrototypeSamples checks that the request type reads the sample
 // requests of the UI prototype. The prototype has no session ID, no session
 // name and no field name; these are additions.
+//
+// The spike stays as a record. The contract with the approval app is the
+// directory app/Samples now; TestAppSamples reads it.
 func TestPrototypeSamples(t *testing.T) {
 	samples, err := filepath.Glob("../../spikes/ui-popup/samples/*.json")
 	if err != nil || len(samples) == 0 {
@@ -140,4 +146,132 @@ func TestRequestKeepsFactsAndClaimsApart(t *testing.T) {
 	if tree.Verified["session_id"] != "s-0001" {
 		t.Errorf("verified = %v, want the session ID of the daemon", tree.Verified)
 	}
+}
+
+// T14 (part 1, contract): every file of app/Samples is read strictly with
+// the Go types (no unknown field), and the Go types write back every field
+// of the sample. The approval app (Swift) rejects a message with an
+// unknown field or a missing required field, so this test keeps the Go
+// side and the app in line. app/Samples is the contract; the samples of
+// spikes/ui-popup are the old prototype.
+func TestAppSamples(t *testing.T) {
+	samples, err := filepath.Glob("../../app/Samples/*.json")
+	if err != nil || len(samples) < 6 {
+		t.Fatalf("app/Samples: %d files, err %v", len(samples), err)
+	}
+	var requests, notices int
+	for _, path := range samples {
+		t.Run(filepath.Base(path), func(t *testing.T) {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var head struct {
+				Type string `json:"type"`
+			}
+			if err := json.Unmarshal(data, &head); err != nil {
+				t.Fatal(err)
+			}
+			var msg any
+			switch head.Type {
+			case TypeRequest:
+				msg = &Request{}
+				requests++
+			case TypeNotice:
+				msg = &Notice{}
+				notices++
+			default:
+				t.Fatalf("type = %q", head.Type)
+			}
+			dec := json.NewDecoder(strings.NewReader(string(data)))
+			dec.DisallowUnknownFields()
+			if err := dec.Decode(msg); err != nil {
+				t.Fatalf("strict decode: %v", err)
+			}
+			switch m := msg.(type) {
+			case *Request:
+				if m.Version != Version || m.RequestID == "" || len(m.Credentials) == 0 ||
+					m.TimeoutSeconds < MinTimeoutSeconds || m.TimeoutSeconds > MaxTimeoutSeconds ||
+					m.Grant.TTLSeconds <= 0 || len(m.Credentials) > config.MaxBundleEntries {
+					t.Errorf("the request lost or breaks fields: %+v", m)
+				}
+			case *Notice:
+				if m.Version != Version || m.NoticeID == "" || m.Kind == "" || m.Code == "" || m.Message == "" || m.OccurredAt.IsZero() {
+					t.Errorf("the notice lost fields: %+v", m)
+				}
+			}
+			out, err := json.Marshal(msg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var want, got any
+			if err := json.Unmarshal(data, &want); err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal(out, &got); err != nil {
+				t.Fatal(err)
+			}
+			if diff := jsonLoss("", want, got); diff != "" {
+				t.Errorf("Go does not write back the sample: %s", diff)
+			}
+		})
+	}
+	if requests < 4 || notices < 2 {
+		t.Errorf("samples: %d requests, %d notices", requests, notices)
+	}
+}
+
+// jsonLoss returns the first place where got lacks or changes a value of
+// want. Extra keys in got are fine. A time compares as an instant. A null
+// list of want matches an empty list of got (Go writes an empty list
+// of vaults as null; the app accepts that for grant.scope.vaults).
+func jsonLoss(path string, want, got any) string {
+	switch w := want.(type) {
+	case map[string]any:
+		g, ok := got.(map[string]any)
+		if !ok {
+			return path + ": not an object"
+		}
+		for k, wv := range w {
+			gv, ok := g[k]
+			if !ok {
+				return path + "." + k + ": missing"
+			}
+			if d := jsonLoss(path+"."+k, wv, gv); d != "" {
+				return d
+			}
+		}
+	case []any:
+		g, ok := got.([]any)
+		if !ok || len(g) != len(w) {
+			return path + ": list differs"
+		}
+		for i := range w {
+			if d := jsonLoss(fmt.Sprintf("%s[%d]", path, i), w[i], g[i]); d != "" {
+				return d
+			}
+		}
+	case nil:
+		if l, ok := got.([]any); got != nil && (!ok || len(l) != 0) {
+			return path + ": null changed"
+		}
+	case string:
+		g, ok := got.(string)
+		if !ok {
+			return path + ": not a string"
+		}
+		if g == w {
+			return ""
+		}
+		tw, e1 := time.Parse(time.RFC3339Nano, w)
+		tg, e2 := time.Parse(time.RFC3339Nano, g)
+		if e1 != nil || e2 != nil || !tw.Equal(tg) {
+			return path + ": string changed"
+		}
+	default:
+		if !reflect.DeepEqual(want, got) {
+			return path + ": value changed"
+		}
+	}
+	return ""
 }

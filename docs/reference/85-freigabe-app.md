@@ -161,6 +161,13 @@ Die App lehnt jede dieser Nachrichten ab, ohne ein Fenster zu öffnen:
 | eine Zeit ist nicht RFC 3339 | `invalid_request` |
 | eine Meldung über ein Projekt ohne `project` oder eine Störung des Daemons mit `project` | `invalid_request` |
 
+Die Grenze von 50 Einträgen steht in Swift in `app/Sources/A38ApprovalCore/Decoding.swift` (`maxCredentials`).
+In Go steht sie in `config.MaxBundleEntries`.
+Die Konfiguration lehnt `bundle.max_entries` über 50 beim Laden ab.
+Der Bereich von `timeout_seconds` (1 bis 3600) steht in Swift an derselben Stelle (`timeoutSeconds`) und in Go in `approval.MinTimeoutSeconds` und `approval.MaxTimeoutSeconds`.
+Die Warteschlange des Daemons hält ihre Wartezeit in diesem Bereich.
+`appui` startet die App nicht, wenn der Wert außerhalb liegt, und meldet einen Fehler.
+
 Pflichtfelder sind die Felder, die Go immer schreibt.
 `grant.scope.vaults` darf `null` sein, weil Go eine leere Liste so schreibt.
 Der Fehlertext nennt den Pfad des Feldes, nie einen Wert.
@@ -246,6 +253,7 @@ Das Skript `scripts/app-swift-check.sh` prüft macOS, SDK und Version.
 | `mise run app:build` | baut Debug und Release, legt `app/.build/bundle/Passierschein.app` an und prüft den Release-Build |
 | `mise run app:test` | führt `swift test` aus |
 | `mise run app:run:sample -- <beispiel>` | zeigt ein Beispiel im Debug-Build mit gefälschter Authentifizierung |
+| `mise run app:e2e` | baut den Debug-Build und startet `a38 serve --ui app` mit der App über echte Prozesse (siehe unten) |
 
 `app:build` legt das App-Bundle aus dem Release-Build an:
 
@@ -288,6 +296,9 @@ Ein Job auf einem macOS-Runner ist eine spätere Entscheidung.
 | `notice-project-config-invalid.json` | Meldung einer fehlerhaften Konfiguration eines Projekts |
 
 Die Beispiele passen zu den Go-Typen von `internal/approval`.
+Der Go-Test `TestAppSamples` liest jede Datei streng (`DisallowUnknownFields`) und schreibt sie ohne Verlust zurück.
+`app/Samples` ist der Vertrag zwischen Daemon und App.
+Die alten Beispiele unter `spikes/ui-popup/samples` bleiben als Aufzeichnung des Spikes.
 
 ## Tests
 
@@ -299,5 +310,32 @@ Die Beispiele passen zu den Go-Typen von `internal/approval`.
 | Regeln des Popups, Fälle, Laufzeit, Fakten und Angaben, Zeitablauf | `ApprovalViewModelTests.swift` |
 | Entscheidung, Exit-Codes, letzte Prüfung, Schalter, Meldung | `DecisionTests.swift` |
 | Programm als Prozess wie vom Daemon gestartet ({{ ref("T14") }}, Teil 1) | `ProcessTests.swift` |
+| Beispiele gegen die Go-Typen | Go: `TestAppSamples` in `internal/approval` |
+| Daemon und App über echte Prozesse | Go: `TestAppE2E` in `cmd/a38` (`mise run app:e2e`) |
+
+### Ablauf über echte Prozesse
+
+`mise run app:e2e` baut den Debug-Build und führt `TestAppE2E` aus (`cmd/a38/app_e2e_test.go`, Build-Tags `darwin appe2e`).
+Der Task gehört nicht zu `mise run check`, weil die CI auf Linux läuft.
+Der Test baut `a38` und startet `a38 serve --backend fake --ui app`.
+Als App startet der Daemon ein kleines Skript.
+Das Skript ruft die Debug-App mit Testschaltern auf, weil der Daemon keine Argumente übergibt.
+Es zeichnet auf, was die App liest und schreibt.
+Die Fälle:
+
+| Fall | Schalter der App | Erwartung |
+|---|---|---|
+| gefälschte Authentifizierung | `--no-window --skip-auth --demo-select all --demo-confirm` | Die App gibt frei, Richtlinie `skipped`. Der Daemon lehnt ab: der Agent erhält `ui_failed`, keinen Wert, es gibt keinen Grant, das Audit-Log hat einen Eintrag `error`. |
+| Zeit abgelaufen | `--skip-auth --auto-close 2` | Exit-Code 11, Ergebnis `timeout`, der Agent erhält `timeout`. |
+| Meldung | `--skip-auth --auto-close 2` | Ein Projekt mit unbekanntem Vault löst `config_invalid` und eine Meldung aus. Die App endet mit 0 und schreibt nichts. |
+
+Der Test prüft, dass das JSON in beide Richtungen fließt: Die App liest die Anfrage des Daemons streng als `approval.Request` oder `approval.Notice`, und der Daemon liest die Entscheidung der App.
+Er prüft auch, dass die App nur die kurze Umgebung erhält und die Anfrage keinen Wert enthält.
+Der Daemon kann keine ungültige Anfrage erzeugen. Dafür gelten die Tests der App (`DecodingTests.swift`).
+
+Die Läufe rufen nie Touch ID auf.
+Jeder Lauf nutzt `--skip-auth` oder endet durch `--auto-close`, bevor jemand bestätigt.
+Zwei Fenster erscheinen für je etwa zwei Sekunden auf dem Bildschirm.
+Der Task braucht eine angemeldete Sitzung am Bildschirm.
 
 {{ ref("T14") }} Teil 2 bleibt manuell: Eingabetaste, Verzögerung am Bildschirm, Name der App im Dialog von Touch ID, Fenster unter OmniWM.

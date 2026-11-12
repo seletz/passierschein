@@ -183,3 +183,32 @@ func TestQueueNotifyDoesNotWait(t *testing.T) {
 	}
 	g.release <- struct{}{}
 }
+
+// T14 (part 1): each request that the queue gives to the UI carries a
+// TimeoutSeconds that the approval app accepts (1 to 3600).
+func TestQueueTimeoutSecondsInAppRange(t *testing.T) {
+	tests := []struct {
+		name    string
+		timeout time.Duration
+		want    int64
+	}{
+		{"default", 0, 120},
+		{"negative", -time.Second, 120},
+		{"below one second", 500 * time.Millisecond, 1},
+		{"one hour", time.Hour, 3600},
+		{"above one hour", 2 * time.Hour, 3600},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := newGate()
+			q := queue.New(g, clock.NewFake(time.Unix(0, 0)), tt.timeout)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			go func() { _, _ = q.Approve(ctx, approval.Request{RequestID: "r1"}) }()
+			waitStarted(t, g)
+			if got := g.seenTTL.Load(); got != tt.want {
+				t.Errorf("TimeoutSeconds = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}

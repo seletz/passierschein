@@ -43,6 +43,15 @@ Der Mensch startet ihn, nicht der Agent.
 | `--ui-script <befehl>` | Programm der Freigabe mit `--ui script`. |
 | `--ui-app <pfad>` | Pfad der Freigabe-App mit `--ui app`. |
 
+### Obergrenze eines Bündels
+
+Der Schlüssel `bundle.max_entries` der Konfiguration legt fest, wie viele Einträge ein Bündel höchstens hat.
+Der Standard ist 10.
+Der größte erlaubte Wert ist 50.
+Die Freigabe-App lehnt eine Anfrage mit mehr als 50 Einträgen ab.
+`a38 serve` und jeder andere Befehl lehnen die Konfiguration mit einem größeren Wert beim Laden ab.
+In Go steht die Grenze in `config.MaxBundleEntries`, in Swift in `app/Sources/A38ApprovalCore/Decoding.swift`.
+
 ### Ort der Freigabe-App
 
 Der Daemon sucht den Pfad in dieser Reihenfolge:

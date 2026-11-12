@@ -145,6 +145,12 @@ func TestParseAccepts(t *testing.T) {
 				t.Errorf("lifetime = %v", c.Grant.Lifetime)
 			}
 		}},
+		// T14 (part): 50 is the largest valid bundle maximum.
+		{"bundle maximum 50", minimal + "bundle:\n  max_entries: 50\n", func(t *testing.T, c *Config) {
+			if c.Bundle.MaxEntries != MaxBundleEntries {
+				t.Errorf("bundle = %+v", c.Bundle)
+			}
+		}},
 		// T19 (part): the test runs with a bundle maximum of three.
 		{"bundle maximum three", minimal + "bundle:\n  max_entries: 3\n", func(t *testing.T, c *Config) {
 			if c.Bundle.MaxEntries != 3 || c.Bundle.Window != 3*time.Second {
@@ -245,6 +251,9 @@ func TestParseRejects(t *testing.T) {
 		{"window 0", minimal + "bundle:\n  window: 0s\n", "bundle.window"},
 		{"window negative", minimal + "bundle:\n  window: -3s\n", "bundle.window"},
 		{"window text", minimal + "bundle:\n  window: kurz\n", "bundle.window"},
+		// T14 (part): the approval app rejects more than 50 entries.
+		{"maximum 51", minimal + "bundle:\n  max_entries: 51\n", "bundle.max_entries: the value must be 50 or less"},
+		{"maximum huge", minimal + "bundle:\n  max_entries: 100000\n", "bundle.max_entries"},
 		{"maximum 0", minimal + "bundle:\n  max_entries: 0\n", "bundle.max_entries"},
 		{"maximum negative", minimal + "bundle:\n  max_entries: -1\n", "bundle.max_entries"},
 		{"maximum text", minimal + "bundle:\n  max_entries: viele\n", "max_entries"},

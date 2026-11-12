@@ -3,13 +3,13 @@ render_macros: true
 id: 'F11'
 titel: 'Freigabe-App in Swift mit Touch ID'
 bereich: 'Freigabe'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 2
 headless: true
 status: aktiv
 stufe: 2
-umsetzung: zu-bauen
+umsetzung: teilweise
 implementiert: [D4, D6, D7, D31, D45]
 use_cases: [UC1, UC3, UC4]
 ---

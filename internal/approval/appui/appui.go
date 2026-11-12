@@ -191,10 +191,14 @@ func (u *UI) Approve(ctx context.Context, req approval.Request) (approval.Decisi
 	if err != nil {
 		return approval.Decision{}, fmt.Errorf("appui: encode request: %w", err)
 	}
-	wait := time.Duration(req.TimeoutSeconds) * time.Second
-	if wait <= 0 {
-		wait = approval.DefaultTimeout
+	// The app rejects a request without a valid wait time (1 to 3600
+	// seconds). Fail closed: the daemon does not start it and does not
+	// guess a time.
+	if req.TimeoutSeconds < approval.MinTimeoutSeconds || req.TimeoutSeconds > approval.MaxTimeoutSeconds {
+		return approval.Decision{}, fmt.Errorf("appui: timeout_seconds %d is outside %d to %d",
+			req.TimeoutSeconds, approval.MinTimeoutSeconds, approval.MaxTimeoutSeconds)
 	}
+	wait := time.Duration(req.TimeoutSeconds) * time.Second
 	timer := u.clock.NewTimer(wait + u.grace)
 	defer timer.Stop()
 

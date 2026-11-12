@@ -109,6 +109,8 @@ func Parse(data []byte) (*Config, error) {
 		fail("bundle.max_entries: %v", err)
 	} else if cfg.Bundle.MaxEntries < 1 {
 		fail("bundle.max_entries: the value must be 1 or more")
+	} else if cfg.Bundle.MaxEntries > MaxBundleEntries {
+		fail("bundle.max_entries: the value must be %d or less, because the approval app rejects a larger request", MaxBundleEntries)
 	}
 	if cfg.SessionName.MaxLength, err = intValue(raw.SessionName.MaxLength, DefaultSessionNameMaxLength); err != nil {
 		fail("session_name.max_length: %v", err)

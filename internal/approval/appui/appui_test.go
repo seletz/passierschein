@@ -278,6 +278,35 @@ func TestRequestHoldsNoSecret(t *testing.T) {
 	}
 }
 
+// T14 (part 1): the app rejects a request without timeout_seconds from 1
+// to 3600, so appui does not start it and gives an error (fail closed).
+func TestApproveRejectsTimeoutOutOfRange(t *testing.T) {
+	for _, secs := range []int{-1, 0, 3601, 100000} {
+		t.Run(strconv.Itoa(secs), func(t *testing.T) {
+			dir := shortDir(t)
+			rec := filepath.Join(dir, "rec")
+			path := app(t, dir, 0o700, "-tick", "all", "-record", rec)
+			req := sampleRequest()
+			req.TimeoutSeconds = secs
+			d, err := newUI(t, path, nil).Approve(context.Background(), req)
+			if err == nil || d.Outcome == approval.OutcomeApproved {
+				t.Fatalf("decision %+v, error %v; want an error", d, err)
+			}
+			if _, statErr := os.Stat(rec); statErr == nil {
+				t.Error("the app was started")
+			}
+		})
+	}
+	for _, secs := range []int{1, 3600} {
+		req := sampleRequest()
+		req.TimeoutSeconds = secs
+		path := app(t, shortDir(t), 0o700, "-tick", "all")
+		if _, err := newUI(t, path, nil).Approve(context.Background(), req); err != nil {
+			t.Errorf("timeout_seconds %d: %v", secs, err)
+		}
+	}
+}
+
 // T6 (part): the checks of the file before the start.
 func TestFileChecks(t *testing.T) {
 	if os.Getuid() == 0 {
