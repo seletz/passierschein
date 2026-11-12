@@ -396,7 +396,10 @@ func serviceStatus(args []string, stdout, stderr io.Writer, deps serviceDeps) in
 // renderServiceStatus writes the status as text.
 func renderServiceStatus(w io.Writer, s service.Status, d serviceDaemonJS) {
 	line := func(k, format string, a ...any) {
-		_, _ = fmt.Fprintf(w, "%-10s %s\n", k+":", clean(fmt.Sprintf(format, a...)))
+		if k != "" {
+			k += ":"
+		}
+		_, _ = fmt.Fprintf(w, "%-10s %s\n", k, clean(fmt.Sprintf(format, a...)))
 	}
 	switch {
 	case !s.Installed:
