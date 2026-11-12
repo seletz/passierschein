@@ -30,4 +30,6 @@ Offene Frage:
 
 - Bestätigt Stefan diese Namen?
 
+Stand 2026-11-12: Nach Angabe von Stefan (2026-11-12) kommt der Name der Sitzung aus der Anmeldung des MCP-Servers, über `--session-name` oder `A38_SESSION_NAME`. Eine Entscheidung dazu steht noch nicht im Design-Set. {{ ref("D50") }} legt den Schalter `--ui-app` und den Schlüssel `paths.ui_app` fest. Offen bleibt die Bestätigung der übrigen Namen.
+
 **Quelle:** Entwicklung von Stufe 1, Broker und MCP-Server (Issues 21, 22, 24), 2026-11-11.

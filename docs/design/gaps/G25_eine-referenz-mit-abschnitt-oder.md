@@ -25,4 +25,6 @@ Offene Frage:
 
 - Braucht das echte Backend Abschnitte und Attribute, und wie sieht die Referenz dann aus?
 
+Stand 2026-11-12: {{ ref("D52") }} legt für das 1Password-Backend fest: Ein Feld darf in einem Abschnitt liegen, wenn seine Bezeichnung im Item eindeutig ist. Eine Referenz mit Attribut endet mit `not_found`. {{ ref("D52") }} ist eine Annahme der Entwicklung. Offen bleiben die Bestätigung durch Stefan und die Frage, ob ein Agent Attribute wie `otp` braucht.
+
 **Quelle:** Entwicklung von Stufe 1, Issue 16 (Architektur und Paketgerüst), 2026-11-11.
