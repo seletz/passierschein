@@ -46,6 +46,8 @@ func ctx(t *testing.T) context.Context {
 }
 
 func TestHelloAndOutOfOrderResponses(t *testing.T) {
+	// firstRead is closed when the daemon has read the first request.
+	firstRead := make(chan struct{})
 	// The client matches each response by its correlation ID, also if the
 	// daemon answers in a different sequence.
 	path := fakeDaemon(t, func(r *bufio.Reader, c net.Conn) {
@@ -55,13 +57,16 @@ func TestHelloAndOutOfOrderResponses(t *testing.T) {
 		}
 		_ = protocol.Write(c, &protocol.Welcome{SessionID: "s-1", Project: "beispielprojekt"})
 		var ids []string
-		for range 2 {
+		for i := range 2 {
 			line, _ := protocol.ReadLine(r)
 			m, err := protocol.AgentRequests.Decode(line)
 			if err != nil {
 				return
 			}
 			ids = append(ids, m.(*protocol.GrantStatus).ID)
+			if i == 0 {
+				close(firstRead)
+			}
 		}
 		_ = protocol.Write(c, &protocol.ErrorResponse{ID: ids[1], Error: *protocol.Errorf(protocol.CodeSessionNameConflict, "conflict")})
 		_ = protocol.Write(c, &protocol.Grants{ID: ids[0], Grants: []protocol.Grant{}})
@@ -80,8 +85,13 @@ func TestHelloAndOutOfOrderResponses(t *testing.T) {
 		_, err := c.GrantStatus(ctx(t))
 		first <- err
 	}()
-	// Make sure that the first request is sent first.
-	time.Sleep(50 * time.Millisecond)
+	// Make sure that the first request is sent first: wait until the
+	// daemon has read it (no fixed pause, a slow runner needs more).
+	select {
+	case <-firstRead:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the daemon did not read the first request")
+	}
 	_, err = c.GrantStatus(ctx(t))
 	if protocol.CodeOf(err) != protocol.CodeSessionNameConflict {
 		t.Errorf("second request error = %v, want session_name_conflict", err)

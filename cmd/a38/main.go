@@ -43,6 +43,7 @@ var commands = []command{
 	{"fault", "Show and lift the global delivery lock", runFault},
 	{"audit", "List the audit log and verify its hash chain", runAudit},
 	{"config", "Manage the configuration file (path, show, init, validate, vault, project) and the 1Password token", runConfig},
+	{"service", "Install, remove, restart and show the daemon as a LaunchAgent (macOS)", runService},
 	{"doctor", "Check the state of a38 and name the next step for each finding", runDoctor},
 	{"llm", "Print the instructions for agents (--skill)", runLLM},
 	{"hook", "Hooks for agent tools: op-guard blocks a direct call of op", runHook},

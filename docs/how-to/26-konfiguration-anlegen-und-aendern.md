@@ -82,7 +82,7 @@ a38 doctor
 
 Der Daemon liest die Datei nur beim Start ({{ ref("D49") }}).
 Jeder Befehl, der die Datei ändert, weist darauf hin.
-Beende `a38 serve` und starte es neu.
+Beende `a38 serve` und starte es neu. Läuft der Daemon als Dienst, startet `a38 service restart` ihn neu ([Daemon als Dienst einrichten](28-daemon-als-dienst-einrichten.md)).
 
 ## Wenn etwas schiefgeht
 

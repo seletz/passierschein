@@ -37,26 +37,18 @@ type daemonProc struct {
 }
 
 // startDaemon starts "a38 serve" with the fake backend and automatic
-// approval and waits for the agent socket.
+// approval and waits for the line "daemon started" (waitDaemonStarted).
 func startDaemon(t *testing.T, bin, cfgPath, socketDir, fakeFile string) *daemonProc {
 	t.Helper()
 	p := &daemonProc{stderr: &syncBuffer{}}
-	p.cmd = exec.Command(bin, "serve", "--config", cfgPath, "--backend", "fake", "--fake-file", fakeFile, "--ui", "auto-approve")
+	p.cmd = a38Cmd(context.Background(), t, bin, "serve", "--config", cfgPath, "--backend", "fake", "--fake-file", fakeFile, "--ui", "auto-approve")
 	p.cmd.Stderr = p.stderr
 	if err := p.cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = p.cmd.Process.Kill(); _ = p.cmd.Wait() })
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		if _, err := os.Stat(filepath.Join(socketDir, "agent.sock")); err == nil {
-			return p
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("no agent socket; stderr:\n%s", p.stderr.String())
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	waitDaemonStarted(t, p.stderr, nil)
+	return p
 }
 
 // signalAndWait sends sig and waits for the end. It returns the exit code.
@@ -100,7 +92,7 @@ func requestPass(t *testing.T, socketDir, name string) *client.Conn {
 // auditEntries reads the audit log with "a38 audit list --json".
 func auditEntries(t *testing.T, bin, cfgPath string) []audit.Entry {
 	t.Helper()
-	out, err := exec.Command(bin, "audit", "list", "--config", cfgPath, "--json").Output()
+	out, err := a38Cmd(context.Background(), t, bin, "audit", "list", "--config", cfgPath, "--json").Output()
 	if err != nil {
 		t.Fatalf("a38 audit list: %v", err)
 	}
@@ -256,7 +248,7 @@ func TestServeInvalidVaultList(t *testing.T) {
 			if err := os.WriteFile(cfgPath, []byte(data), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			cmd := exec.Command(bin, "serve", "--config", cfgPath, "--backend", "fake", "--fake-file", fakeFile, "--ui", "auto-approve")
+			cmd := a38Cmd(context.Background(), t, bin, "serve", "--config", cfgPath, "--backend", "fake", "--fake-file", fakeFile, "--ui", "auto-approve")
 			var stderr syncBuffer
 			cmd.Stderr = &stderr
 			err := cmd.Run()
