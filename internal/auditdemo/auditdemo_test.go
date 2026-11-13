@@ -17,7 +17,7 @@ var end = time.Date(2026, 11, 12, 17, 30, 0, 0, time.UTC)
 // write generates a log into a new file and returns its entries.
 func write(t *testing.T, o Options) ([]audit.Entry, audit.Verification) {
 	t.Helper()
-	clk := clock.NewFake(end.AddDate(0, 0, -o.Days))
+	clk := clock.NewFake(o.End.AddDate(0, 0, -o.Days-1))
 	s, err := sqlite.Open(filepath.Join(t.TempDir(), "audit.db"), sqlite.WithClock(clk))
 	if err != nil {
 		t.Fatal(err)
@@ -70,6 +70,21 @@ func TestGenerate(t *testing.T) {
 	for _, c := range checks {
 		if !c.ok {
 			t.Errorf("%s: %+v", c.name, st)
+		}
+	}
+}
+
+func TestGenerateOnEachWeekday(t *testing.T) {
+	// The special cases (revocation, lock, backend error, UI failure,
+	// abandoned popup) come on each weekday of the end, also when their
+	// day is on a weekend.
+	for d := range 7 {
+		e := end.AddDate(0, 0, d)
+		entries, _ := write(t, Options{End: e, Days: 30})
+		st := auditstats.Compute(entries, auditstats.Scope{}, time.UTC, 5)
+		if st.Revocations != 1 || st.LockBegins != 1 || st.Failed != 1 || st.Abandoned != 1 || st.Errors != 3 || st.Partial == 0 {
+			t.Errorf("end %s (%s): revocations %d, locks %d, failed %d, abandoned %d, errors %d, partial %d",
+				e.Format("2006-01-02"), e.Weekday(), st.Revocations, st.LockBegins, st.Failed, st.Abandoned, st.Errors, st.Partial)
 		}
 	}
 }

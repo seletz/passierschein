@@ -141,6 +141,10 @@ func (g *gen) at(t time.Time) bool {
 	return true
 }
 
+// specialDays are the days, counted back from the last day, whose first
+// session has a special case.
+var specialDays = map[int]bool{3: true, 5: true, 7: true, 12: true, 16: true}
+
 // day writes the sessions of one day. back is the number of days before
 // the last day; the special cases use it.
 func (g *gen) day(day time.Time, back int) {
@@ -151,6 +155,10 @@ func (g *gen) day(day time.Time, back int) {
 	n := 1 + g.rnd.IntN(3)
 	if day.Weekday() == time.Saturday || day.Weekday() == time.Sunday {
 		n = g.rnd.IntN(2)
+		if specialDays[back] {
+			// The special cases must come on each weekday of the end.
+			n = 1
+		}
 	}
 	for i := 0; i < n && g.err == nil; i++ {
 		p := projects[g.rnd.IntN(len(projects))]
