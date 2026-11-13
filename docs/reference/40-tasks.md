@@ -73,6 +73,7 @@ Mit `DEMO_BACKEND=fake` bei jedem Task gilt die Probe in `/tmp/a38-probe`; sie b
 | Task | Zweck |
 |---|---|
 | `pr:screenshot` | Rendert die Ausgabe eines Befehls als PNG. |
+| `pr:screenshot:tui` | Startet ein Programm mit Oberfläche im Terminal (zum Beispiel `a38 tui`) in einem Pseudo-Terminal fester Größe, sendet Tasten und rendert den Bildschirm mit Farben als PNG (Skript `scripts/tui_screenshot.py`, Emulator `pyte`). `--theme light` nennt dem Programm einen hellen Hintergrund, `--truecolor` erlaubt 24-Bit-Farben. |
 | `pr:screenshots:upload` | Legt Bilder auf dem Branch `review-assets` ab. |
 
 ## Design

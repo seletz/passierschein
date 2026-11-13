@@ -1,0 +1,24 @@
+ a38 tui         updated 17:30:00          [1 overview]  2 events   3 sessions  
+────────────────────────────────────────────────────────────────────────────────
+ ~/.local/state/a38/audit.db · 1040 entries · chain intact · 30 days
+ Range 30 days, 2026-10-14 to 2026-11-12  (t changes it)
+ POPUPS         108   3.6 per day, busiest day 2026-11-02 with 8
+  approved       80   74% (partial 4)
+  denied         20   19% denial share
+  timed out       7   6% (UI failed 1, session ended 1)
+  deviations     43   40% went beyond a live grant
+  size            2   median entries per popup, largest 3
+ DELIVERIES     291   73% under a grant without popup (211), 80 after a popup
+ DENIED EARLY    21   by the policy, an unknown item or a full bundle
+ REVOCATIONS 1 · ERRORS 3 · LOCKS 1 (ended 1)
+
+ POPUPS PER DAY (largest 8)
+   8 ┤                                      █       █     ▃ █     
+     │▆ ▆ ▁     ▆             ▁   ▆         █       █     █ █     
+     │█ █ █     █ ▄     ▄     █   █         █   ▄ ▄ █   ▄ █ █   ▄ 
+     │█ █ █     █ █ ▂ ▇ █     █   █ ▇   ▇   █ ▇ █ █ █ ▇ █ █ █   █ 
+     │█ █ █     █ █ █ █ █     █   █ █ ▅ █   █ █ █ █ █ █ █ █ █ ▅ █ 
+   0 └────────────────────────────────────────────────────────────
+ ↓ 16 more lines
+────────────────────────────────────────────────────────────────────────────────
+ t range • f filter • ↑/↓ scroll • 1/2/3 view • ? help • q quit

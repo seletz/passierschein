@@ -48,8 +48,10 @@ Was in Stufe 1 funktioniert:
 - `a38 mcp`: der MCP-Server mit den Werkzeugen `request_credentials` und
   `grant_status`
 - `a38 grants list` und `a38 grants revoke`: Grants ansehen und widerrufen
-- `a38 audit list` und `a38 audit verify`: das Audit-Log lesen und die
-  Hash-Kette prüfen
+- `a38 audit list`, `a38 audit verify` und `a38 audit stats`: das Audit-Log
+  lesen, die Hash-Kette prüfen und die Kennzahlen ausgeben
+- `a38 tui`: Freigaben und Auslieferungen im Terminal auswerten (nur macOS,
+  Entwurf zur Abnahme durch Stefan)
 - `a38 doctor`, `a38 fault status` und `a38 fault clear`: Fehlersuche und
   Aufheben der Sperre
 - `a38 config onepassword-token set`, `status` und `delete`: das Token des
@@ -63,7 +65,7 @@ der App, wenn `a38` selbst mit der Developer ID signiert ist. Die Anleitung
 [Release signieren und prüfen](docs/how-to/60-release-signieren-und-pruefen.md)
 beschreibt für Maintainer die Secrets und die Prüfung eines Release.
 
-Noch nicht vorhanden: `a38 tui`, `a38 service install`, der Hook gegen `op`, der Betrieb mit Agents
+Noch nicht vorhanden: `a38 service install`, der Hook gegen `op`, der Betrieb mit Agents
 in der VM und Homebrew (das folgt, wenn das Repo öffentlich ist).
 
 25 von 28 Testfällen des Designs sind belegt, 3 teilweise. Die App, der darwin-Code und der 1Password-Integrationstest laufen in einem eigenen macOS-Workflow ([CI](docs/reference/55-ci.md)). Die

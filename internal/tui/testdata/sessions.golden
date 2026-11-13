@@ -1,0 +1,30 @@
+ a38 tui                   updated 17:30:00                     1 overview   2 events  [3 sessions] 
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ~/.local/state/a38/audit.db · 1040 entries · chain intact · 7 days
+ SESSIONS 1–14 of 14, latest activity first
+ SESSION NAME             PROJECT            LAST        ID          REQ  POP GRNT  DEL DENY
+▸demo-review              demo-projekt       11-12 16:18 s-0047        7    1    1    5    2        
+ demo-review              demo-projekt       11-12 13:42 s-0046        6    2    1    5    1
+ beispiel-koordinator     beispielprojekt    11-12 11:45 s-0045        9    1    1    9    0
+ beispiel-tests           beispielprojekt    11-11 11:41 s-0044        9    1    1    9    0
+ beispiel-tests           beispielprojekt    11-10 15:43 s-0043        5    4    3    4    0
+ beispiel-koordinator     beispielprojekt    11-10 13:26 s-0042        6    2    2    6    0
+ demo-review              demo-projekt       11-10 11:29 s-0041       10    2    2    7    3
+ demo-migration           demo-projekt       11-09 12:55 s-0040        7    4    2    5    2
+ demo-review              demo-projekt       11-09 10:20 s-0039        7    3    3    5    3
+ beispiel-koordinator     beispielprojekt    11-08 10:44 s-0038        6    4    2    4    0
+ demo-review              demo-projekt       11-07 11:42 s-0037        8    3    3    8    0
+ demo-review              demo-projekt       11-06 17:10 s-0036       11    4    3   10    1
+ demo-migration           demo-projekt       11-06 13:28 s-0035        9    2    1    7    1
+ demo-review              demo-projekt       11-06 10:32 s-0034        5    2    2    3    2
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ enter timeline • f filter • t range • 1/2/3 view • ? help • q quit

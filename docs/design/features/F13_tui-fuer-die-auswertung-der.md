@@ -3,13 +3,13 @@ render_macros: true
 id: 'F13'
 titel: 'TUI für die Auswertung der Freigaben'
 bereich: 'Audit'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 2
 headless: true
 status: aktiv
 stufe: 3
-umsetzung: zu-bauen
+umsetzung: teilweise
 implementiert: [D11, D36]
 use_cases: [UC6]
 ---

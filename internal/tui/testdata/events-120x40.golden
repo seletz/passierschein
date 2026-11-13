@@ -1,0 +1,40 @@
+ a38 tui                             updated 17:30:00                               1 overview  [2 events]  3 sessions  
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ~/.local/state/a38/audit.db · 1040 entries · chain intact · 7 days
+ EVENTS 1–33 of 327, newest first
+   SEQ TIME        TYPE       PROJECT          SESSION              RESULT         REFERENCES                           
+  1040 11-12 16:18 expiry     demo-projekt     demo-review          session_ended  …pp.k8s-dev/datenbank-dev/password +2
+  1039 11-12 15:59 delivery   demo-projekt     demo-review          ok             …pp.k8s-dev/datenbank-dev/password +2
+▸ 1038 11-12 15:59 request    demo-projekt     demo-review          -              …pp.k8s-dev/datenbank-dev/password +2
+  1037 11-12 15:54 denial     demo-projekt     demo-review          not_allowed    …app.k8s-test/storage-test/secret-key
+  1036 11-12 15:54 request    demo-projekt     demo-review          -              …app.k8s-test/storage-test/secret-key
+  1035 11-12 15:41 delivery   demo-projekt     demo-review          ok             …pp.k8s-dev/datenbank-dev/password +2
+  1034 11-12 15:41 request    demo-projekt     demo-review          -              …pp.k8s-dev/datenbank-dev/password +2
+  1033 11-12 15:13 delivery   demo-projekt     demo-review          ok             …pp.k8s-dev/datenbank-dev/password +2
+  1032 11-12 15:13 request    demo-projekt     demo-review          -              …pp.k8s-dev/datenbank-dev/password +2
+  1031 11-12 14:52 denial     demo-projekt     demo-review          not_allowed    …app.k8s-test/storage-test/secret-key
+  1030 11-12 14:52 request    demo-projekt     demo-review          -              …app.k8s-test/storage-test/secret-key
+  1029 11-12 14:36 delivery   demo-projekt     demo-review          ok             …pp.k8s-dev/datenbank-dev/password +2
+  1028 11-12 14:36 request    demo-projekt     demo-review          -              …pp.k8s-dev/datenbank-dev/password +2
+  1027 11-12 14:29 delivery   demo-projekt     demo-review          ok             …pp.k8s-dev/datenbank-dev/password +2
+  1026 11-12 14:29 grant      demo-projekt     demo-review          ok             …pp.k8s-dev/datenbank-dev/password +2
+  1025 11-12 14:29 decision   demo-projekt     demo-review          approved       …pp.k8s-dev/datenbank-dev/password +2
+  1024 11-12 14:29 bundle     demo-projekt     demo-review          -              …pp.k8s-dev/datenbank-dev/password +2
+  1023 11-12 14:29 request    demo-projekt     demo-review          -              …pp.k8s-dev/datenbank-dev/password +2
+  1022 11-12 13:42 expiry     demo-projekt     demo-review          session_ended  …pp.k8s-dev/datenbank-dev/password +1
+  1021 11-12 13:26 delivery   demo-projekt     demo-review          ok             …pp.k8s-dev/datenbank-dev/password +1
+  1020 11-12 13:26 request    demo-projekt     demo-review          -              …pp.k8s-dev/datenbank-dev/password +1
+  1019 11-12 13:10 delivery   demo-projekt     demo-review          ok             …pp.k8s-dev/datenbank-dev/password +1
+  1018 11-12 13:10 request    demo-projekt     demo-review          -              …pp.k8s-dev/datenbank-dev/password +1
+  1017 11-12 13:03 delivery   demo-projekt     demo-review          ok             …app.k8s-dev/api-token-dev/credential
+  1016 11-12 13:03 request    demo-projekt     demo-review          -              …app.k8s-dev/api-token-dev/credential
+  1015 11-12 12:42 delivery   demo-projekt     demo-review          ok             …o.app.k8s-dev/datenbank-dev/password
+  1014 11-12 12:42 request    demo-projekt     demo-review          -              …o.app.k8s-dev/datenbank-dev/password
+  1013 11-12 12:26 delivery   demo-projekt     demo-review          ok             …pp.k8s-dev/datenbank-dev/password +1
+  1012 11-12 12:26 grant      demo-projekt     demo-review          ok             …pp.k8s-dev/datenbank-dev/password +1
+  1011 11-12 12:26 decision   demo-projekt     demo-review          approved       …pp.k8s-dev/datenbank-dev/password +1
+  1010 11-12 12:26 bundle     demo-projekt     demo-review          -              …pp.k8s-dev/datenbank-dev/password +1
+  1009 11-12 12:26 request    demo-projekt     demo-review          -              …pp.k8s-dev/datenbank-dev/password +1
+  1008 11-12 12:04 denial     demo-projekt     demo-review          denied         …pp.k8s-dev/datenbank-dev/password +1
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ enter detail • / search • f filter • t range • 1/2/3 view • ? help • q quit

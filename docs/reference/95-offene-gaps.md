@@ -57,7 +57,7 @@ Rang 1 ist am wichtigsten.
 | 19 | {{ ref("G6") }} | Wie ein Agent die Namen der Items findet | offen | – | Werkzeug, Schutzbedarf der Namen, Datei im Projekt | Stefan entscheidet |
 | 20 | {{ ref("G13") }} | Rotation nach einem Leck | offen | – | Wer rotiert, wie schnell; Hilfe durch `a38` | Stefan entscheidet |
 | 21 | {{ ref("G8") }} | Aufbewahrung im Audit-Log | offen | – | Dauer, Löschung mit neuem Anker, Kürzung der Begründung | Stefan entscheidet |
-| 22 | {{ ref("G12") }} | Maß für Freigabemüdigkeit | offen | – | Annehmbare Zahl je Tag, Warnsignal, Hinweise in der Freigabeanfrage | Stefan entscheidet; Praxistest liefert Zahlen |
+| 22 | {{ ref("G12") }} | Maß für Freigabemüdigkeit | offen | `a38 tui` und `a38 audit stats` zeigen Popups je Tag, Anteil der Ablehnungen, Abweichungen und Größe der Bündel; Definitionen in {{ ref("D57") }} (Annahme) | Annehmbare Zahl je Tag, Warnsignal, Hinweise in der Freigabeanfrage | Stefan entscheidet; Praxistest liefert Zahlen |
 | 23 | {{ ref("G14") }} | Design-Check in der CI | offen | `mise run design:check` läuft weiter nur lokal | Token für den Download von `dg-register` | Stefan entscheidet |
 | 24 | {{ ref("G16") }} | Persönlicher Assistent auf dem Mac | offen | – | Ausnahme oder Weg über `a38` | Stefan entscheidet |
 | 25 | {{ ref("G10") }} | Persona der Coding Agents im Cluster | offen | {{ ref("D14") }}: nicht Teil von `a38` | Name, Tag und Rechte der Persona | Stefan entscheidet, außerhalb von `a38` |

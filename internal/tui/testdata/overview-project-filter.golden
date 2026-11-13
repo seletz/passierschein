@@ -1,0 +1,40 @@
+ a38 tui                   updated 17:30:00                    [1 overview]  2 events   3 sessions  
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ~/.local/state/a38/audit.db · 1040 entries · chain intact · 30 days · filter: project=demo-projekt
+ Range 30 days, 2026-10-14 to 2026-11-12  (t changes it)
+ POPUPS          62   2.1 per day, busiest day 2026-11-06 with 8
+  approved       47   76% (partial 3)
+  denied         12   19% denial share
+  timed out       3   5% (UI failed 0, session ended 0)
+  deviations     24   39% went beyond a live grant
+  size          1.5   median entries per popup, largest 3
+ DELIVERIES     178   74% under a grant without popup (131), 47 after a popup
+ DENIED EARLY    17   by the policy, an unknown item or a full bundle
+ REVOCATIONS 1 · ERRORS 0 · LOCKS 0 (ended 0)
+
+ POPUPS PER DAY (largest 8)
+   8 ┤                                                                     ██       ▃▃          
+     │      ▁▁                            ▁▁                   ▆▆          ██       ██          
+     │      ██                            ██                   ██    ▄▄    ██       ██          
+     │▇▇    ██                ▇▇          ██    ▇▇ ▇▇          ██ ▇▇ ██ ▂▂ ██ ▇▇    ██ ▂▂    ▇▇ 
+     │██    ██                ██ ▅▅       ██    ██ ██ ▅▅       ██ ██ ██ ██ ██ ██    ██ ██    ██ 
+   0 └──────────────────────────────────────────────────────────────────────────────────────────
+      10-14                                                                              11-12
+
+ BUSIEST SESSIONS                  REQ  POP  DEL │  BUSIEST PROJECTS                  REQ  POP  DEL
+  demo-review                      151   42  130 │   demo-projekt                     210   62  178
+  demo-migration                    59   20   48 │ 
+
+ MOST REQUESTED CREDENTIALS                                                         REQ  DEL  DENY
+  op://demo.app.k8s-dev/api-token-dev/credential                                     99   91     7
+  op://demo.app.k8s-dev/datenbank-dev/password                                       95   84     9
+  op://demo.app.k8s-dev/storage-dev/secret-key                                       87   78     7
+  op://demo.app.k8s-test/storage-test/secret-key                                     17    0    17
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ t range • f filter • ↑/↓ scroll • 1/2/3 view • ? help • q quit

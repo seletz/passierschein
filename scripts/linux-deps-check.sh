@@ -8,7 +8,9 @@
 # - a package of this module whose path contains "onepassword" or "1password",
 # - purego (github.com/ebitengine/purego), which binds Security.framework,
 # - the keychain package of this module (internal/keychain),
-# - the LaunchAgent package of this module (internal/service, issue 70).
+# - the LaunchAgent package of this module (internal/service, issue 70),
+# - the terminal view "a38 tui" (internal/tui) and its libraries
+#   (charm.land/...): the audit log lives on the Mac (D53, issue 71).
 # Task deps:linux:check. With "--self-test" the script checks itself with
 # faked package lists, and then with real package lists: the darwin build
 # must contain the 1Password backend, the SDK, the keychain package and
@@ -21,7 +23,7 @@ MODULE=github.com/seletz/passierschein
 
 # forbidden reads a package list on stdin and prints each forbidden package.
 forbidden() {
-  grep -iE "^github\.com/1password/|^github\.com/extism/|^github\.com/tetratelabs/wazero|^github\.com/dylibso/|^github\.com/ebitengine/purego|^${MODULE}/.*(onepassword|1password)|^${MODULE}/internal/keychain(/|$)|^${MODULE}/internal/service(/|$)" || true
+  grep -iE "^github\.com/1password/|^github\.com/extism/|^github\.com/tetratelabs/wazero|^github\.com/dylibso/|^github\.com/ebitengine/purego|^${MODULE}/.*(onepassword|1password)|^${MODULE}/internal/keychain(/|$)|^${MODULE}/internal/service(/|$)|^${MODULE}/internal/tui(/|$)|^charm\.land/" || true
 }
 
 if [ "${1:-}" = "--self-test" ]; then
@@ -42,15 +44,19 @@ if [ "${1:-}" = "--self-test" ]; then
   expect purego 2 $'github.com/ebitengine/purego\ngithub.com/ebitengine/purego/internal/strings'
   expect keychain 1 $'fmt\ngithub.com/seletz/passierschein/internal/keychain'
   expect keychain-like 0 $'github.com/seletz/passierschein/internal/keychainx\ngithub.com/other/keychain'
+  expect tui 2 $'github.com/seletz/passierschein/internal/tui\ncharm.land/bubbletea/v2'
+  expect tui-like 0 $'github.com/seletz/passierschein/internal/tuix\ngithub.com/other/charm.land'
   expect service 2 $'github.com/seletz/passierschein/internal/service\ngithub.com/seletz/passierschein/internal/service/fakelaunchctl'
   expect service-like 0 $'github.com/seletz/passierschein/internal/servicex\ngithub.com/other/service'
 
   # must_catch <name> <package list>: the list must hold the backend, the
-  # SDK, the keychain package and purego, and the filter must find them.
+  # SDK, the keychain package, purego and the terminal view, and the filter
+  # must find them.
   must_catch() {
     found=$(printf '%s\n' "$2" | forbidden)
     for pkg in "${MODULE}/internal/backend/onepassword" "github.com/1password/onepassword-sdk-go" \
-      "${MODULE}/internal/keychain" "github.com/ebitengine/purego" "${MODULE}/internal/service"; do
+      "${MODULE}/internal/keychain" "github.com/ebitengine/purego" "${MODULE}/internal/service" \
+      "${MODULE}/internal/tui" "charm.land/bubbletea/v2"; do
       if ! printf '%s\n' "$found" | grep -qxF "$pkg"; then
         echo "self-test '$1': $pkg is not found; the check would guard nothing" >&2
         fail=1
@@ -70,8 +76,8 @@ fi
 list=$(GOOS=linux go list -deps ./cmd/a38)
 found=$(printf '%s\n' "$list" | forbidden)
 if [ -n "$found" ]; then
-  echo "::error::the linux build of a38 contains code for 1Password or the macOS keychain:" >&2
+  echo "::error::the linux build of a38 contains code for 1Password, the macOS keychain or the terminal view:" >&2
   printf '%s\n' "$found" >&2
   exit 1
 fi
-echo "the linux build of a38 has no 1Password, no keychain and no LaunchAgent packages ($(printf '%s\n' "$list" | wc -l | tr -d ' ') packages checked)"
+echo "the linux build of a38 has no 1Password, keychain, LaunchAgent or terminal view packages ($(printf '%s\n' "$list" | wc -l | tr -d ' ') packages checked)"
