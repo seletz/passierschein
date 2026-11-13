@@ -4,14 +4,15 @@ id: 'D56'
 titel: 'Der Daemon läuft als LaunchAgent ohne automatischen Neustart'
 bereich: 'Betrieb und Release'
 lauf: '2.0'
-stand: '2026-11-12'
+stand: '2026-11-13'
 order: 6
 headless: true
 status: gueltig
 use_cases: [UC11]
 beleg:
-  notiz: Vorschlag aus der Entwicklung, zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-13'
+  quelle: ['#75']
 ---
 # D56 — Der Daemon läuft als LaunchAgent ohne automatischen Neustart
 
