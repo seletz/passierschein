@@ -1,0 +1,40 @@
+ a38 tui                updated 17:30:00                 1 overview  [2 events] › help  3 sessions  
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                ╭──────────────────────────────────────────────────────────────────╮                
+                │ keys: events                                                     │                
+                │                                                                  │                
+                │ ↑/k        up           enter detail          1    overview      │                
+                │ ↓/j        down         /     search          2    events        │                
+                │ pgup/b     page up      f     filter          3    sessions      │                
+                │ pgdn/space page down    c     clear filter    tab  next view     │                
+                │ g/home     top          t     range           ⇧tab previous view │                
+                │ G/end      bottom                             r    reload        │                
+                │                                               ?    help          │                
+                │                                               esc  back          │                
+                │                                               q    quit          │                
+                │                                               ^c   quit          │                
+                │                                                                  │                
+                │ The view only reads the audit log. It never writes and never     │                
+                │ talks to the daemon.                                             │                
+                │ The filter for project and session also selects the figures. The │                
+                │ filter for ref, type and code and the search select only the     │                
+                │ events.                                                          │                
+                │ Session name, agent, task and reason are claims of the agent and │                
+                │ not verified.                                                    │                
+                │ The how-to "Freigaben auswerten" explains each figure.           │                
+                │                                                                  │                
+                │ esc or ? closes this help                                        │                
+                ╰──────────────────────────────────────────────────────────────────╯                
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ esc back • q quit

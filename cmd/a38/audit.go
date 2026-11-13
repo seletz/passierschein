@@ -12,6 +12,7 @@ import (
 
 	"github.com/seletz/passierschein/internal/audit"
 	"github.com/seletz/passierschein/internal/audit/sqlite"
+	"github.com/seletz/passierschein/internal/auditstats"
 	"github.com/seletz/passierschein/internal/config"
 	"github.com/seletz/passierschein/internal/protocol"
 )
@@ -22,8 +23,11 @@ const auditUsage = `Usage:
                    [--type T[,T...]] [--code CODE] [--since TIME] [--until TIME]
                    [--limit N]
   a38 audit verify [--config FILE] [--file AUDIT]
+  a38 audit stats  [--config FILE] [--file AUDIT] [--json] [--range R]
+                   [--project NAME] [--session-name NAME] [--top N]
 
 TIME is an RFC 3339 time or a duration ("24h" means 24 hours ago).
+R is today, 7d (default), 30d or all, in local calendar days.
 `
 
 // runAudit lists the audit log and verifies its hash chain. It opens the
@@ -38,6 +42,8 @@ func runAudit(args []string, stdout, stderr io.Writer) int {
 		return runAuditList(args[1:], stdout, stderr)
 	case "verify":
 		return runAuditVerify(args[1:], stdout, stderr)
+	case "stats":
+		return runAuditStats(args[1:], stdout, stderr)
 	case "-h", "--help", "help":
 		_, _ = fmt.Fprint(stdout, auditUsage)
 		return exitOK
@@ -57,22 +63,31 @@ func (a *auditFlags) register(fs *flag.FlagSet) {
 	fs.StringVar(&a.file, "file", "", "audit file (default: paths.audit_file of the configuration)")
 }
 
+// path returns the path of the audit file: --file, or paths.audit_file
+// of the configuration.
+func (a *auditFlags) path() (string, error) {
+	if a.file != "" {
+		return a.file, nil
+	}
+	cfgPath := a.configPath
+	if cfgPath == "" {
+		var err error
+		if cfgPath, err = config.DefaultPath(); err != nil {
+			return "", err
+		}
+	}
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		return "", err
+	}
+	return cfg.Paths.AuditFile, nil
+}
+
 // open opens the audit file read-only.
 func (a *auditFlags) open() (*sqlite.Store, error) {
-	path := a.file
-	if path == "" {
-		cfgPath := a.configPath
-		if cfgPath == "" {
-			var err error
-			if cfgPath, err = config.DefaultPath(); err != nil {
-				return nil, err
-			}
-		}
-		cfg, err := config.Load(cfgPath)
-		if err != nil {
-			return nil, err
-		}
-		path = cfg.Paths.AuditFile
+	path, err := a.path()
+	if err != nil {
+		return nil, err
 	}
 	return sqlite.OpenReadOnly(path)
 }
@@ -244,16 +259,11 @@ func printTable(w io.Writer, entries []audit.Entry) {
 }
 
 // dash returns the text for a table cell. An empty text becomes "-". A
-// control character becomes "?", so that an entry cannot steer the
-// terminal.
+// control or bidi character becomes "?", so that an entry cannot steer the
+// terminal (auditstats.Clean, the same function as in "a38 tui").
 func dash(s string) string {
 	if s == "" {
 		return "-"
 	}
-	return strings.Map(func(r rune) rune {
-		if protocol.IsControl(r) {
-			return '?'
-		}
-		return r
-	}, s)
+	return auditstats.Clean(s)
 }

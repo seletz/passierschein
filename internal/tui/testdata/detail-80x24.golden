@@ -1,0 +1,24 @@
+ a38 tui   updated 17:30:00    1 overview  [2 events] › entry 1040  3 sessions  
+────────────────────────────────────────────────────────────────────────────────
+ ~/.local/state/a38/audit.db · 1040 entries · chain intact · 7 days
+ ENTRY 1040  (esc back)
+  Time         2026-11-12 16:18:00 UTC
+  Type         expiry
+  Result       session_ended
+  Detail       session_ended
+  Request ID   -
+  Grant ID     grant-00080
+  References   op://demo.app.k8s-dev/datenbank-dev/password
+               op://demo.app.k8s-dev/api-token-dev/credential
+               op://demo.app.k8s-dev/storage-dev/secret-key
+
+ VERIFIED BY THE DAEMON
+  Session ID   s-0047
+  Project      demo-projekt
+  Origin       local, user 501, process 43355
+  Program      /usr/local/bin/coding-agent
+  Directory    /home/beispiel/develop/demo-projekt
+
+ ↓ 11 more lines
+────────────────────────────────────────────────────────────────────────────────
+ ↑/↓ scroll • esc back • 1/2/3 view • ? help • q quit

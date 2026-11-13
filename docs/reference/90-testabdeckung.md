@@ -81,6 +81,10 @@ Die Pakete stehen ohne den Präfix `internal/`.
 - {{ ref("T21") }} bleibt teilweise, bis die Swift-Tests `missingClaims` und `sessionNameUnabridged` den Testfall im Kommentar nennen. Die Freigabe-App zeigt die Leermarke für einen fehlenden Namen.
 - {{ ref("T18") }} ist ein Fall der Release-Kette. Der Teil mit den Secrets lässt sich nur im Workflow prüfen; das Release `v0.1.0` belegt ihn. Offen ist der Praxistest des Release auf dem Mac ({{ ref("G5") }}).
 
+{{ ref("F13") }} (`a38 tui`) hat im Design keinen Testfall.
+Die Tests `TestCompute*`, `TestSessions`, `TestGrants` und `TestClean` (Paket `auditstats`), `TestScreens`, `TestKeys`, `TestUntrustedText` und `TestRefreshCommands` (Paket `tui`) sowie `TestAuditStats`, `TestAuditStatsIsReadOnly`, `TestTUIArguments` und `TestTUIShowsNoValue` (Paket `cmd/a38`) belegen das Feature ohne Testfall.
+Ein späterer Designlauf soll einen Testfall ergänzen: Die Ansicht liest ein Audit-Log mit bekannten Ereignissen nur lesend, zeigt die Kennzahlen von {{ ref("G12") }} nach den Definitionen in {{ ref("D57") }}, filtert nach Projekt, Sitzung, Zugangsdatum, Zeit und Ergebnis, meldet eine gebrochene Kette und zeigt keinen Wert und kein Steuerzeichen aus dem Log.
+
 ## Hook gegen den direkten Aufruf von op
 
 Das Feature {{ ref("F16") }} (Stufe 4) hat den Testfall {{ ref("T29") }}.

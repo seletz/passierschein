@@ -1,6 +1,6 @@
 ---
 title: Befehle für den Menschen
-description: "a38 grants, fault, config, service, doctor und audit: Argumente, Ausgabe und Exit-Codes."
+description: "a38 grants, fault, config, service, doctor, audit und tui: Argumente, Ausgabe und Exit-Codes."
 render_macros: true
 tags:
   - Thema/Betrieb
@@ -305,11 +305,36 @@ Eine Zeile `NOTE` hat zusätzlich `note: true`.
 |---|---|
 | `a38 audit list` | Listet das Audit-Log mit Filtern (`--project`, `--session-name`, `--ref`, `--type`, `--code`, `--since`, `--until`, `--limit`). |
 | `a38 audit verify` | Prüft die Hash-Kette. Bei einem Bruch nennt der Befehl den ersten fehlerhaften Eintrag und endet mit 1. |
+| `a38 audit stats` | Gibt die Kennzahlen der Übersicht von `a38 tui` aus: Popups, Freigaben, Ablehnungen, Abweichungen, Auslieferungen, Größe der Bündel, Rangfolgen. Schalter: `--range today\|7d\|30d\|all` (Standard `7d`), `--project`, `--session-name`, `--top N` (Standard 5, 0 für alle), `--json`. |
 
-Beide Befehle öffnen die Audit-Datei nur lesend.
+Die Befehle öffnen die Audit-Datei nur lesend.
 Der Daemon muss nicht laufen.
 `--file <audit-datei>` ersetzt den Pfad aus der Konfiguration.
 `list` kennt `--json` und gibt je Eintrag eine Zeile aus.
+`stats --json` gibt ein Objekt aus; die Felder heißen wie im Paket `internal/auditstats` (`popups`, `denied`, `denial_share`, `deviations`, `deliveries_under_grant`, `days`, `top_sessions` …).
+Die Definitionen der Kennzahlen stehen in der Anleitung [Freigaben auswerten](../how-to/29-freigaben-auswerten.md#was-die-kennzahlen-bedeuten).
+
+## a38 tui
+
+`a38 tui` zeigt das Audit-Log im Terminal ({{ ref("F13") }}, {{ ref("UC6") }}).
+Den Befehl gibt es nur unter macOS ({{ ref("D57") }}).
+Unter Linux endet er mit 1 und nennt `a38 audit list` und `a38 audit stats`.
+
+| Schalter | Wirkung |
+|---|---|
+| `--config <datei>` | Konfigurationsdatei; die Audit-Datei steht in `paths.audit_file`. |
+| `--file <audit-datei>` | ersetzt den Pfad aus der Konfiguration. |
+| `--range today\|7d\|30d\|all` | Zeitraum beim Start, Standard `7d`. Die Taste `t` wechselt ihn. |
+| `--refresh <dauer>` | liest das Audit-Log nach der Dauer erneut, zum Beispiel `30s`. Standard `0`: nur mit der Taste `r`. Der kleinste Wert ist `1s`. |
+
+Die Ansicht öffnet die Audit-Datei nur lesend und schließt sie nach jedem Lesen.
+Sie schreibt nie und spricht mit keinem Socket des Daemons.
+Der Daemon muss nicht laufen.
+Ohne Terminal endet der Befehl mit 1.
+Eine fehlende oder unlesbare Datei endet vor dem Start der Ansicht mit 1.
+Ein falscher Schalter endet mit 2.
+`NO_COLOR` schaltet die Farben ab; Fettdruck, Klammern und Marken bleiben.
+Die Tasten stehen in der Anleitung [Freigaben auswerten](../how-to/29-freigaben-auswerten.md#tasten).
 
 ## a38 hook
 

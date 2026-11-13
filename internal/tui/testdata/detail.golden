@@ -1,0 +1,40 @@
+ a38 tui             updated 17:30:00              1 overview  [2 events] › entry 1038  3 sessions  
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ~/.local/state/a38/audit.db · 1040 entries · chain intact · 7 days
+ ENTRY 1038  (esc back)
+  Time         2026-11-12 15:59:00 UTC
+  Type         request
+  Result       -
+  Detail       -
+  Request ID   -
+  Grant ID     -
+  References   op://demo.app.k8s-dev/datenbank-dev/password
+               op://demo.app.k8s-dev/api-token-dev/credential
+               op://demo.app.k8s-dev/storage-dev/secret-key
+
+ VERIFIED BY THE DAEMON
+  Session ID   s-0047
+  Project      demo-projekt
+  Origin       local, user 501, process 43355
+  Program      /usr/local/bin/coding-agent
+  Directory    /home/beispiel/develop/demo-projekt
+
+ CLAIMS OF THE AGENT (NOT VERIFIED)
+  Session name demo-review
+  Agent        coding-agent
+  Task         Run the integration tests of demo-projekt
+  Reason       The tests need the login for the development database.
+
+ HASH CHAIN
+  Position     entry 1038 of 1040
+  Chain        intact up to this entry
+  Prev hash    c23fe27031c7ef626c62b63483ace973ee3d8255dfa8322e279b6497ef5c1932
+  Hash         5d588cc5df11876eb761026f301382e4f19c14725c1c02a5220d3690fc4fb924
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ↑/↓ scroll • esc back • 1/2/3 view • ? help • q quit

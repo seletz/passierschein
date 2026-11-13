@@ -1,0 +1,9 @@
+id: D57
+zustand: eingeloest
+titel: a38 tui läuft nur auf macOS, nutzt Bubble Tea und leitet die Kennzahlen aus den Ereignissen ab
+bezug: '#71'
+schluessel: '#71/tui-kennzahlen'
+lauf: '2.0'
+branch: feat/71-tui
+reserviert_am: '2026-11-12'
+eingeloest_am: '2026-11-12'

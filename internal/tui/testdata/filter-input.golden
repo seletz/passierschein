@@ -1,0 +1,24 @@
+ a38 tui         updated 17:30:00           1 overview  [2 events]  3 sessions  
+────────────────────────────────────────────────────────────────────────────────
+ filter › session=beispiel-tests█  project= session= ref= type= code=
+ EVENTS 1–17 of 327, newest first
+   SEQ TIME        TYPE       PROJECT         SESSION             RESULT        
+▸ 1040 11-12 16:18 expiry     demo-projekt    demo-review         session_ended 
+  1039 11-12 15:59 delivery   demo-projekt    demo-review         ok            
+  1038 11-12 15:59 request    demo-projekt    demo-review         -             
+  1037 11-12 15:54 denial     demo-projekt    demo-review         not_allowed   
+  1036 11-12 15:54 request    demo-projekt    demo-review         -             
+  1035 11-12 15:41 delivery   demo-projekt    demo-review         ok            
+  1034 11-12 15:41 request    demo-projekt    demo-review         -             
+  1033 11-12 15:13 delivery   demo-projekt    demo-review         ok            
+  1032 11-12 15:13 request    demo-projekt    demo-review         -             
+  1031 11-12 14:52 denial     demo-projekt    demo-review         not_allowed   
+  1030 11-12 14:52 request    demo-projekt    demo-review         -             
+  1029 11-12 14:36 delivery   demo-projekt    demo-review         ok            
+  1028 11-12 14:36 request    demo-projekt    demo-review         -             
+  1027 11-12 14:29 delivery   demo-projekt    demo-review         ok            
+  1026 11-12 14:29 grant      demo-projekt    demo-review         ok            
+  1025 11-12 14:29 decision   demo-projekt    demo-review         approved      
+  1024 11-12 14:29 bundle     demo-projekt    demo-review         -             
+────────────────────────────────────────────────────────────────────────────────
+ enter apply • esc cancel • ^c quit

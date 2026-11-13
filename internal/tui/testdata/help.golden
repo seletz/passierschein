@@ -1,0 +1,24 @@
+ a38 tui      updated 17:30:00      [1 overview] › help  2 events   3 sessions  
+────────────────────────────────────────────────────────────────────────────────
+                                                                                
+        ╭──────────────────────────────────────────────────────────────╮        
+        │ keys: overview                                               │        
+        │                                                              │        
+        │ ↑/k        up           t range           1    overview      │        
+        │ ↓/j        down         f filter          2    events        │        
+        │ pgup/b     page up      c clear filter    3    sessions      │        
+        │ pgdn/space page down    / search          tab  next view     │        
+        │ g/home     top                            ⇧tab previous view │        
+        │                                           r    reload        │        
+        │                                           ?    help          │        
+        │                                           esc  back          │        
+        │                                           q    quit          │        
+        │                                           ^c   quit          │        
+        │                                                              │        
+        │ The how-to "Freigaben auswerten" explains each figure.       │        
+        │                                                              │        
+        │ esc or ? closes this help                                    │        
+        ╰──────────────────────────────────────────────────────────────╯        
+                                                                                
+────────────────────────────────────────────────────────────────────────────────
+ esc back • q quit
