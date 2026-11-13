@@ -10,8 +10,9 @@ headless: true
 status: gueltig
 use_cases: [UC6]
 beleg:
-  notiz: Vorschlag aus der Entwicklung, zu bestätigen durch Stefan; Stil nach dem Review in PR 76 angepasst
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-13'
+  quelle: ['#76']
 ---
 # D57 — a38 tui läuft nur auf macOS, nutzt Bubble Tea und leitet die Kennzahlen aus den Ereignissen ab
 
