@@ -302,6 +302,8 @@ Die Befehle mit `mise run` laufen im Klon des Repos.
 
 **Was das bedeutet:** Ohne Eintrag im Audit-Log gibt es keine Auslieferung ({{ ref("D36") }}). Bei einer Störung sperrt der Daemon für alle Sitzungen, und nur der Mensch hebt die Sperre auf ({{ ref("D48") }}).
 
+Optional zeigt Akt 8 der [Demo](../how-to/50-demo-vorfuehren.md): Der Agent versucht `op`, der Hook `a38 hook op-guard` blockiert den Befehl und lenkt ihn zu a38 ({{ ref("F16") }}).
+
 ## Was du gesehen hast
 
 | Schritt | Aussage |

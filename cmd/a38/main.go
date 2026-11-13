@@ -47,6 +47,7 @@ var commands = []command{
 	{"service", "Install, remove, restart and show the daemon as a LaunchAgent (macOS)", runService},
 	{"doctor", "Check the state of a38 and name the next step for each finding", runDoctor},
 	{"llm", "Print the instructions for agents (--skill)", runLLM},
+	{"hook", "Hooks for agent tools: op-guard blocks a direct call of op", runHook},
 	{"version", "Print the version", runVersion},
 }
 

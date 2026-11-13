@@ -37,9 +37,9 @@ neue Entscheidung. Die alte Entscheidung erhält den Status „ersetzt“.
 | Familie | Bereich |
 |---|---|
 | UC | {{ ref("UC1") }}–{{ ref("UC14") }} |
-| D | {{ ref("D1") }}–{{ ref("D57") }} |
+| D | {{ ref("D1") }}–{{ ref("D58") }} |
 | F | {{ ref("F1") }}–{{ ref("F20") }} |
-| T | {{ ref("T1") }}–{{ ref("T28") }} |
+| T | {{ ref("T1") }}–{{ ref("T29") }} |
 | G | {{ ref("G1") }}–{{ ref("G34") }} |
 | RI | {{ ref("RI1") }}–{{ ref("RI12") }} |
 

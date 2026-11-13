@@ -234,14 +234,55 @@ EOF
   # the two tools of a38 need no extra prompt of the agent tool.
   mkdir -p "$PROJECT_DIR/.claude/skills/a38"
   "${A38_RUN[@]}" llm --skill >"$PROJECT_DIR/.claude/skills/a38/SKILL.md"
-  cat >"$PROJECT_DIR/.claude/settings.json" <<'EOF'
-{
-  "permissions": {
-    "allow": ["mcp__a38__request_credentials", "mcp__a38__grant_status"]
-  }
-}
-EOF
+  write_settings
   echo "created by mise run demo:setup" >"$PROJECT_MARKER"
+}
+
+# write_settings writes .claude/settings.json of the demo project
+# (https://code.claude.com/docs/en/settings): the two tools of a38 need no
+# extra prompt, and the hook "a38 hook op-guard" blocks a direct call of op
+# (https://code.claude.com/docs/en/hooks, F16). The hooks block comes from
+# "a38 hook op-guard --print-config": the bare name "a38" in the real mode
+# (like .mcp.json), the absolute path of the rehearsal binary otherwise.
+# A file that keep_settings saved from an earlier setup is merged: the kit
+# adds its entries once and keeps every other entry of the owner.
+write_settings() {
+  local file="$PROJECT_DIR/.claude/settings.json" scope=project kit merged
+  [ "$MODE" = real ] || scope=user
+  command -v jq >/dev/null || die "jq is missing; run through mise run demo:setup"
+  kit=$("${A38_RUN[@]}" hook op-guard --print-config --scope "$scope" |
+    jq '{permissions: {allow: ["mcp__a38__request_credentials", "mcp__a38__grant_status"]}} + .')
+  if [ -f "$file" ]; then
+    merged=$(jq --argjson kit "$kit" '
+      .permissions.allow = ((.permissions.allow // []) + ($kit.permissions.allow - (.permissions.allow // [])))
+      | .hooks.PreToolUse = ((.hooks.PreToolUse // [])
+          | if any(.[]; any(.hooks[]?; (.args // []) == ["hook", "op-guard"])) then . else . + $kit.hooks.PreToolUse end)
+    ' "$file") || die "$file is not valid JSON; fix or remove it, then run setup again"
+    printf '%s\n' "$merged" >"$file"
+  else
+    printf '%s\n' "$kit" >"$file"
+  fi
+}
+
+# keep_settings copies .claude/settings.json of an earlier demo project to
+# the file $1, so that setup keeps the edits of the owner. It copies only
+# from a project with the kit marker.
+keep_settings() {
+  if [ -f "$PROJECT_MARKER" ] && [ -f "$PROJECT_DIR/.claude/settings.json" ]; then
+    command -v jq >/dev/null || die "jq is missing; run through mise run demo:setup"
+    jq empty "$PROJECT_DIR/.claude/settings.json" 2>/dev/null ||
+      die "$PROJECT_DIR/.claude/settings.json is not valid JSON; fix or remove it, then run setup again"
+    cp "$PROJECT_DIR/.claude/settings.json" "$1"
+  fi
+}
+
+# restore_settings puts the file of keep_settings into the new project.
+restore_settings() {
+  if [ -s "$1" ]; then
+    mkdir -p "$PROJECT_DIR/.claude"
+    cp "$1" "$PROJECT_DIR/.claude/settings.json"
+  fi
+  rm -f "$1"
 }
 
 build() {
@@ -314,9 +355,13 @@ cmd_setup_real() {
   install_app
   ours "$APP_BUNDLE" || echo "$APP_BUNDLE" >>"$INSTALLED"
 
+  local kept_settings="$KIT_DIR/settings.json.kept"
+  rm -f "$kept_settings"
+  keep_settings "$kept_settings"
   rm -rf "$PROJECT_DIR"
   cp -R "$ROOT/examples/demo/demo-projekt" "$PROJECT_DIR"
   chmod 755 "$PROJECT_DIR"/*.sh
+  restore_settings "$kept_settings"
   write_project
   ours "$PROJECT_DIR" || echo "$PROJECT_DIR" >>"$INSTALLED"
 
@@ -339,7 +384,7 @@ cmd_setup_real() {
   echo "demo: installed"
   echo "  a38:           $A38"
   echo "  app:           $APP_BUNDLE (ad-hoc signed, signature verified)"
-  echo "  project:       $PROJECT_DIR (.mcp.json, .claude/skills/a38/SKILL.md)"
+  echo "  project:       $PROJECT_DIR (.mcp.json, .claude/skills/a38/SKILL.md, .claude/settings.json with the hook op-guard)"
   case "$config_action" in
     write) echo "  configuration: $CONFIG (new)" ;;
     keep) echo "  configuration: $CONFIG (unchanged, same content)" ;;
@@ -356,7 +401,10 @@ cmd_setup_fake() {
     if daemon_answers; then die "the rehearsal daemon runs; stop it (Ctrl-C) before a new setup"; fi
   fi
   build
+  local kept_settings
+  kept_settings=$(mktemp "${TMPDIR:-/tmp}/a38-demo-settings.XXXXXX")
   if [ -e "$DEMO_DIR" ]; then
+    keep_settings "$kept_settings"
     chmod -R u+w "$DEMO_DIR"
     rm -rf "$DEMO_DIR"
   fi
@@ -367,6 +415,7 @@ cmd_setup_fake() {
   install_app
   cp -R "$ROOT/examples/demo/demo-projekt" "$PROJECT_DIR"
   chmod 700 "$PROJECT_DIR"/*.sh
+  restore_settings "$kept_settings"
   cp "$ROOT/examples/demo/fake.yaml" "$DEMO_DIR/fake.yaml"
   cat >"$DEMO_DIR/passierschein-debug" <<EOF
 #!/bin/sh
@@ -379,7 +428,7 @@ EOF
   echo
   echo "demo: rehearsal ready in $DEMO_DIR (fake backend; nothing installed outside)"
   echo "  config:   $CONFIG"
-  echo "  project:  $PROJECT_DIR (.mcp.json, .claude/skills/a38/SKILL.md)"
+  echo "  project:  $PROJECT_DIR (.mcp.json, .claude/skills/a38/SKILL.md, .claude/settings.json with the hook op-guard)"
   echo "Next step: DEMO_BACKEND=fake mise run demo:start"
 }
 
