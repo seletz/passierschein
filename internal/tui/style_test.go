@@ -167,3 +167,16 @@ func TestThemeRoles(t *testing.T) {
 		}
 	}
 }
+
+func TestHelpBorderColour(t *testing.T) {
+	// The border of the help is in the accent colour; the text in it
+	// keeps its own colour.
+	th := newTheme(true)
+	box := th.Border.Border(lipgloss.RoundedBorder()).Render("text")
+	if !strings.Contains(box, "38;2;"+rgb(th.Accent)+"m╭") {
+		t.Errorf("the border is not in the accent colour: %q", box)
+	}
+	if strings.Contains(box, "38;2;"+rgb(th.Accent)+"mtext") {
+		t.Errorf("the text in the border takes the accent colour: %q", box)
+	}
+}

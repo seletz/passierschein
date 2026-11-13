@@ -76,7 +76,7 @@ func newTheme(dark bool) theme {
 	t.Strong = lipgloss.NewStyle().Bold(true)
 	t.Muted = lipgloss.NewStyle().Faint(true)
 	t.Rule = fg(ld(lipgloss.Color("#9fb3c8"), lipgloss.Color("#3a5b82")))
-	t.Border = fg(t.Accent)
+	t.Border = lipgloss.NewStyle().BorderForeground(t.Accent)
 	t.Active = lipgloss.NewStyle().Background(t.Accent).Foreground(lipgloss.Color("#ffffff")).Bold(true)
 	t.Mark = fg(t.Accent).Bold(true)
 	t.Selected = lipgloss.NewStyle().Background(t.Selection).Bold(true)
