@@ -13,6 +13,7 @@ des Release auf dem Mac von Stefan ist offen. Die Anleitung
 [a38 aus dem Release installieren](docs/how-to/15-a38-aus-dem-release-installieren.md)
 zeigt den Weg. Die Doku steht unter <https://seletz.github.io/passierschein/>
 und zeigt den Stand von `develop`.
+Agenten lesen die Doku als Markdown: <https://seletz.github.io/passierschein/llms.txt> listet alle Seiten, `llms-full.txt` enthält alle Seiten in einer Datei.
 
 **Stufe 1 ist fertig.** Sie läuft lokal mit einem Fake-Backend und einer
 gefälschten Freigabe.

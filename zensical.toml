@@ -108,3 +108,34 @@ tags_hierarchy = true
 # aus der Navigation (Artefaktseiten des Design-Sets).
 [project.plugins."mkdocs-nav-weight"]
 section_renamed = true
+
+# llms.txt für Agenten (Zensical ab 0.0.67, Ersatz für das MkDocs-Plugin
+# `llmstxt`). Der Build schreibt `llms.txt` (Index mit Links), je Seite eine
+# Markdown-Datei neben der HTML-Seite und `llms-full.txt` (alle Seiten in
+# einer Datei). Die Abschnitte folgen den Diátaxis-Ordnern, dazu das
+# Design-Set. Pfade sind relativ zu docs/; `*` ist ein Glob.
+# `scripts/docs-llms-check.sh` prüft die Ausgabe im Build.
+[project.plugins.llmstxt]
+markdown_description = """\
+Passierschein (CLI `a38`) gibt Zugangsdaten kontrolliert an Coding Agents heraus. \
+Die Doku folgt Diátaxis: Tutorials, Anleitungen, Referenz, Erklärung. \
+Dazu kommt das Design-Set mit den Entscheidungen, Features, Use Cases und Tests. \
+Die Seiten sind deutsch."""
+full_output = "llms-full.txt"
+
+[project.plugins.llmstxt.sections]
+"Start" = ["index.md"]
+"Tutorials" = ["tutorials/*.md"]
+"Anleitungen" = ["how-to/*.md"]
+"Referenz" = ["reference/*.md"]
+"Erklärung" = ["explanation/*.md"]
+"Design-Set" = [
+    "design/index.md",
+    "design/50-security-boundaries.md",
+    "design/decisions/*.md",
+    "design/features/*.md",
+    "design/use-cases/*.md",
+    "design/tests/*.md",
+    "design/gaps/*.md",
+    "design/risks/*.md",
+]
