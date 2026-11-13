@@ -312,7 +312,7 @@ Der Daemon muss nicht laufen.
 `--file <audit-datei>` ersetzt den Pfad aus der Konfiguration.
 `list` kennt `--json` und gibt je Eintrag eine Zeile aus.
 `stats --json` gibt ein Objekt aus; die Felder heißen wie im Paket `internal/auditstats` (`popups`, `denied`, `denial_share`, `deviations`, `deliveries_under_grant`, `days`, `top_sessions` …).
-Die Definitionen der Kennzahlen stehen in der Anleitung [Freigaben auswerten](../how-to/28-freigaben-auswerten.md#was-die-kennzahlen-bedeuten).
+Die Definitionen der Kennzahlen stehen in der Anleitung [Freigaben auswerten](../how-to/29-freigaben-auswerten.md#was-die-kennzahlen-bedeuten).
 
 ## a38 tui
 
@@ -334,4 +334,4 @@ Ohne Terminal endet der Befehl mit 1.
 Eine fehlende oder unlesbare Datei endet vor dem Start der Ansicht mit 1.
 Ein falscher Schalter endet mit 2.
 `NO_COLOR` schaltet die Farben ab; Fettdruck, Klammern und Marken bleiben.
-Die Tasten stehen in der Anleitung [Freigaben auswerten](../how-to/28-freigaben-auswerten.md#tasten).
+Die Tasten stehen in der Anleitung [Freigaben auswerten](../how-to/29-freigaben-auswerten.md#tasten).
