@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -174,7 +175,7 @@ func TestHookOpGuardProcess(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.file, func(t *testing.T) {
-			cmd := exec.Command(bin, "hook", "op-guard")
+			cmd := a38Cmd(context.Background(), t, bin, "hook", "op-guard")
 			cmd.Stdin = strings.NewReader(sample(t, tt.file))
 			var stdout, stderr bytes.Buffer
 			cmd.Stdout, cmd.Stderr = &stdout, &stderr
