@@ -12,7 +12,10 @@ Usage::
 
 Keys are separated by spaces: a name (enter, esc, tab, up, down, pgup,
 pgdown, space), ``text:WORD`` for typed text, ``sleep:SECONDS`` for a pause,
-or a single character. ``--theme light`` renders with a light palette.
+or a single character. ``--theme light`` renders with a light palette and
+names a light background when the program asks the terminal for its
+background colour (OSC 11). ``--truecolor`` lets the program use 24-bit
+colours instead of the 16 colours of the terminal.
 The script sends ``q`` at the end and stops the program.
 """
 
@@ -56,6 +59,9 @@ UNKNOWN_CSI = re.compile(rb"\x1b\[[<>=][0-9;]*[a-zA-Z]|\x1b\[\??[0-9;]*\$[a-zA-Z
 #: Block elements: the eighths of a cell from the bottom.
 BLOCKS = {"▁": 1, "▂": 2, "▃": 3, "▄": 4, "▅": 5, "▆": 6, "▇": 7, "█": 8}
 
+#: The query of the background colour (OSC 11).
+BACKGROUND_QUERY = re.compile(rb"\x1b\]11;\?(\x07|\x1b\\)")
+
 #: Palettes: the 16 colours of the terminal, foreground and background.
 THEMES = {
     "dark": {
@@ -71,7 +77,8 @@ THEMES = {
 }
 
 
-def run(command: list[str], cols: int, rows: int, keys: list[str], wait: float) -> pyte.Screen:
+def run(command: list[str], cols: int, rows: int, keys: list[str], wait: float,
+        theme: str = "dark", truecolor: bool = False) -> pyte.Screen:
     """Run the command in a pseudo terminal, send the keys, return the screen.
 
     :param command: command and arguments.
@@ -79,6 +86,8 @@ def run(command: list[str], cols: int, rows: int, keys: list[str], wait: float) 
     :param rows: rows of the terminal.
     :param keys: keys as described in the module documentation.
     :param wait: seconds to wait after the start and after each key.
+    :param theme: the palette; its background answers the query OSC 11.
+    :param truecolor: let the program use 24-bit colours.
     :returns: the screen after the last key.
     """
     screen = pyte.Screen(cols, rows)
@@ -87,7 +96,8 @@ def run(command: list[str], cols: int, rows: int, keys: list[str], wait: float) 
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
     # TERM=vt220 makes the renderer of Bubble Tea skip optimisations that
     # pyte does not know (scroll up and down). The 16 colours stay.
-    env = dict(os.environ, TERM="vt220", COLORTERM="", COLUMNS=str(cols), LINES=str(rows))
+    env = dict(os.environ, TERM="vt220", COLORTERM="truecolor" if truecolor else "",
+               COLUMNS=str(cols), LINES=str(rows))
     env.pop("NO_COLOR", None)
     proc = subprocess.Popen(command, stdin=slave, stdout=slave, stderr=slave, env=env, start_new_session=True)
     os.close(slave)
@@ -107,6 +117,11 @@ def run(command: list[str], cols: int, rows: int, keys: list[str], wait: float) 
                 return
             if not data:
                 return
+            if BACKGROUND_QUERY.search(data):
+                bg = THEMES[theme]["bg"].lstrip("#")
+                rgb = "/".join(bg[i:i + 2] * 2 for i in (0, 2, 4))
+                os.write(master, f"\x1b]11;rgb:{rgb}\x1b\\".encode())
+                data = BACKGROUND_QUERY.sub(b"", data)
             stream.feed(UNKNOWN_CSI.sub(b"", data))
 
     pump(wait)
@@ -207,7 +222,7 @@ def main(argv: list[str]) -> int:
     """
     if "--" not in argv:
         print("usage: tui_screenshot.py OUT.png [--size 80x24] [--keys KEYS] [--wait S] "
-              "[--theme dark|light] [--title TEXT] -- COMMAND [ARG...]", file=sys.stderr)
+              "[--theme dark|light] [--truecolor] [--title TEXT] -- COMMAND [ARG...]", file=sys.stderr)
         return 2
     i = argv.index("--")
     parser = argparse.ArgumentParser(prog="tui_screenshot.py")
@@ -217,10 +232,11 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--wait", type=float, default=0.6)
     parser.add_argument("--theme", choices=sorted(THEMES), default="dark")
     parser.add_argument("--title", default="")
+    parser.add_argument("--truecolor", action="store_true")
     args = parser.parse_args(argv[:i])
     command = argv[i + 1:]
     cols, rows = (int(v) for v in args.size.split("x"))
-    screen = run(command, cols, rows, args.keys.split(), args.wait)
+    screen = run(command, cols, rows, args.keys.split(), args.wait, args.theme, args.truecolor)
     page_html = to_html(screen, args.theme, args.title or " ".join(command))
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
