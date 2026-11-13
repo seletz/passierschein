@@ -75,7 +75,7 @@ zeigt den Eintrag in Claude Code.
 Noch nicht vorhanden: `a38 service install`, der Betrieb mit Agents
 in der VM und Homebrew (das folgt, wenn das Repo öffentlich ist).
 
-25 von 28 Testfällen des Designs sind belegt, 3 teilweise. Die App, der darwin-Code und der 1Password-Integrationstest laufen in einem eigenen macOS-Workflow ([CI](docs/reference/55-ci.md)). Die
+26 von 29 Testfällen des Designs sind belegt, 3 teilweise. Die App, der darwin-Code und der 1Password-Integrationstest laufen in einem eigenen macOS-Workflow ([CI](docs/reference/55-ci.md)). Die
 Übersicht steht in der [Testabdeckung](docs/reference/90-testabdeckung.md).
 
 ## Zweck

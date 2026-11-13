@@ -27,7 +27,7 @@ Es nutzt `vorhanden` dafür.
 
 ## Stand
 
-Von 28 Testfällen sind 25 umgesetzt und 3 teilweise.
+Von 29 Testfällen sind 26 umgesetzt und 3 teilweise.
 Das 1Password-Backend ({{ ref("T15") }}) ist belegt: Die Unit-Tests laufen in jeder CI, der Integrationstest läuft automatisch im macOS-Workflow mit dem Service Account der CI ([CI](55-ci.md)).
 Die Freigabe-App ({{ ref("T14") }}) ist teilweise belegt: Teil 1 ist automatisch und läuft in der CI. Teil 2 hat Stefan am 2026-11-12 am Bildschirm geprüft; offen sind Vollbild, Wechsel des Arbeitsbereichs, Zeitablauf und Meldungen ({{ ref("G33") }}).
 Die Signatur ({{ ref("T18") }}) ist mit der echten Developer ID im Release `v0.1.0` belegt; offen ist der Praxistest des Release auf dem Mac ({{ ref("G5") }}).
