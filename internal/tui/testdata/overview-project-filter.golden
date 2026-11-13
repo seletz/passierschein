@@ -1,5 +1,7 @@
- a38 tui   1 Overview   2 Events   3 Sessions                                        ? help  q quit 
- Range: 30 days, 2026-10-14 to 2026-11-12  (t changes it)
+ a38 tui                   updated 17:30:00                    [1 overview]  2 events   3 sessions  
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ~/.local/state/a38/audit.db · 1040 entries · chain intact · 30 days · filter: project=demo-projekt
+ Range 30 days, 2026-10-14 to 2026-11-12  (t changes it)
  POPUPS          62   2.1 per day, busiest day 2026-11-06 with 8
   approved       47   76% (partial 3)
   denied         12   19% denial share
@@ -34,7 +36,5 @@
 
 
 
-
-
- ~/.local/state/a38/audit.db │ 1040 entries │ chain intact │ 30 days │ filter: project=demo-projekt 
- t range · f filter · j/k scroll · tab view · r refresh · ? help
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ t range • f filter • ↑/↓ scroll • 1/2/3 view • ? help • q quit

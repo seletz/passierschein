@@ -82,8 +82,8 @@ func intact(entries []audit.Entry) audit.Verification {
 	return audit.Verification{OK: true, Entries: uint64(len(entries))}
 }
 
-// key returns the message of a key: a name such as "enter" or a text.
-func key(s string) tea.KeyPressMsg {
+// keyMsg returns the message of a key: a name such as "enter" or a text.
+func keyMsg(s string) tea.KeyPressMsg {
 	special := map[string]rune{
 		"enter": tea.KeyEnter, "esc": tea.KeyEscape, "tab": tea.KeyTab, "backspace": tea.KeyBackspace,
 		"up": tea.KeyUp, "down": tea.KeyDown, "pgdown": tea.KeyPgDown, "pgup": tea.KeyPgUp,
@@ -98,13 +98,13 @@ func key(s string) tea.KeyPressMsg {
 // press sends the keys; a word in the list is typed as text.
 func press(m *Model, keys ...string) {
 	for _, k := range keys {
-		if len([]rune(k)) > 1 && key(k).Text != "" {
+		if len([]rune(k)) > 1 && keyMsg(k).Text != "" {
 			for _, r := range k {
-				m.Update(key(string(r)))
+				m.Update(keyMsg(string(r)))
 			}
 			continue
 		}
-		m.Update(key(k))
+		m.Update(keyMsg(k))
 	}
 }
 
@@ -175,6 +175,7 @@ func TestScreens(t *testing.T) {
 		{"sessions", entries, intact(entries), 100, 30, auditstats.Range7Days, []string{"3"}},
 		{"timeline", entries, intact(entries), 100, 40, auditstats.Range7Days, []string{"3", "j", "enter"}},
 		{"help", entries, intact(entries), 80, 24, auditstats.Range7Days, []string{"?"}},
+		{"help-events-100x40", entries, intact(entries), 100, 40, auditstats.Range7Days, []string{"2", "?"}},
 		{"chain-broken", entries, broken, 80, 24, auditstats.Range30Days, nil},
 		{"chain-broken-detail", entries, broken, 100, 40, auditstats.RangeAll, []string{"2", "seq=57", "enter"}},
 		{"empty-log", nil, audit.Verification{OK: true}, 80, 24, auditstats.Range7Days, nil},
@@ -224,19 +225,19 @@ func TestKeys(t *testing.T) {
 		keys []string
 		want string
 	}{
-		{[]string{"tab"}, "EVENTS"},
-		{[]string{"tab"}, "SESSIONS"},
-		{[]string{"tab"}, "POPUPS PER DAY"},
-		{[]string{"t"}, "Range: 30 days"},
-		{[]string{"t"}, "Range: all"},
-		{[]string{"t"}, "Range: today"},
-		{[]string{"t"}, "Range: 7 days"},
+		{[]string{"2"}, "EVENTS"},
+		{[]string{"3"}, "SESSIONS"},
+		{[]string{"1"}, "POPUPS PER DAY"},
+		{[]string{"t"}, "Range 30 days"},
+		{[]string{"t"}, "Range all"},
+		{[]string{"t"}, "Range today"},
+		{[]string{"t"}, "Range 7 days"},
 		{[]string{"f", "nonsense", "enter"}, "Filter not changed"},
 		{[]string{"f", "type=unknown", "enter"}, "unknown event type"},
 		{[]string{"f", "project=demo-projekt", "enter"}, "filter: project=demo-projekt"},
 		{[]string{"c"}, "Filter and search are cleared"},
 		{[]string{"/", "x", "esc"}, "EVENTS"},
-		{[]string{"?"}, "KEYS"},
+		{[]string{"?"}, "keys: events"},
 		{[]string{"esc"}, "EVENTS"},
 		{[]string{"3", "enter"}, "TIMELINE"},
 		{[]string{"esc", "1"}, "POPUPS PER DAY"},
@@ -251,7 +252,7 @@ func TestKeys(t *testing.T) {
 	if m.search != "" {
 		t.Errorf("search = %q after esc", m.search)
 	}
-	_, cmd := m.Update(key("q"))
+	_, cmd := m.Update(keyMsg("q"))
 	if cmd == nil {
 		t.Fatal("q: no command")
 	}
@@ -266,7 +267,7 @@ func TestKeys(t *testing.T) {
 }
 
 func TestRefreshCommands(t *testing.T) {
-	// The view reads the audit log on "r" and on the timer, and never
+	// The view reads the audit log on "R" and on the timer, and never
 	// writes: the source has no write function.
 	var loads, verifies int
 	clk := clock.NewFake(now)
@@ -309,10 +310,10 @@ func TestRefreshCommands(t *testing.T) {
 	if loads != 1 || verifies != 1 {
 		t.Fatalf("after Init: %d loads, %d verifies", loads, verifies)
 	}
-	_, cmd := m.Update(key("r"))
+	_, cmd := m.Update(keyMsg("R"))
 	run(cmd)
 	if loads != 2 || verifies != 2 {
-		t.Errorf("after r: %d loads, %d verifies", loads, verifies)
+		t.Errorf("after R: %d loads, %d verifies", loads, verifies)
 	}
 	// The timer of the refresh.
 	tick := m.tick()

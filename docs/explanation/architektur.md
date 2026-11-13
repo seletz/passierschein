@@ -153,7 +153,7 @@ Die Standardbibliothek ist immer erlaubt.
 | `doctor` | `protocol`, `config`, `client`, `audit`, `audit/sqlite` (nur lesend), `approval` (nur die Prüfung der Datei der Freigabe-App), `backend` (nur die Namen der Arten), `token` (nur Typen), `tokenfile` (nur die Prüfung der Datei); nie `keychain` |
 | `skill` | `protocol` |
 | `auditstats` | `audit`, `protocol` |
-| `tui` | `audit`, `auditstats`, `protocol`, `clock`; Bubble Tea und Lip Gloss; nie `audit/sqlite` und kein Socket: die Einträge kommen über `tui.Source` |
+| `tui` | `audit`, `auditstats`, `protocol`, `clock`; Bubble Tea, Bubbles und Lip Gloss; nie `audit/sqlite` und kein Socket: die Einträge kommen über `tui.Source` |
 | `auditdemo` | `audit`, `protocol`, `session`, `clock` |
 | `cmd/a38` | jedes Paket |
 
@@ -733,7 +733,8 @@ Jede Abhängigkeit braucht einen Grund.
 | `github.com/modelcontextprotocol/go-sdk` | v1.8.0 | MCP-Server über stdio; das offizielle Go-SDK | in `go.mod` (Issue 24) |
 | `github.com/1password/onepassword-sdk-go` | v0.4.1 | 1Password-Backend mit Service Account; baut mit `CGO_ENABLED=0`; bringt `extism` und `wazero` mit; nur im macOS-Build | in `go.mod` (Issue 50) |
 | `charm.land/bubbletea/v2` | v2.1.1 | Oberfläche von `a38 tui`; nur im macOS-Build | in `go.mod` (Issue 71) |
-| `charm.land/lipgloss/v2` | v2.0.6 | Stile von `a38 tui` (16 Farben des Terminals); nur im macOS-Build | in `go.mod` (Issue 71) |
+| `charm.land/lipgloss/v2` | v2.0.6 | Stile von `a38 tui` (Theme für hellen und dunklen Hintergrund); nur im macOS-Build | in `go.mod` (Issue 71) |
+| `charm.land/bubbles/v2` | v2.2.1 | Tastenbelegung und Hilfe von `a38 tui` (`key`, `help`); nur im macOS-Build | in `go.mod` (Issue 71) |
 | `github.com/ebitengine/purego` | v0.11.3 | Aufruf von Security.framework ohne cgo für den Schlüsselbund; nur im macOS-Build, nur in `internal/keychain` | in `go.mod` (Issue 59) |
 
 `purego` ist die einzige neue Abhängigkeit für den Schlüsselbund.
@@ -748,7 +749,7 @@ Die Version v3 ist erprobt und reicht für beide Dateien.
 Das MCP-SDK steht seit Issue 24 in `go.mod`. Das SQLite-Modul steht noch nicht darin.
 Das Issue, das ein Modul braucht, nimmt es auf und prüft dabei die aktuelle Version.
 `modernc.org/sqlite` gehört nur in den Daemon, in `a38 audit` und in `a38 tui`.
-Bubble Tea v2 und Lip Gloss v2 sind die gepflegten Hauptversionen (Stand 2026-11-12). Lip Gloss v2.1.0 war drei Tage alt; `a38` nutzt v2.0.6. Bubbles braucht `a38 tui` nicht.
+Bubble Tea v2 und Lip Gloss v2 sind die gepflegten Hauptversionen (Stand 2026-11-12). Lip Gloss v2.1.0 war drei Tage alt; `a38` nutzt v2.0.6. `a38 tui` nutzt aus Bubbles nur `key` und `help`: Fußzeile und Hilfe entstehen aus derselben Tastenbelegung. Die Versionen sind dieselben wie in Stefans anderen Oberflächen mit Bubble Tea.
 Das MCP-SDK gehört nur in `internal/mcp`.
 
 ## Was diese Seite nicht entscheidet

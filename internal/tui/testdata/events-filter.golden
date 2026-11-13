@@ -1,7 +1,9 @@
- a38 tui   1 Overview   2 Events   3 Sessions                                        ? help  q quit 
- EVENTS 1–24 of 24, newest first
+ a38 tui                   updated 17:30:00                     1 overview  [2 events]  3 sessions  
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ audit.db · 1040 entries · chain intact · 30 days · filter: type=denial,expiry code=denied
+ EVENTS 1–23 of 24, newest first
    SEQ TIME        TYPE       PROJECT         SESSION             RESULT                            
-  1008 11-12 12:04 denial     demo-projekt    demo-review         denied                            
+▸ 1008 11-12 12:04 denial     demo-projekt    demo-review         denied                            
    881 11-09 12:12 denial     demo-projekt    demo-migration      denied                            
    869 11-09 11:11 denial     demo-projekt    demo-migration      denied                            
    844 11-09 08:43 denial     demo-projekt    demo-review         denied                            
@@ -24,7 +26,5 @@
     72 10-15 13:37 denial     beispielprojekt beispiel-koordinat… denied                            
     30 10-14 10:36 denial     demo-projekt    demo-migration      denied                            
     22 10-14 10:02 denial     demo-projekt    demo-migration      denied                            
-     3 10-14 08:10 denial     beispielprojekt beispiel-koordinat… denied                            
-
- audit.db │ 1040 entries │ chain intact │ 30 days │ filter: type=denial,expiry code=denied          
- enter detail · / search · f filter · c clear · t range · r refresh
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ enter detail • / search • f filter • t range • 1/2/3 view • ? help • q quit

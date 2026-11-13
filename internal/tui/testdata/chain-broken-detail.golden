@@ -1,4 +1,6 @@
- a38 tui   1 Overview   2 Events   3 Sessions                                        ? help  q quit 
+ a38 tui              updated 17:30:00               1 overview  [2 events] › entry 57  3 sessions  
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ~/.local/state/a38/audit.db · 1040 entries ·  CHAIN BROKEN at entry 57  · all
  ENTRY 57  (esc back)
   Time         2026-10-15 11:50:00 UTC
   Type         request
@@ -34,7 +36,5 @@
 
 
 
-
-
- ~/.local/state/a38/audit.db │ 1040 entries │ CHAIN BROKEN at entry 57 │ all                        
- j/k scroll · esc back · q quit
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ↑/↓ scroll • esc back • 1/2/3 view • ? help • q quit

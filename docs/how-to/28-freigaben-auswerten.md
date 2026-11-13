@@ -32,7 +32,7 @@ Die Ansicht liest die Audit-Datei aus `paths.audit_file` der Konfiguration.
 `--config <datei>` wählt eine andere Konfiguration, `--file <audit-datei>` eine andere Datei.
 `--range 30d` startet mit 30 Tagen statt 7.
 `--refresh 30s` liest das Audit-Log alle 30 Sekunden neu.
-Ohne `--refresh` liest die Ansicht nur mit der Taste `r` neu.
+Ohne `--refresh` liest die Ansicht nur mit der Taste `R` neu.
 
 Zum Ausprobieren ohne echtes Audit-Log schreibt ein Werkzeug der Entwicklung ein synthetisches Log mit 30 Tagen.
 Es schreibt nur eine neue Datei und nie in eine bestehende.
@@ -45,7 +45,7 @@ $ a38 tui --file /tmp/a38-tui-demo/audit.db --range 30d
 ## Ansichten
 
 Die Ansicht hat drei Teile.
-Die Ziffern `1`, `2` und `3` oder die Tabulatortaste wechseln zwischen ihnen.
+Die Ziffern `1`, `2` und `3` wechseln zwischen ihnen.
 
 | Ansicht | Inhalt |
 |---|---|
@@ -53,30 +53,57 @@ Die Ziffern `1`, `2` und `3` oder die Tabulatortaste wechseln zwischen ihnen.
 | 2 Ereignisse | Die Einträge des Audit-Logs, die neuesten zuerst. Die Eingabetaste öffnet einen Eintrag mit allen Feldern und seiner Stelle in der Hash-Kette. |
 | 3 Sitzungen | Jede Sitzung mit Anfragen, Popups, Grants, Auslieferungen und Ablehnungen. Die Eingabetaste zeigt die Grants der Sitzung und ihre Zeitleiste. |
 
-Die Statuszeile nennt die Audit-Datei, die Zahl der Einträge, den Zustand der Hash-Kette, den Zeitraum, den Filter und die Suche.
+Alle Ansichten teilen denselben Rahmen:
+
+- **Kopfzeile:** links `a38 tui` in einem Farbverlauf, in der Mitte gedämpft die Zeit des letzten Lesens (`updated 17:30:00`), rechts die Ansichten als Tabs. Die aktive Ansicht steht in eckigen Klammern auf der Akzentfarbe (`[2 events]`). Ein offenes Detail hängt hinter einem Pfeil an: `[2 events] › entry 1040`.
+- **Trennlinien** über und unter dem Inhalt.
+- **Kontextzeile:** die erste Zeile des Inhalts. Sie nennt die Audit-Datei, die Zahl der Einträge, den Zustand der Hash-Kette, den Zeitraum, den Filter und die Suche. Bei der Eingabe von Suche oder Filter steht hier die Eingabezeile, nach einer Taste wie `c` eine Meldung.
+- **Fußzeile:** die wichtigsten Tasten der Ansicht, dann die globalen Tasten (`enter detail • / search • f filter • t range • 1/2/3 view • ? help • q quit`). Passt ein Hinweis nicht mehr, steht dort `…`.
+- **Hilfe:** `?` legt eine Tafel mit allen Tasten der Ansicht und den globalen Tasten in einem abgerundeten Rahmen über den Inhalt. `esc` oder `?` schließt sie.
+- **Auswahl:** Die gewählte Zeile einer Liste trägt die Marke `▸` und ist hinterlegt.
+
 Beim Start prüft die Ansicht die Hash-Kette im Hintergrund.
-Ist die Kette gebrochen, nennt die Statuszeile den ersten fehlerhaften Eintrag, und die Übersicht warnt.
-Die Taste `r` prüft die Kette erneut.
+Ist die Kette gebrochen, nennt die Kontextzeile den ersten fehlerhaften Eintrag, und die Übersicht warnt.
+Die Taste `R` prüft die Kette erneut.
 
 ## Tasten
 
 | Taste | Wirkung |
 |---|---|
-| `1` `2` `3`, Tab | Ansicht wechseln |
-| `j` `k`, Pfeil ab und auf | bewegen oder blättern; `pgdown` `pgup` seitenweise, `g` `G` Anfang und Ende |
+| `1` `2` `3` | Ansicht wechseln; schließt ein offenes Detail |
+| `j` `k`, Pfeil ab und auf | bewegen oder blättern |
+| `pgdown` oder Leertaste, `pgup` oder `b` | seitenweise blättern |
+| `g` oder `home`, `G` oder `end` | Anfang und Ende |
 | Eingabetaste | Detail eines Ereignisses, Zeitleiste einer Sitzung |
 | `esc` | zurück |
 | `/` | Text in den Ereignissen suchen, ohne Rücksicht auf Groß- und Kleinschreibung |
 | `f` | Filter setzen |
 | `c` | Filter und Suche löschen |
 | `t` | Zeitraum wechseln: heute, 7 Tage, 30 Tage, alles |
-| `r` | Audit-Log neu lesen und Kette prüfen |
+| `R` | Audit-Log neu lesen und Kette prüfen |
 | `?` | Hilfe |
-| `q`, `ctrl+c` | beenden |
+| `q` | beenden; in der Eingabezeile ist `q` Text |
+| `ctrl+c` | beenden, immer |
 
 Eine Maus ist nicht nötig.
 Die Ansicht passt in 80 mal 24 Zeichen und nutzt ein größeres Fenster.
-Farben sind nur eine Hilfe: Jeder Zustand steht auch als Wort da.
+### Farben
+
+Die Ansicht folgt dem Hintergrund des Terminals.
+Beim Start fragt sie das Terminal nach seiner Hintergrundfarbe.
+Auf hellem Hintergrund dunkelt sie die Farben ab.
+Bis die Antwort kommt, gilt das dunkle Theme.
+
+| Rolle | Farbe | Wo |
+|---|---|---|
+| Akzent | Blau | Programmname (Verlauf von Blau über Türkis nach Violett), aktiver Tab, Überschriften, Spaltenköpfe, Tasten der Fußzeile, Rahmen der Hilfe, Marke `▸`, Balken |
+| Zahl | Türkis | Hauptzahlen der Übersicht |
+| Gut | Grün | Auslieferung, Freigabe, intakte Kette |
+| Vorsicht | Orange | Zeitablauf, Abweichung |
+| Fehler | Rot | Ablehnung, Fehler, gebrochene Kette |
+| Auswahl | Hinterlegung | gewählte Zeile |
+
+Farben sind nur eine Hilfe: Jeder Zustand steht auch als Wort da, der aktive Tab in Klammern, die Auswahl mit `▸`.
 `NO_COLOR=1` schaltet die Farben ab.
 
 ### Filter

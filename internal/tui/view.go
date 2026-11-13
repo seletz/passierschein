@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -14,21 +16,6 @@ import (
 	"github.com/seletz/passierschein/internal/audit"
 	"github.com/seletz/passierschein/internal/auditstats"
 	"github.com/seletz/passierschein/internal/protocol"
-)
-
-// The styles use the 16 colours of the terminal, so that the theme of the
-// terminal decides the exact colour (light or dark). Colour is only an aid:
-// each state also has a word. NO_COLOR removes the colours.
-var (
-	stBold  = lipgloss.NewStyle().Bold(true)
-	stRev   = lipgloss.NewStyle().Reverse(true)
-	stTab   = lipgloss.NewStyle().Reverse(true).Bold(true)
-	stBad   = lipgloss.NewStyle().Foreground(lipgloss.Red).Bold(true)
-	stWarn  = lipgloss.NewStyle().Foreground(lipgloss.Yellow)
-	stGood  = lipgloss.NewStyle().Foreground(lipgloss.Green)
-	stBar   = lipgloss.NewStyle().Foreground(lipgloss.Cyan)
-	stFaint = lipgloss.NewStyle().Faint(true)
-	stAlarm = lipgloss.NewStyle().Reverse(true).Bold(true).Foreground(lipgloss.Red)
 )
 
 // cut cleans s and shortens it to n cells with "…".
@@ -72,33 +59,54 @@ func dash(s string) string {
 	return s
 }
 
-func (m *Model) bodyHeight() int { return max(m.height-3, 1) }
+// The rows of the frame: the header and a rule above the body, a rule and
+// the footer below it.
+const chromeHeight = 4
 
-// View renders the screen: the header, the body, the status line and the
-// line for keys and input.
+// bodyHeight is the number of rows between the rules.
+func (m *Model) bodyHeight() int { return max(m.height-chromeHeight, 2) }
+
+// paneHeight is the number of rows of a view below the context line.
+func (m *Model) paneHeight() int { return max(m.bodyHeight()-1, 1) }
+
+// View renders the screen: the header with the program name and the tabs,
+// a rule, the context line and the view, a rule and the footer with the
+// key hints. The help is a panel over the body.
 func (m *Model) View() tea.View {
-	w, bh := m.width, m.bodyHeight()
-	var body []string
+	w, bh, ph := m.width, m.bodyHeight(), m.paneHeight()
+	var pane []string
 	switch {
-	case m.overlay == overlayHelp:
-		body = m.scroll(m.helpLines(w), &m.paneTop, bh)
 	case !m.loaded:
-		body = []string{"", " Reading the audit log …"}
+		pane = []string{"", m.th.Muted.Render(" Reading the audit log …")}
 	case m.loadErr != nil:
-		body = []string{"", stBad.Render(" Cannot read the audit log."), " " + cut(m.loadErr.Error(), w-2), "", " Press r to try again or q to quit."}
+		pane = []string{"", m.th.BadText.Render(" Cannot read the audit log."), " " + cut(m.loadErr.Error(), w-2), "",
+			m.th.Muted.Render(" Press R to try again or q to quit.")}
 	case m.overlay == overlayDetail:
-		body = m.scroll(m.detailLines(w), &m.paneTop, bh)
+		pane = m.scroll(m.detailLines(w), &m.paneTop, ph)
 	case m.overlay == overlayTimeline:
-		body = m.scroll(m.timelineLines(w), &m.paneTop, bh)
+		pane = m.scroll(m.timelineLines(w), &m.paneTop, ph)
 	case m.view == viewOverview:
-		body = m.scroll(m.overviewLines(w), &m.overviewTop, bh)
+		pane = m.scroll(m.overviewLines(w), &m.overviewTop, ph)
 	case m.view == viewEvents:
-		body = m.eventLines(w, bh)
+		pane = m.eventLines(w, ph)
 	case m.view == viewSessions:
-		body = m.sessionLines(w, bh)
+		pane = m.sessionLines(w, ph)
 	}
+	body := make([]string, 0, bh)
+	body = append(body, m.contextLine(w))
+	for i := 0; i < ph; i++ {
+		l := ""
+		if i < len(pane) {
+			l = pane[i]
+		}
+		body = append(body, l)
+	}
+	if m.help {
+		body = strings.Split(m.helpPanel(w, bh), "\n")
+	}
+	rule := m.th.Rule.Render(strings.Repeat("─", w))
 	lines := make([]string, 0, m.height)
-	lines = append(lines, m.headerLine(w))
+	lines = append(lines, m.header(w), rule)
 	for i := 0; i < bh; i++ {
 		l := ""
 		if i < len(body) {
@@ -106,7 +114,7 @@ func (m *Model) View() tea.View {
 		}
 		lines = append(lines, ansi.Truncate(l, w, ""))
 	}
-	lines = append(lines, m.statusLine(w), m.bottomLine(w))
+	lines = append(lines, rule, m.footer(w))
 	v := tea.NewView(strings.Join(lines, "\n"))
 	v.AltScreen = true
 	return v
@@ -121,89 +129,223 @@ func (m *Model) scroll(lines []string, top *int, h int) []string {
 		// The last line of the screen marks the hidden lines.
 		end--
 		out := append([]string(nil), lines[*top:end]...)
-		return append(out, stFaint.Render(fmt.Sprintf(" ↓ %d more lines (j, pgdown)", len(lines)-end)))
+		return append(out, m.th.Muted.Render(fmt.Sprintf(" ↓ %d more lines", len(lines)-end)))
 	}
 	return append([]string(nil), lines[*top:end]...)
 }
 
-func (m *Model) headerLine(w int) string {
-	var b strings.Builder
-	b.WriteString(stBold.Render(" a38 tui "))
-	for i, name := range viewNames {
-		label := fmt.Sprintf(" %d %s ", i+1, name)
-		if view(i) == m.view && m.overlay != overlayHelp {
-			label = stTab.Render(label)
-		}
-		b.WriteString(" " + label)
+// header renders the program name in the gradient of the theme on the
+// left, the time of the last read (muted) in the middle and the tabs on
+// the right. The active tab is in brackets on the accent colour, so it
+// reads without colour too; an open pane follows it after "›". The time
+// gives way to the tabs in a narrow window.
+func (m *Model) header(w int) string {
+	left := " " + m.th.gradient("a38 tui")
+	right := strings.Join(m.tabs(), " ") + " "
+	gap := w - ansi.StringWidth(left) - ansi.StringWidth(right)
+	status := ""
+	switch {
+	case m.loadErr != nil:
+		status = m.th.BadText.Render("read failed")
+	case m.loaded:
+		status = m.th.Muted.Render("updated " + m.now.In(m.opts.Location).Format("15:04:05"))
 	}
-	right := "? help  q quit "
-	used := ansi.StringWidth(b.String())
-	if gap := w - used - len(right); gap > 0 {
-		b.WriteString(strings.Repeat(" ", gap) + stFaint.Render(right))
+	if gap < 1 {
+		return ansi.Truncate(left+" "+right, w, "")
 	}
-	return ansi.Truncate(b.String(), w, "")
+	if status == "" || ansi.StringWidth(status)+2 > gap {
+		return left + strings.Repeat(" ", gap) + right
+	}
+	pad := (gap - ansi.StringWidth(status)) / 2
+	return left + strings.Repeat(" ", pad) + status + strings.Repeat(" ", gap-pad-ansi.StringWidth(status)) + right
 }
 
-func (m *Model) statusLine(w int) string {
+// tabs renders the tabs of the header: the number of an inactive tab in
+// the accent colour, the active tab in brackets on the accent colour.
+func (m *Model) tabs() []string {
+	tabs := make([]string, len(viewNames))
+	for i, name := range viewNames {
+		n := strconv.Itoa(i + 1)
+		if view(i) != m.view {
+			tabs[i] = " " + m.th.Mark.Render(n) + " " + name + " "
+			continue
+		}
+		t := m.th.Active.Render("[" + n + " " + name + "]")
+		var crumbs []string
+		switch m.overlay {
+		case overlayDetail:
+			crumbs = append(crumbs, "entry "+strconv.FormatUint(m.detail.Seq, 10))
+		case overlayTimeline:
+			crumbs = append(crumbs, "session "+cut(dash(m.timeline.Name), 24))
+		}
+		if m.help {
+			crumbs = append(crumbs, "help")
+		}
+		for _, c := range crumbs {
+			t += m.th.AccentText.Render(" › " + c)
+		}
+		tabs[i] = t
+	}
+	return tabs
+}
+
+// contextLine is the first line of the body: the input line while it is
+// open, else a message, else the state of the view: the audit file, the
+// number of entries, the hash chain, the range, the filter and the search.
+func (m *Model) contextLine(w int) string {
+	switch m.input {
+	case inputSearch:
+		return ansi.Truncate(" "+m.th.Label.Render("search ›")+" "+m.inputText+"█", w, "")
+	case inputFilter:
+		return ansi.Truncate(" "+m.th.Label.Render("filter ›")+" "+m.inputText+"█"+m.th.Muted.Render("  project= session= ref= type= code="), w, "")
+	}
+	if m.message != "" {
+		if m.msgErr {
+			return " " + m.th.BadText.Render(cut(m.message, w-2))
+		}
+		return " " + m.th.Muted.Render(cut(m.message, w-2))
+	}
 	line := m.statusText(m.opts.Source.Name)
 	if ansi.StringWidth(line) > w {
 		// Short of space: the base name of the file leaves room for the
 		// filter.
 		line = m.statusText(filepath.Base(m.opts.Source.Name))
 	}
-	if n := w - ansi.StringWidth(line); n > 0 {
-		line += stRev.Render(strings.Repeat(" ", n))
-	}
-	return ansi.Truncate(line, w, "")
+	return ansi.Truncate(line, w, "…")
 }
 
 func (m *Model) statusText(name string) string {
-	var segs []string
-	add := func(s string) { segs = append(segs, stRev.Render(" "+s+" ")) }
-	add(cut(name, 40))
-	add(fmt.Sprintf("%d entries", len(m.entries)))
+	segs := []string{m.th.Muted.Render(cut(name, 40)), fmt.Sprintf("%d entries", len(m.entries))}
 	switch {
 	case !m.verified:
-		add("chain: checking …")
+		segs = append(segs, m.th.Muted.Render("chain: checking …"))
 	case m.verErr != nil:
-		segs = append(segs, stAlarm.Render(" chain: CHECK FAILED "))
+		segs = append(segs, m.th.BadText.Render("chain: CHECK FAILED"))
 	case m.verify.OK:
-		add("chain intact")
+		segs = append(segs, m.th.GoodText.Render("chain intact"))
 	default:
-		segs = append(segs, stAlarm.Render(fmt.Sprintf(" CHAIN BROKEN at entry %d ", m.verify.FirstBadSeq)))
+		segs = append(segs, m.th.Alarm.Render(fmt.Sprintf(" CHAIN BROKEN at entry %d ", m.verify.FirstBadSeq)))
 	}
-	add(m.rng.Label())
+	segs = append(segs, m.rng.Label())
 	if !m.filter.empty() {
-		add("filter: " + m.filter.String())
+		segs = append(segs, m.th.AccentText.Render("filter: "+m.filter.String()))
 	}
 	if m.search != "" {
-		add("search: " + strconv.Quote(m.search))
+		segs = append(segs, m.th.AccentText.Render("search: "+strconv.Quote(m.search)))
 	}
-	return strings.Join(segs, stRev.Render("│"))
+	return " " + strings.Join(segs, m.th.Muted.Render(" · "))
 }
 
-func (m *Model) bottomLine(w int) string {
-	switch m.input {
-	case inputSearch:
-		return ansi.Truncate(stBold.Render(" Search: ")+m.inputText+"█"+stFaint.Render("  enter apply · esc cancel"), w, "")
-	case inputFilter:
-		return ansi.Truncate(stBold.Render(" Filter: ")+m.inputText+"█"+stFaint.Render("  project= session= ref= type= code="), w, "")
+// footerSeparator stands between the key hints of the footer.
+const footerSeparator = " • "
+
+// shortHelp returns the key hints of the footer: those of the current
+// view, then the global ones.
+func (m *Model) shortHelp() []key.Binding {
+	k := m.keys
+	switch {
+	case m.input != inputNone:
+		return []key.Binding{k.Apply, k.Cancel, k.ForceQuit}
+	case m.help:
+		return []key.Binding{k.Back, k.Quit}
+	case m.overlay != overlayNone:
+		return append([]key.Binding{k.Scroll, k.Back}, k.global()...)
+	case m.view == viewOverview:
+		return append([]key.Binding{k.Range, k.Filter, k.Scroll}, k.global()...)
+	case m.view == viewEvents:
+		return append([]key.Binding{k.Detail, k.Search, k.Filter, k.Range}, k.global()...)
 	}
-	if m.message != "" {
-		return " " + cut(m.message, w-2)
-	}
-	var hint string
+	return append([]key.Binding{k.Timeline, k.Filter, k.Range}, k.global()...)
+}
+
+// fullHelp returns the keys of the help: those of the current view in two
+// columns, then the global ones.
+func (m *Model) fullHelp() [][]key.Binding {
+	k := m.keys
+	nav := []key.Binding{k.Up, k.Down, k.PageUp, k.PageDown, k.Top, k.Bottom}
+	var view [][]key.Binding
 	switch {
 	case m.overlay != overlayNone:
-		hint = "j/k scroll · esc back · q quit"
+		view = [][]key.Binding{nav}
 	case m.view == viewOverview:
-		hint = "t range · f filter · j/k scroll · tab view · r refresh · ? help"
+		view = [][]key.Binding{{k.Up, k.Down, k.PageUp, k.PageDown, k.Top}, {k.Range, k.Filter, k.Clear, k.Search}}
 	case m.view == viewEvents:
-		hint = "enter detail · / search · f filter · c clear · t range · r refresh"
+		view = [][]key.Binding{nav, {k.Detail, k.Search, k.Filter, k.Clear, k.Range}}
 	default:
-		hint = "enter timeline · f filter · t range · r refresh · ? help"
+		view = [][]key.Binding{nav, {k.Timeline, k.Filter, k.Clear, k.Range}}
 	}
-	return stFaint.Render(" " + cut(hint, w-2))
+	return append(view, k.fullGlobal())
+}
+
+// footer renders the key hints as one line: key, space, description, the
+// hints separated by footerSeparator. A hint that does not fit gives way
+// to an ellipsis.
+func (m *Model) footer(w int) string {
+	st := m.th.help()
+	limit := w - 1
+	sep := st.ShortSeparator.Inline(true).Render(footerSeparator)
+	var b strings.Builder
+	total := 0
+	for _, kb := range m.shortHelp() {
+		item := st.ShortKey.Inline(true).Render(kb.Help().Key) + " " + st.ShortDesc.Inline(true).Render(kb.Help().Desc)
+		if total > 0 {
+			item = sep + item
+		}
+		iw := ansi.StringWidth(item)
+		if total+iw > limit {
+			if total+2 <= limit {
+				b.WriteString(" " + st.Ellipsis.Inline(true).Render("…"))
+			}
+			break
+		}
+		total += iw
+		b.WriteString(item)
+	}
+	return ansi.Truncate(" "+b.String(), w, "…")
+}
+
+// helpPanel renders the keys of the current view and the global keys in a
+// panel with a rounded border in the accent colour, in the middle of the
+// body. The notes follow if they fit.
+func (m *Model) helpPanel(w, h int) string {
+	hm := help.New()
+	hm.Styles = m.th.help()
+	hm.ShowAll = true
+	title := viewNames[m.view]
+	switch m.overlay {
+	case overlayDetail:
+		title = "entry"
+	case overlayTimeline:
+		title = "session"
+	}
+	keys := hm.FullHelpView(m.fullHelp())
+	inner := max(min(lipgloss.Width(keys), w-4), 20)
+	parts := []string{m.th.Title.Render("keys: " + title), "", keys}
+	notes := []string{
+		"The view only reads the audit log. It never writes and never talks to the daemon.",
+		"The filter for project and session also selects the figures. The filter for ref, type and code and the search select only the events.",
+		"Session name, agent, task and reason are claims of the agent and not verified.",
+		"The how-to \"Freigaben auswerten\" explains each figure.",
+	}
+	var noteLines []string
+	for _, n := range notes {
+		for _, l := range wrap(n, inner, 3) {
+			noteLines = append(noteLines, m.th.Muted.Render(l))
+		}
+	}
+	closing := m.th.Muted.Render("esc or ? closes this help")
+	// The borders, the title, three blank lines and the closing line take
+	// 7 rows. The notes come only if they fit, else only the last one.
+	switch fixed := 7 + lipgloss.Height(keys); {
+	case fixed+len(noteLines) <= h:
+		parts = append(parts, "")
+		parts = append(parts, noteLines...)
+	case fixed+1 <= h:
+		parts = append(parts, "", m.th.Muted.Render(cut(notes[len(notes)-1], inner)))
+	}
+	parts = append(parts, "", closing)
+	box := m.th.Border.Border(lipgloss.RoundedBorder()).Padding(0, 1).Render(lipgloss.JoinVertical(lipgloss.Left, parts...))
+	return lipgloss.Place(w, h, lipgloss.Center, lipgloss.Center, box)
 }
 
 // ---- overview ----------------------------------------------------------
@@ -228,23 +370,28 @@ func (m *Model) rangeText() string {
 }
 
 func (m *Model) overviewLines(w int) []string {
-	st := m.stats
-	row := func(label string, n int, style lipgloss.Style, note string) string {
+	st, th := m.stats, m.th
+	// row is one figure: the label, the number and a note. A main figure
+	// has a bold label; a state has its colour on the number.
+	row := func(label string, main bool, n int, style lipgloss.Style, note string) string {
 		num := padLeft(strconv.Itoa(n), 5)
 		if n > 0 {
 			num = style.Render(num)
 		}
-		return " " + pad(label, 13) + num + "   " + cut(note, max(w-23, 10))
+		l := pad(label, 13)
+		if main {
+			l = th.Strong.Render(l)
+		}
+		return " " + l + num + "   " + th.Muted.Render(cut(note, max(w-23, 10)))
 	}
-	plain := lipgloss.NewStyle()
 	var lines []string
 	if m.verified && m.verErr == nil && !m.verify.OK {
-		lines = append(lines, stAlarm.Render(" "+cut(fmt.Sprintf("The hash chain is broken at entry %d: %s.", m.verify.FirstBadSeq, m.verify.Finding), w-2)+" "),
-			stBad.Render(" "+cut("The figures may be wrong. a38 audit verify shows the same finding.", w-2)))
+		lines = append(lines, th.Alarm.Render(" "+cut(fmt.Sprintf("The hash chain is broken at entry %d: %s.", m.verify.FirstBadSeq, m.verify.Finding), w-2)+" "),
+			th.BadText.Render(" "+cut("The figures may be wrong. a38 audit verify shows the same finding.", w-2)))
 	}
-	lines = append(lines, " Range: "+m.rangeText()+stFaint.Render("  (t changes it)"))
+	lines = append(lines, " "+th.Label.Render("Range")+" "+m.rangeText()+th.Muted.Render("  (t changes it)"))
 	if st.Entries == 0 {
-		lines = append(lines, "", " No entries in this range.", " Press t for a longer range, or c to clear the filter.")
+		lines = append(lines, "", th.Muted.Render(" No entries in this range."), th.Muted.Render(" Press t for a longer range, or c to clear the filter."))
 		return lines
 	}
 	errs := make([]string, 0, len(st.ErrorCodes))
@@ -252,25 +399,25 @@ func (m *Model) overviewLines(w int) []string {
 		errs = append(errs, fmt.Sprintf("%s %d", dash(c.Name), c.Count))
 	}
 	lines = append(lines,
-		stBold.Render(row("POPUPS", st.Popups, plain, fmt.Sprintf("%.1f per day, busiest day %s with %d", st.PopupsPerDay, dash(st.BusiestDay.Date), st.BusiestDay.Popups))),
-		row(" approved", st.Approved, stGood, fmt.Sprintf("%s (partial %d)", percent(st.Approved, st.Popups), st.Partial)),
-		row(" denied", st.Denied, stBad, percent(st.Denied, st.Popups)+" denial share"),
-		row(" timed out", st.TimedOut, stWarn, fmt.Sprintf("%s (UI failed %d, session ended %d)", percent(st.TimedOut, st.Popups), st.Failed, st.Abandoned)),
-		row(" deviations", st.Deviations, stWarn, percent(st.Deviations, st.Popups)+" went beyond a live grant"),
-		" "+pad(" size", 13)+padLeft(formatMedian(st.BundleMedian), 5)+"   "+cut("median entries per popup, largest "+strconv.Itoa(st.BundleMax), max(w-23, 10)),
-		stBold.Render(row("DELIVERIES", st.Deliveries, plain, fmt.Sprintf("%s under a grant without popup (%d), %d after a popup",
-			percent(st.DeliveriesUnderGrant, st.Deliveries), st.DeliveriesUnderGrant, st.DeliveriesAfterPopup))),
-		stBold.Render(row("DENIED EARLY", st.PolicyDenials, plain, "by the policy, an unknown item or a full bundle")),
+		row("POPUPS", true, st.Popups, th.Figure, fmt.Sprintf("%.1f per day, busiest day %s with %d", st.PopupsPerDay, dash(st.BusiestDay.Date), st.BusiestDay.Popups)),
+		row(" approved", false, st.Approved, th.GoodText, fmt.Sprintf("%s (partial %d)", percent(st.Approved, st.Popups), st.Partial)),
+		row(" denied", false, st.Denied, th.BadText, percent(st.Denied, st.Popups)+" denial share"),
+		row(" timed out", false, st.TimedOut, th.CautionText, fmt.Sprintf("%s (UI failed %d, session ended %d)", percent(st.TimedOut, st.Popups), st.Failed, st.Abandoned)),
+		row(" deviations", false, st.Deviations, th.CautionText, percent(st.Deviations, st.Popups)+" went beyond a live grant"),
+		" "+pad(" size", 13)+padLeft(formatMedian(st.BundleMedian), 5)+"   "+th.Muted.Render(cut("median entries per popup, largest "+strconv.Itoa(st.BundleMax), max(w-23, 10))),
+		row("DELIVERIES", true, st.Deliveries, th.Figure, fmt.Sprintf("%s under a grant without popup (%d), %d after a popup",
+			percent(st.DeliveriesUnderGrant, st.Deliveries), st.DeliveriesUnderGrant, st.DeliveriesAfterPopup)),
+		row("DENIED EARLY", true, st.PolicyDenials, th.Figure, "by the policy, an unknown item or a full bundle"),
 		" "+cut(fmt.Sprintf("REVOCATIONS %d · ERRORS %d · LOCKS %d (ended %d)", st.Revocations, st.Errors, st.LockBegins, st.LockEnds), w-2),
 		"",
-		stBold.Render(fmt.Sprintf(" POPUPS PER DAY (largest %d)", st.BusiestDay.Popups)),
+		th.Title.Render(fmt.Sprintf(" POPUPS PER DAY (largest %d)", st.BusiestDay.Popups)),
 	)
-	lines = append(lines, chart(st.Days, w, 5)...)
+	lines = append(lines, m.chart(st.Days, w, 5)...)
 	lines = append(lines, "")
 	if len(errs) > 0 {
-		lines = append(lines, " "+stBold.Render("ERRORS BY CODE")+"  "+cut(strings.Join(errs, ", "), max(w-18, 10)), "")
+		lines = append(lines, " "+th.Title.Render("ERRORS BY CODE")+"  "+cut(strings.Join(errs, ", "), max(w-18, 10)), "")
 	}
-	lines = append(lines, rankTables(st, w)...)
+	lines = append(lines, m.rankTables(st, w)...)
 	return lines
 }
 
@@ -283,11 +430,12 @@ func formatMedian(v float64) string {
 
 // rankTables renders the busiest sessions and projects side by side and
 // the most requested credentials below them.
-func rankTables(st auditstats.Stats, w int) []string {
+func (m *Model) rankTables(st auditstats.Stats, w int) []string {
+	th := m.th
 	half := max((w-3)/2, 30)
 	table := func(title string, ranks []auditstats.Rank, width int) []string {
 		nameW := max(width-16, 8)
-		out := []string{stBold.Render(" "+pad(title, nameW)) + stBold.Render(padLeft("REQ", 5)+padLeft("POP", 5)+padLeft("DEL", 5))}
+		out := []string{th.Label.Render(" " + pad(title, nameW) + padLeft("REQ", 5) + padLeft("POP", 5) + padLeft("DEL", 5))}
 		for _, r := range ranks {
 			out = append(out, "  "+pad(r.Name, nameW-1)+padLeft(strconv.Itoa(r.Requests), 5)+padLeft(strconv.Itoa(r.Popups), 5)+padLeft(strconv.Itoa(r.Deliveries), 5))
 		}
@@ -305,14 +453,14 @@ func rankTables(st auditstats.Stats, w int) []string {
 			if i < len(proj) {
 				r = proj[i]
 			}
-			lines = append(lines, l+strings.Repeat(" ", max(half-ansi.StringWidth(l), 0))+" │ "+r)
+			lines = append(lines, l+strings.Repeat(" ", max(half-ansi.StringWidth(l), 0))+th.Rule.Render(" │ ")+r)
 		}
 	} else {
 		lines = append(append(lines, sess...), proj...)
 	}
 	lines = append(lines, "")
 	nameW := max(w-19, 20)
-	lines = append(lines, stBold.Render(" "+pad("MOST REQUESTED CREDENTIALS", nameW)+padLeft("REQ", 5)+padLeft("DEL", 5)+padLeft("DENY", 6)))
+	lines = append(lines, th.Label.Render(" "+pad("MOST REQUESTED CREDENTIALS", nameW)+padLeft("REQ", 5)+padLeft("DEL", 5)+padLeft("DENY", 6)))
 	for _, r := range st.TopReferences {
 		lines = append(lines, "  "+pad(r.Name, nameW-1)+padLeft(strconv.Itoa(r.Requests), 5)+padLeft(strconv.Itoa(r.Deliveries), 5)+padLeft(strconv.Itoa(r.Denials), 6))
 	}
@@ -323,9 +471,9 @@ func rankTables(st auditstats.Stats, w int) []string {
 var blocks = []string{" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"}
 
 // chart renders one bar per day (or per group of days) with h rows.
-func chart(days []auditstats.Day, w, h int) []string {
+func (m *Model) chart(days []auditstats.Day, w, h int) []string {
 	if len(days) == 0 {
-		return []string{"  (no days)"}
+		return []string{m.th.Muted.Render("  (no days)")}
 	}
 	avail := max(w-8, 10)
 	per := 1
@@ -350,9 +498,9 @@ func chart(days []auditstats.Day, w, h int) []string {
 	}
 	var lines []string
 	for r := h - 1; r >= 0; r-- {
-		prefix := "     │"
+		prefix := "     " + m.th.Rule.Render("│")
 		if r == h-1 {
-			prefix = fmt.Sprintf(" %3d ┤", top)
+			prefix = fmt.Sprintf(" %3d ", top) + m.th.Rule.Render("┤")
 		}
 		var b strings.Builder
 		for _, v := range vals {
@@ -366,10 +514,10 @@ func chart(days []auditstats.Day, w, h int) []string {
 			}
 			b.WriteString(strings.Repeat(cell, max(colW-1, 1)) + strings.Repeat(" ", min(colW-1, 1)))
 		}
-		lines = append(lines, prefix+stBar.Render(b.String()))
+		lines = append(lines, prefix+m.th.Bar.Render(b.String()))
 	}
 	n := len(vals) * colW
-	lines = append(lines, "   0 └"+strings.Repeat("─", n))
+	lines = append(lines, "   0 "+m.th.Rule.Render("└"+strings.Repeat("─", n)))
 	axis := []rune(strings.Repeat(" ", n+6))
 	put := func(at int, s string) {
 		for i, c := range s {
@@ -392,7 +540,7 @@ func chart(days []auditstats.Day, w, h int) []string {
 	if per > 1 {
 		put(6+n/2-4, fmt.Sprintf("(%d days per bar)", per))
 	}
-	lines = append(lines, strings.TrimRight(string(axis), " "))
+	lines = append(lines, m.th.Muted.Render(strings.TrimRight(string(axis), " ")))
 	return lines
 }
 
@@ -419,14 +567,14 @@ func resultText(e audit.Entry) string {
 
 // resultStyle colours a result: a denial or a fault in red, a timeout in
 // yellow.
-func resultStyle(e audit.Entry) lipgloss.Style {
+func (m *Model) resultStyle(e audit.Entry) lipgloss.Style {
 	switch {
 	case e.Result.Code == protocol.CodeTimeout:
-		return stWarn
+		return m.th.CautionText
 	case e.Result.Code != "", e.Type == audit.EventDenial:
-		return stBad
+		return m.th.BadText
 	case e.Type == audit.EventDelivery:
-		return stGood
+		return m.th.GoodText
 	}
 	return lipgloss.NewStyle()
 }
@@ -475,7 +623,7 @@ func (m *Model) eventLines(w, h int) []string {
 	if refs > 0 {
 		head += " " + pad("REFERENCES", refs)
 	}
-	lines := []string{stBold.Render(title), stBold.Render(head)}
+	lines := []string{m.title(title, n == 0), m.th.Label.Render(head)}
 	for i := m.evTop; i < min(m.evTop+rows, n); i++ {
 		e := m.events[i]
 		cells := []string{
@@ -491,11 +639,10 @@ func (m *Model) eventLines(w, h int) []string {
 			ref = " " + cutLeft(refsText(e.References), refs)
 		}
 		if i == m.evCursor {
-			line := " " + strings.Join(cells, " ") + " " + result + ref
-			lines = append(lines, stRev.Render(line+strings.Repeat(" ", max(w-ansi.StringWidth(line), 0))))
+			lines = append(lines, m.selected(strings.Join(cells, " ")+" "+result+ref, w))
 			continue
 		}
-		lines = append(lines, " "+strings.Join(cells, " ")+" "+resultStyle(e).Render(result)+ref)
+		lines = append(lines, " "+strings.Join(cells, " ")+" "+m.resultStyle(e).Render(result)+ref)
 	}
 	return lines
 }
@@ -543,7 +690,7 @@ func (m *Model) detailLines(w int) []string {
 	vw := max(w-16, 20)
 	field := func(label, value string) []string {
 		ls := wrap(value, vw, 4)
-		out := []string{"  " + pad(label, 13) + ls[0]}
+		out := []string{"  " + m.th.Label.Render(pad(label, 13)) + ls[0]}
 		for _, l := range ls[1:] {
 			out = append(out, "  "+strings.Repeat(" ", 13)+l)
 		}
@@ -556,14 +703,14 @@ func (m *Model) detailLines(w int) []string {
 		last = m.entries[len(m.entries)-1].Seq
 	}
 	local := e.Time.In(m.opts.Location)
-	add(stBold.Render(fmt.Sprintf(" ENTRY %d", e.Seq)) + stFaint.Render("  (esc back)"))
+	add(m.th.Title.Render(fmt.Sprintf(" ENTRY %d", e.Seq)) + m.th.Muted.Render("  (esc back)"))
 	when := local.Format("2006-01-02 15:04:05 MST")
 	if _, off := local.Zone(); off != 0 {
 		when += " (" + e.Time.UTC().Format("15:04:05") + " UTC)"
 	}
 	add(field("Time", when)...)
 	add(field("Type", string(e.Type))...)
-	add("  " + pad("Result", 13) + resultStyle(e).Render(cut(resultText(e), vw)))
+	add("  " + m.th.Label.Render(pad("Result", 13)) + m.resultStyle(e).Render(cut(resultText(e), vw)))
 	add(field("Detail", dash(e.Result.Detail))...)
 	add(field("Request ID", dash(e.Result.RequestID))...)
 	add(field("Grant ID", dash(e.Result.GrantID))...)
@@ -578,9 +725,9 @@ func (m *Model) detailLines(w int) []string {
 		if i == 0 {
 			label = "References"
 		}
-		add("  " + pad(label, 13) + cut(r.String(), vw))
+		add("  " + m.th.Label.Render(pad(label, 13)) + cut(r.String(), vw))
 	}
-	add("", stBold.Render(" VERIFIED BY THE DAEMON"))
+	add("", m.th.Title.Render(" VERIFIED BY THE DAEMON"))
 	add(field("Session ID", dash(string(e.Verified.SessionID)))...)
 	add(field("Project", dash(e.Verified.Project))...)
 	origin := dash(string(e.Verified.Origin))
@@ -590,21 +737,21 @@ func (m *Model) detailLines(w int) []string {
 	add(field("Origin", origin)...)
 	add(field("Program", dash(e.Verified.Process))...)
 	add(field("Directory", dash(e.Verified.Cwd))...)
-	add("", stBold.Render(" CLAIMS OF THE AGENT (NOT VERIFIED)"))
+	add("", m.th.Title.Render(" CLAIMS OF THE AGENT (NOT VERIFIED)"))
 	add(field("Session name", dash(e.Claims.SessionName))...)
 	add(field("Agent", dash(e.Claims.Agent))...)
 	add(field("Task", dash(e.Claims.Task))...)
 	add(field("Reason", dash(e.Claims.Reason))...)
-	add("", stBold.Render(" HASH CHAIN"))
+	add("", m.th.Title.Render(" HASH CHAIN"))
 	add(field("Position", fmt.Sprintf("entry %d of %d", e.Seq, last))...)
 	chain := m.chainText(e.Seq)
 	if m.verified && m.verErr == nil && !m.verify.OK && e.Seq >= m.verify.FirstBadSeq {
-		add("  " + pad("Chain", 13) + stBad.Render(cut(chain, vw)))
+		add("  " + m.th.Label.Render(pad("Chain", 13)) + m.th.BadText.Render(cut(chain, vw)))
 	} else {
 		add(field("Chain", chain)...)
 	}
-	add("  " + pad("Prev hash", 13) + cut(e.PrevHash, vw))
-	add("  " + pad("Hash", 13) + cut(e.Hash, vw))
+	add("  " + m.th.Label.Render(pad("Prev hash", 13)) + cut(e.PrevHash, vw))
+	add("  " + m.th.Label.Render(pad("Hash", 13)) + cut(e.Hash, vw))
 	return lines
 }
 
@@ -634,7 +781,7 @@ func (m *Model) sessionLines(w, h int) []string {
 		head += " " + pad("ID", idW)
 	}
 	head += num("REQ") + num("POP") + num("GRNT") + num("DEL") + num("DENY")
-	lines := []string{stBold.Render(title), stBold.Render(head)}
+	lines := []string{m.title(title, n == 0), m.th.Label.Render(head)}
 	for i := m.sesTop; i < min(m.sesTop+rows, n); i++ {
 		s := m.sessions[i]
 		line := " " + pad(dash(s.Name), nameW) + " " + pad(dash(s.Project), projW) + " " + pad(s.Last.In(m.opts.Location).Format("01-02 15:04"), 11)
@@ -643,7 +790,7 @@ func (m *Model) sessionLines(w, h int) []string {
 		}
 		line += num(strconv.Itoa(s.Requests)) + num(strconv.Itoa(s.Popups)) + num(strconv.Itoa(s.Grants)) + num(strconv.Itoa(s.Deliveries)) + num(strconv.Itoa(s.Denials))
 		if i == m.sesCursor {
-			line = stRev.Render(line + strings.Repeat(" ", max(w-ansi.StringWidth(line), 0)))
+			line = m.selected(line[1:], w)
 		}
 		lines = append(lines, line)
 	}
@@ -655,14 +802,14 @@ func (m *Model) timelineLines(w int) []string {
 	loc := m.opts.Location
 	var lines []string
 	add := func(l ...string) { lines = append(lines, l...) }
-	add(stBold.Render(" SESSION "+cut(dash(s.Name), max(w-30, 10))) + stFaint.Render(" (claimed name, esc back)"))
+	add(m.th.Title.Render(" SESSION "+cut(dash(s.Name), max(w-30, 10))) + m.th.Muted.Render(" (claimed name, esc back)"))
 	add(" " + cut(fmt.Sprintf("ID %s · project %s · agent %s (claimed)", s.ID, dash(s.Project), dash(s.Agent)), w-2))
 	add(" " + cut(fmt.Sprintf("%s to %s · requests %d · popups %d · grants %d · deliveries %d · denials %d",
 		s.First.In(loc).Format("2006-01-02 15:04"), s.Last.In(loc).Format("15:04"), s.Requests, s.Popups, s.Grants, s.Deliveries, s.Denials), w-2))
-	add("", stBold.Render(" GRANTS"))
+	add("", m.th.Title.Render(" GRANTS"))
 	grants := auditstats.Grants(m.entries, s.ID)
 	if len(grants) == 0 {
-		add("  none")
+		add(m.th.Muted.Render("  none"))
 	}
 	for _, g := range grants {
 		end := "no end event"
@@ -672,7 +819,7 @@ func (m *Model) timelineLines(w int) []string {
 		add("  " + cut(fmt.Sprintf("%s  %s for %s  %s  %d deliveries  %d credentials",
 			g.ID, g.Granted.In(loc).Format("15:04"), shortDuration(g.Lifetime), end, g.Deliveries, len(g.References)), w-3))
 	}
-	add("", stBold.Render(" TIMELINE"))
+	add("", m.th.Title.Render(" TIMELINE"))
 	resW := 16
 	refW := max(w-2-14-1-10-1-resW-1, 10)
 	for _, e := range m.entries {
@@ -689,7 +836,7 @@ func (m *Model) timelineLines(w int) []string {
 			extra = e.Result.GrantID + ", " + refsText(e.References)
 		}
 		add("  " + e.Time.In(loc).Format("01-02 15:04:05") + " " + pad(string(e.Type), 10) + " " +
-			resultStyle(e).Render(pad(resultText(e), resW)) + " " + cut(extra, refW))
+			m.resultStyle(e).Render(pad(resultText(e), resW)) + " " + cut(extra, refW))
 	}
 	return lines
 }
@@ -707,37 +854,19 @@ func shortDuration(d time.Duration) string {
 	return d.String()
 }
 
-// ---- help --------------------------------------------------------------
+// title renders the title of a list; the title of an empty list is muted.
+func (m *Model) title(s string, empty bool) string {
+	if empty {
+		return m.th.Muted.Render(s)
+	}
+	return m.th.Title.Render(s)
+}
 
-func (m *Model) helpLines(w int) []string {
-	keys := [][2]string{
-		{"1 2 3, tab", "switch the view: overview, events, sessions"},
-		{"j k, ↓ ↑", "move or scroll; pgdown pgup, g G: start and end"},
-		{"enter", "detail of an event, timeline of a session"},
-		{"esc", "back"},
-		{"/", "search text in the events"},
-		{"f", "filter: project= session= ref= type= code="},
-		{"c", "clear the filter and the search"},
-		{"t", "time range: today, 7 days, 30 days, all"},
-		{"r", "read the audit log again and check the chain"},
-		{"?", "this help"},
-		{"q, ctrl+c", "quit"},
-	}
-	lines := []string{stBold.Render(" KEYS") + stFaint.Render("  (esc back)")}
-	for _, k := range keys {
-		lines = append(lines, "  "+pad(k[0], 13)+cut(k[1], w-16))
-	}
-	notes := []string{
-		"The view only reads the audit log. It never writes and never talks to the daemon.",
-		"The filter for project and session also selects the figures. The filter for ref, type and code and the search select only the events.",
-		"Session name, agent, task and reason are claims of the agent and not verified.",
-		"The how-to \"Freigaben auswerten\" explains each figure.",
-	}
-	lines = append(lines, "", stBold.Render(" NOTES"))
-	for _, n := range notes {
-		for _, l := range wrap(n, w-4, 3) {
-			lines = append(lines, "  "+l)
-		}
-	}
-	return lines
+// selected renders the selected row of a list: the mark ▸ and the row on
+// the selection background, filled to the width. The row is plain text, so
+// that the background runs through.
+func (m *Model) selected(row string, w int) string {
+	line := "▸" + ansi.Strip(row)
+	line += strings.Repeat(" ", max(w-ansi.StringWidth(line), 0))
+	return m.th.Mark.Inherit(m.th.Selected).Render("▸") + m.th.Selected.Render(line[len("▸"):])
 }

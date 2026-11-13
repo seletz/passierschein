@@ -1,7 +1,9 @@
- a38 tui   1 Overview   2 Events   3 Sessions                    ? help  q quit 
+ a38 tui         updated 17:30:00          [1 overview]  2 events   3 sessions  
+────────────────────────────────────────────────────────────────────────────────
+ audit.db · 1040 entries ·  CHAIN BROKEN at entry 57  · 30 days
  The hash chain is broken at entry 57: the hash does not match the content. 
  The figures may be wrong. a38 audit verify shows the same finding.
- Range: 30 days, 2026-10-14 to 2026-11-12  (t changes it)
+ Range 30 days, 2026-10-14 to 2026-11-12  (t changes it)
  POPUPS         108   3.6 per day, busiest day 2026-11-02 with 8
   approved       80   74% (partial 4)
   denied         20   19% denial share
@@ -17,8 +19,6 @@
      │▆ ▆ ▁     ▆             ▁   ▆         █       █     █ █     
      │█ █ █     █ ▄     ▄     █   █         █   ▄ ▄ █   ▄ █ █   ▄ 
      │█ █ █     █ █ ▂ ▇ █     █   █ ▇   ▇   █ ▇ █ █ █ ▇ █ █ █   █ 
-     │█ █ █     █ █ █ █ █     █   █ █ ▅ █   █ █ █ █ █ █ █ █ █ ▅ █ 
-   0 └────────────────────────────────────────────────────────────
- ↓ 16 more lines (j, pgdown)
- audit.db │ 1040 entries │ CHAIN BROKEN at entry 57 │ 30 days                   
- t range · f filter · j/k scroll · tab view · r refresh · ? help
+ ↓ 18 more lines
+────────────────────────────────────────────────────────────────────────────────
+ t range • f filter • ↑/↓ scroll • 1/2/3 view • ? help • q quit

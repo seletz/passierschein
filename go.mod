@@ -3,6 +3,7 @@ module github.com/seletz/passierschein
 go 1.27.4
 
 require (
+	charm.land/bubbles/v2 v2.2.1
 	charm.land/bubbletea/v2 v2.1.1
 	charm.land/lipgloss/v2 v2.0.6
 	github.com/1password/onepassword-sdk-go v0.4.1

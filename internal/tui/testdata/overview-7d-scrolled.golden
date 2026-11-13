@@ -1,6 +1,6 @@
- a38 tui   1 Overview   2 Events   3 Sessions                    ? help  q quit 
- POPUPS PER DAY (largest 8)
-   8 ┤█████             ▃▃▃▃▃ █████             
+ a38 tui         updated 17:30:00          [1 overview]  2 events   3 sessions  
+────────────────────────────────────────────────────────────────────────────────
+ ~/.local/state/a38/audit.db · 1040 entries · chain intact · 7 days
      │█████             █████ █████             
      │█████       ▄▄▄▄▄ █████ █████       ▄▄▄▄▄ 
      │█████ ▇▇▇▇▇ █████ █████ █████       █████ 
@@ -20,5 +20,5 @@
   op://demo.app.k8s-dev/storage-dev/secret-key                   28   26     2
   op://beispiel.app.k8s-dev/datenbank-dev/password               21   21     0
   op://beispiel.app.k8s-dev/api-token-dev/credential             10   10     0
- ~/.local/state/a38/audit.db │ 1040 entries │ chain intact │ 7 days             
- t range · f filter · j/k scroll · tab view · r refresh · ? help
+────────────────────────────────────────────────────────────────────────────────
+ t range • f filter • ↑/↓ scroll • 1/2/3 view • ? help • q quit

@@ -1,4 +1,6 @@
- a38 tui   1 Overview   2 Events   3 Sessions                                        ? help  q quit 
+ a38 tui             updated 17:30:00              1 overview  [2 events] › entry 1038  3 sessions  
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ~/.local/state/a38/audit.db · 1040 entries · chain intact · 7 days
  ENTRY 1038  (esc back)
   Time         2026-11-12 15:59:00 UTC
   Type         request
@@ -34,7 +36,5 @@
 
 
 
-
-
- ~/.local/state/a38/audit.db │ 1040 entries │ chain intact │ 7 days                                 
- j/k scroll · esc back · q quit
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ↑/↓ scroll • esc back • 1/2/3 view • ? help • q quit

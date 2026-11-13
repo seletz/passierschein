@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/seletz/passierschein/internal/audit"
@@ -60,16 +61,15 @@ const (
 	viewSessions
 )
 
-var viewNames = []string{"Overview", "Events", "Sessions"}
+var viewNames = []string{"overview", "events", "sessions"}
 
-// overlay is a pane over the main view.
+// overlay is a pane in place of the main view.
 type overlay int
 
 const (
 	overlayNone overlay = iota
 	overlayDetail
 	overlayTimeline
-	overlayHelp
 )
 
 // input is the mode of the input line.
@@ -209,6 +209,8 @@ type Model struct {
 	opts   Options
 	width  int
 	height int
+	th     theme
+	keys   keyMap
 
 	loaded   bool
 	loadErr  error
@@ -219,6 +221,7 @@ type Model struct {
 
 	view    view
 	overlay overlay
+	help    bool
 	rng     auditstats.Range
 	filter  filter
 	search  string
@@ -226,6 +229,7 @@ type Model struct {
 	input     input
 	inputText string
 	message   string
+	msgErr    bool
 
 	// Derived from the entries, the range and the filter.
 	now      time.Time
@@ -256,12 +260,14 @@ func New(o Options) *Model {
 	if o.Range == "" {
 		o.Range = auditstats.Range7Days
 	}
-	return &Model{opts: o, width: 80, height: 24, rng: o.Range}
+	return &Model{opts: o, width: 80, height: 24, rng: o.Range, th: newTheme(true), keys: newKeyMap()}
 }
 
-// Init reads the audit log and checks the hash chain in the background.
+// Init reads the audit log and checks the hash chain in the background,
+// and asks the terminal for its background colour. The view uses the dark
+// theme until the answer comes.
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(m.load(), m.check(), m.tick())
+	return tea.Batch(m.load(), m.check(), m.tick(), tea.RequestBackgroundColor)
 }
 
 func (m *Model) load() tea.Cmd {
@@ -310,6 +316,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.verified, m.verify, m.verErr = true, msg.v, msg.err
 	case tickMsg:
 		return m, tea.Batch(m.load(), m.tick())
+	case tea.BackgroundColorMsg:
+		m.th = newTheme(msg.IsDark())
 	case tea.KeyPressMsg:
 		return m.key(msg)
 	}
@@ -349,65 +357,52 @@ func clampInt(v, lo, hi int) int {
 
 // key handles a key press.
 func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	s := k.String()
-	if s == "ctrl+c" {
+	km := m.keys
+	if key.Matches(k, km.ForceQuit) {
 		return m, tea.Quit
 	}
 	if m.input != inputNone {
 		m.editInput(k)
 		return m, nil
 	}
-	m.message = ""
-	if m.overlay != overlayNone {
-		switch s {
-		case "esc", "backspace":
-			m.overlay, m.paneTop = overlayNone, 0
-		case "q":
+	m.message, m.msgErr = "", false
+	if m.help {
+		switch {
+		case key.Matches(k, km.Help, km.Back):
+			m.help = false
+		case key.Matches(k, km.Quit):
 			return m, tea.Quit
-		case "j", "down":
-			m.paneTop++
-		case "k", "up":
-			m.paneTop = max(m.paneTop-1, 0)
-		case "pgdown", "space":
-			m.paneTop += m.bodyHeight() - 1
-		case "pgup":
-			m.paneTop = max(m.paneTop-m.bodyHeight()+1, 0)
-		case "home", "g":
-			m.paneTop = 0
-		case "?":
-			m.overlay, m.paneTop = overlayHelp, 0
 		}
 		return m, nil
 	}
-	switch s {
-	case "q":
+	switch {
+	case key.Matches(k, km.Quit):
 		return m, tea.Quit
-	case "?":
-		m.overlay, m.paneTop = overlayHelp, 0
-	case "1", "2", "3":
-		m.view = view(s[0] - '1')
-	case "tab":
-		m.view = (m.view + 1) % 3
-	case "shift+tab":
-		m.view = (m.view + 2) % 3
-	case "t":
-		m.rng = m.rng.Next()
-		m.recompute()
-	case "r":
+	case key.Matches(k, km.Help):
+		m.help = true
+	case key.Matches(k, km.Overview, km.Events, km.Sessions):
+		m.view = view(k.String()[0] - '1')
+		m.overlay, m.paneTop = overlayNone, 0
+	case key.Matches(k, km.Reload):
 		m.message = "Reading the audit log again."
 		return m, tea.Batch(m.load(), m.check())
-	case "/":
+	case m.overlay != overlayNone:
+		m.paneKey(k)
+	case key.Matches(k, km.Range):
+		m.rng = m.rng.Next()
+		m.recompute()
+	case key.Matches(k, km.Search):
 		m.input, m.inputText = inputSearch, m.search
 		if m.view == viewOverview {
 			m.view = viewEvents
 		}
-	case "f":
+	case key.Matches(k, km.Filter):
 		m.input, m.inputText = inputFilter, m.filter.String()
-	case "c":
+	case key.Matches(k, km.Clear):
 		m.filter, m.search = filter{}, ""
 		m.recompute()
 		m.message = "Filter and search are cleared."
-	case "enter":
+	case key.Matches(k, km.Open):
 		switch {
 		case m.view == viewEvents && len(m.events) > 0:
 			m.overlay, m.paneTop, m.detail = overlayDetail, 0, m.events[m.evCursor]
@@ -415,27 +410,50 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.overlay, m.paneTop, m.timeline = overlayTimeline, 0, m.sessions[m.sesCursor]
 		}
 	default:
-		m.move(s)
+		m.move(k)
 	}
 	return m, nil
 }
 
+// paneKey handles a key in the detail or the timeline.
+func (m *Model) paneKey(k tea.KeyPressMsg) {
+	km := m.keys
+	page := max(m.paneHeight()-1, 1)
+	switch {
+	case key.Matches(k, km.Back):
+		m.overlay, m.paneTop = overlayNone, 0
+	case key.Matches(k, km.Down):
+		m.paneTop++
+	case key.Matches(k, km.Up):
+		m.paneTop = max(m.paneTop-1, 0)
+	case key.Matches(k, km.PageDown):
+		m.paneTop += page
+	case key.Matches(k, km.PageUp):
+		m.paneTop = max(m.paneTop-page, 0)
+	case key.Matches(k, km.Top):
+		m.paneTop = 0
+	case key.Matches(k, km.Bottom):
+		m.paneTop = 1 << 30
+	}
+}
+
 // move moves the cursor of the current view.
-func (m *Model) move(s string) {
-	page := max(m.bodyHeight()-3, 1)
+func (m *Model) move(k tea.KeyPressMsg) {
+	km := m.keys
+	page := max(m.paneHeight()-2, 1)
 	delta := 0
-	switch s {
-	case "j", "down":
+	switch {
+	case key.Matches(k, km.Down):
 		delta = 1
-	case "k", "up":
+	case key.Matches(k, km.Up):
 		delta = -1
-	case "pgdown", "space":
+	case key.Matches(k, km.PageDown):
 		delta = page
-	case "pgup":
+	case key.Matches(k, km.PageUp):
 		delta = -page
-	case "home", "g":
+	case key.Matches(k, km.Top):
 		delta = -1 << 30
-	case "end", "G":
+	case key.Matches(k, km.Bottom):
 		delta = 1 << 30
 	default:
 		return
@@ -463,7 +481,7 @@ func (m *Model) editInput(k tea.KeyPressMsg) {
 		case inputFilter:
 			f, err := parseFilter(m.inputText)
 			if err != nil {
-				m.message = "Filter not changed: " + err.Error()
+				m.message, m.msgErr = "Filter not changed: "+err.Error(), true
 				m.input = inputNone
 				return
 			}
