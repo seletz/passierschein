@@ -13,6 +13,7 @@ Eine Anleitung löst eine bestimmte Aufgabe.
 - [a38 als MCP-Server anmelden](22-mcp-server-anmelden.md)
 - [Störung finden und beheben](24-stoerung-finden-und-beheben.md)
 - [Konfiguration anlegen und ändern](26-konfiguration-anlegen-und-aendern.md)
+- [Daemon als Dienst einrichten](28-daemon-als-dienst-einrichten.md)
 - [1Password-Backend einrichten](30-1password-backend-einrichten.md)
 - [Freigabe-App lokal ausprobieren](40-freigabe-app-ausprobieren.md)
 - [Demo vorführen](50-demo-vorfuehren.md)
