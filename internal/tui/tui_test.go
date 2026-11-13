@@ -88,6 +88,9 @@ func keyMsg(s string) tea.KeyPressMsg {
 		"enter": tea.KeyEnter, "esc": tea.KeyEscape, "tab": tea.KeyTab, "backspace": tea.KeyBackspace,
 		"up": tea.KeyUp, "down": tea.KeyDown, "pgdown": tea.KeyPgDown, "pgup": tea.KeyPgUp,
 	}
+	if s == "shift+tab" {
+		return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
+	}
 	if c, ok := special[s]; ok {
 		return tea.KeyPressMsg{Code: c}
 	}
@@ -267,7 +270,7 @@ func TestKeys(t *testing.T) {
 }
 
 func TestRefreshCommands(t *testing.T) {
-	// The view reads the audit log on "R" and on the timer, and never
+	// The view reads the audit log on "r" and on the timer, and never
 	// writes: the source has no write function.
 	var loads, verifies int
 	clk := clock.NewFake(now)
@@ -310,10 +313,10 @@ func TestRefreshCommands(t *testing.T) {
 	if loads != 1 || verifies != 1 {
 		t.Fatalf("after Init: %d loads, %d verifies", loads, verifies)
 	}
-	_, cmd := m.Update(keyMsg("R"))
+	_, cmd := m.Update(keyMsg("r"))
 	run(cmd)
 	if loads != 2 || verifies != 2 {
-		t.Errorf("after R: %d loads, %d verifies", loads, verifies)
+		t.Errorf("after r: %d loads, %d verifies", loads, verifies)
 	}
 	// The timer of the refresh.
 	tick := m.tick()

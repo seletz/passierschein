@@ -25,7 +25,7 @@ const tuiUsage = `Usage:
 The view reads the audit log only. It never writes and never talks to the
 daemon. R is today, 7d (default), 30d or all. --refresh reads the audit log
 again after the interval, for example 30s; 0 (default) reads it only on
-the key "R".
+the key "r".
 `
 
 // runTUI shows the audit log in the terminal (F13, UC6). Only the macOS
@@ -41,7 +41,7 @@ func runTUI(args []string, stdout, stderr io.Writer) int {
 	fs.Usage = func() { _, _ = fmt.Fprint(stderr, tuiUsage) }
 	af.register(fs)
 	fs.StringVar(&rangeName, "range", string(auditstats.Range7Days), "time range at the start: today, 7d, 30d or all")
-	fs.DurationVar(&refresh, "refresh", 0, "read the audit log again after this interval (0: only on the key R)")
+	fs.DurationVar(&refresh, "refresh", 0, "read the audit log again after this interval (0: only on the key r)")
 	pos, err := parseInterspersed(fs, args)
 	if err != nil {
 		return exitUsage

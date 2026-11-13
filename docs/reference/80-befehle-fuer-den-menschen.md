@@ -325,7 +325,7 @@ Unter Linux endet er mit 1 und nennt `a38 audit list` und `a38 audit stats`.
 | `--config <datei>` | Konfigurationsdatei; die Audit-Datei steht in `paths.audit_file`. |
 | `--file <audit-datei>` | ersetzt den Pfad aus der Konfiguration. |
 | `--range today\|7d\|30d\|all` | Zeitraum beim Start, Standard `7d`. Die Taste `t` wechselt ihn. |
-| `--refresh <dauer>` | liest das Audit-Log nach der Dauer erneut, zum Beispiel `30s`. Standard `0`: nur mit der Taste `R`. Der kleinste Wert ist `1s`. |
+| `--refresh <dauer>` | liest das Audit-Log nach der Dauer erneut, zum Beispiel `30s`. Standard `0`: nur mit der Taste `r`. Der kleinste Wert ist `1s`. |
 
 Die Ansicht öffnet die Audit-Datei nur lesend und schließt sie nach jedem Lesen.
 Sie schreibt nie und spricht mit keinem Socket des Daemons.

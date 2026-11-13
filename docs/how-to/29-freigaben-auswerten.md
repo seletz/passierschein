@@ -32,7 +32,7 @@ Die Ansicht liest die Audit-Datei aus `paths.audit_file` der Konfiguration.
 `--config <datei>` wählt eine andere Konfiguration, `--file <audit-datei>` eine andere Datei.
 `--range 30d` startet mit 30 Tagen statt 7.
 `--refresh 30s` liest das Audit-Log alle 30 Sekunden neu.
-Ohne `--refresh` liest die Ansicht nur mit der Taste `R` neu.
+Ohne `--refresh` liest die Ansicht nur mit der Taste `r` neu.
 
 Zum Ausprobieren ohne echtes Audit-Log schreibt ein Werkzeug der Entwicklung ein synthetisches Log mit 30 Tagen.
 Es schreibt nur eine neue Datei und nie in eine bestehende.
@@ -45,7 +45,7 @@ $ a38 tui --file /tmp/a38-tui-demo/audit.db --range 30d
 ## Ansichten
 
 Die Ansicht hat drei Teile.
-Die Ziffern `1`, `2` und `3` wechseln zwischen ihnen.
+Die Ziffern `1`, `2` und `3` wechseln zwischen ihnen. Die Tabulatortaste geht zur nächsten Ansicht, Umschalt und Tabulator zur vorigen.
 
 | Ansicht | Inhalt |
 |---|---|
@@ -64,13 +64,14 @@ Alle Ansichten teilen denselben Rahmen:
 
 Beim Start prüft die Ansicht die Hash-Kette im Hintergrund.
 Ist die Kette gebrochen, nennt die Kontextzeile den ersten fehlerhaften Eintrag, und die Übersicht warnt.
-Die Taste `R` prüft die Kette erneut.
+Die Taste `r` prüft die Kette erneut.
 
 ## Tasten
 
 | Taste | Wirkung |
 |---|---|
 | `1` `2` `3` | Ansicht wechseln; schließt ein offenes Detail |
+| Tab, Umschalt+Tab | nächste und vorige Ansicht; schließt ein offenes Detail |
 | `j` `k`, Pfeil ab und auf | bewegen oder blättern |
 | `pgdown` oder Leertaste, `pgup` oder `b` | seitenweise blättern |
 | `g` oder `home`, `G` oder `end` | Anfang und Ende |
@@ -80,7 +81,7 @@ Die Taste `R` prüft die Kette erneut.
 | `f` | Filter setzen |
 | `c` | Filter und Suche löschen |
 | `t` | Zeitraum wechseln: heute, 7 Tage, 30 Tage, alles |
-| `R` | Audit-Log neu lesen und Kette prüfen |
+| `r` (auch `R`) | Audit-Log neu lesen und Kette prüfen |
 | `?` | Hilfe |
 | `q` | beenden; in der Eingabezeile ist `q` Text |
 | `ctrl+c` | beenden, immer |

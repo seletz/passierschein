@@ -3,10 +3,11 @@ package tui
 import "charm.land/bubbles/v2/key"
 
 // keyMap holds the key bindings. The footer and the help are made from
-// it, so they always show the keys that work. The views switch by number
-// only.
+// it, so they always show the keys that work. The views switch by number,
+// and tab and shift+tab go to the next and the previous view.
 type keyMap struct {
 	Overview, Events, Sessions, Views key.Binding
+	NextView, PrevView                key.Binding
 	Help, Back, Quit, ForceQuit       key.Binding
 	Reload                            key.Binding
 
@@ -30,7 +31,9 @@ func newKeyMap() keyMap {
 		Back:      b([]string{"esc", "backspace"}, "esc", "back"),
 		Quit:      b([]string{"q"}, "q", "quit"),
 		ForceQuit: b([]string{"ctrl+c"}, "^c", "quit"),
-		Reload:    b([]string{"R"}, "R", "reload"),
+		NextView:  b([]string{"tab"}, "tab", "next view"),
+		PrevView:  b([]string{"shift+tab"}, "⇧tab", "previous view"),
+		Reload:    b([]string{"r", "R"}, "r", "reload"),
 
 		Up:       b([]string{"up", "k"}, "↑/k", "up"),
 		Down:     b([]string{"down", "j"}, "↓/j", "down"),
@@ -60,5 +63,5 @@ func (k keyMap) global() []key.Binding {
 
 // fullGlobal returns the global keys of the help as one column.
 func (k keyMap) fullGlobal() []key.Binding {
-	return []key.Binding{k.Overview, k.Events, k.Sessions, k.Reload, k.Help, k.Back, k.Quit, k.ForceQuit}
+	return []key.Binding{k.Overview, k.Events, k.Sessions, k.NextView, k.PrevView, k.Reload, k.Help, k.Back, k.Quit, k.ForceQuit}
 }

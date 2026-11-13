@@ -100,7 +100,7 @@ func TestHelpPanel(t *testing.T) {
 	m := newModel(entries, intact(entries), 100, 40, auditstats.Range7Days)
 	press(m, "2", "?")
 	s := screen(m)
-	for _, want := range []string{"╭", "╰", "keys: events", "esc or ? closes this help", "R", "reload"} {
+	for _, want := range []string{"╭", "╰", "keys: events", "esc or ? closes this help", "reload", "next view", "previous view"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("help: no %q in\n%s", want, s)
 		}
@@ -112,16 +112,46 @@ func TestHelpPanel(t *testing.T) {
 }
 
 func TestReloadKey(t *testing.T) {
-	// R reads the audit log again, as in the other TUIs of the owner.
+	// r reads the audit log again; R is a second key for the same action.
 	entries := demo(t)
 	m := newModel(entries, intact(entries), 80, 24, auditstats.Range7Days)
-	if _, cmd := m.Update(keyMsg("R")); cmd == nil {
-		t.Error("R: no command")
+	for _, k := range []string{"r", "R"} {
+		if _, cmd := m.Update(keyMsg(k)); cmd == nil {
+			t.Errorf("%s: no command", k)
+		}
 	}
-	// Tab does not switch the view: the views switch by number only.
-	press(m, "tab")
-	if m.view != viewOverview {
-		t.Errorf("tab switched to view %d", m.view)
+	m.Update(keyMsg("tab")) // clears the message of the reload
+	help := strings.Join(m.keys.Reload.Keys(), " ")
+	if m.keys.Reload.Help().Key != "r" || help != "r R" {
+		t.Errorf("reload: shown %q, keys %q", m.keys.Reload.Help().Key, help)
+	}
+}
+
+func TestTabSwitchesView(t *testing.T) {
+	// Tab goes to the next view and shift+tab to the previous one, in
+	// addition to the numbers; both wrap around and close an open pane.
+	entries := demo(t)
+	m := newModel(entries, intact(entries), 80, 24, auditstats.Range7Days)
+	for _, tc := range []struct {
+		key  string
+		want view
+	}{
+		{"tab", viewEvents}, {"tab", viewSessions}, {"tab", viewOverview},
+		{"shift+tab", viewSessions}, {"shift+tab", viewEvents},
+	} {
+		m.Update(keyMsg(tc.key))
+		if m.view != tc.want {
+			t.Errorf("%s: view %d, want %d", tc.key, m.view, tc.want)
+		}
+	}
+	press(m, "enter")
+	m.Update(keyMsg("tab"))
+	if m.overlay != overlayNone || m.view != viewSessions {
+		t.Errorf("tab from the detail: overlay %d, view %d", m.overlay, m.view)
+	}
+	m.Update(keyMsg("?"))
+	if s := screen(m); !strings.Contains(s, "tab") || !strings.Contains(s, "next view") {
+		t.Errorf("the help does not name tab:\n%s", s)
 	}
 }
 

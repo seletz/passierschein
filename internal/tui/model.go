@@ -383,6 +383,12 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(k, km.Overview, km.Events, km.Sessions):
 		m.view = view(k.String()[0] - '1')
 		m.overlay, m.paneTop = overlayNone, 0
+	case key.Matches(k, km.NextView):
+		m.view = (m.view + 1) % view(len(viewNames))
+		m.overlay, m.paneTop = overlayNone, 0
+	case key.Matches(k, km.PrevView):
+		m.view = (m.view + view(len(viewNames)) - 1) % view(len(viewNames))
+		m.overlay, m.paneTop = overlayNone, 0
 	case key.Matches(k, km.Reload):
 		m.message = "Reading the audit log again."
 		return m, tea.Batch(m.load(), m.check())
