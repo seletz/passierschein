@@ -24,6 +24,7 @@ func sample(t *testing.T, name string) string {
 	return string(data)
 }
 
+// T29 (steps 1 to 3): exit codes and streams.
 // F16, UC12: the stdin, stdout and exit code contract of
 // "a38 hook op-guard". A block is exit 2 with the message on stderr and
 // nothing on stdout; an allow is exit 0 without any output.
@@ -156,6 +157,7 @@ func TestHookTokenFileName(t *testing.T) {
 	}
 }
 
+// T29 (steps 1 and 2): the same with the real binary.
 // F16 (part): the contract holds for the real binary with a pipe on stdin,
 // as the agent tool starts it. The test sends the recorded samples only;
 // it never runs the inspected command.

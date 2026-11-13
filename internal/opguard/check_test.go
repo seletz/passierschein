@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+// T29 (steps 1 and 2).
 // F16, UC12, D15: the detection table. A positive case names the rule that
 // must fire; a negative case has the empty rule. No test runs a command.
 func TestCheck(t *testing.T) {

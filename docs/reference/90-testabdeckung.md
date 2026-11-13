@@ -7,7 +7,7 @@ render_macros: true
 ---
 # Testabdeckung
 
-Diese Seite ordnet jeden Testfall des Designs ({{ ref("T1") }} bis {{ ref("T28") }}) den Tests zu.
+Diese Seite ordnet jeden Testfall des Designs ({{ ref("T1") }} bis {{ ref("T29") }}) den Tests zu.
 Sie gilt für die Stufen 1 bis 3 und den Stand nach dem Release `v0.1.0` (2026-11-12).
 Die Tests sind Go-Tests, Swift-Tests der App und Prüfungen der CI.
 Die Zuordnung stammt aus dem Code, nicht aus den Texten der Pull Requests.
@@ -72,6 +72,7 @@ Die Pakete stehen ohne den Präfix `internal/`.
 | {{ ref("T26") }} | umgesetzt | `broker`: `TestT26AuditWriteFailure` (Anfrage, Grant, Auslieferung unter Grant), `TestAuditFailure`, `TestConcurrentRequestsDuringFault`; `audit/sqlite`: `TestAppendErrors`; `faultstore`: `TestFailAppends`; `fault`: `TestRaiseWithBrokenAuditLog`; `cmd/a38`: `TestServeGlobalLock` (echter Prozess) | – |
 | {{ ref("T27") }} | umgesetzt | `cmd/a38`: `TestDoctor` (vierzehn Fälle, Text und JSON, alle sieben Fälle des Designs), `TestHumanCommandsWithDaemonProcess`, `TestServeGlobalLock`; `doctor`: `TestSocketCheckWithRealFiles`, `TestAuditChecksWithRealFiles`, `TestSystemEnvComponents`; `broker`: `TestStatusBackendAndUI` | – |
 | {{ ref("T28") }} | umgesetzt | `broker`: `TestT28GlobalLock`, `TestFailuresThatDoNotLock` (fehlerhafte Konfiguration eines Projekts sperrt nicht), `TestFaultGate`, `TestAuditFailureOnEachPathLocks`, `TestPanicLocksDelivery`; `fault`: `TestRaiseWithBrokenAuditLog`, `TestSelfCheck`, `TestConcurrentRaise`; `cmd/a38`: `TestServeGlobalLock` (echter Prozess: Admin-Socket, Agent-Socket mit `invalid_request`, Neustart bei bestehender Ursache), `TestFaultStatus`, `TestFaultClear` | – |
+| {{ ref("T29") }} | umgesetzt | `opguard`: `TestCheck` (Tabelle mit 126 Fällen: `op` als Wort, Pfad, in Anführungszeichen und mit Backslash, hinter `sudo`, `env`, `command`, `exec`, `nohup`, `time`, `nice`, `timeout`, `xargs`, `find -exec`, in Listen, Pipelines, Subshells, Befehlsersetzung, Backticks, `bash -c`, `eval`; Wörter, die nur „op“ enthalten, Argumente, Kommentare, Here-Documents; Token-Datei und Schlüsselbund), `TestCheckDepth`, `TestCheckParsed`, `TestDecideSamples` (Eingaben in der Form von Claude Code unter `testdata/`), `TestDecideFailOpen` (kein JSON, falsche Form, über 1 MiB, anderes Ereignis, anderes Werkzeug), `TestDecideReadsAtMostTheLimit`, `TestDecideReadError`, `TestMessage` (nennt `request_credentials`, nennt keinen anderen Weg), `TestLinuxBuild`, `FuzzDecide`, `FuzzCheck`; `cmd/a38`: `TestHookOpGuardContract` (stdin, stdout, stderr, Exit-Code), `TestHookOpGuardProcess` (echtes Binary mit Pipe), `TestHookPrintConfig`, `TestHookHelp`, `TestHookTokenFileName`, `TestHookKeychainNames` (nur macOS) | Kein Test führt einen geprüften Befehl aus. Schritt 1: `TestCheck`, `TestDecideSamples`, `TestMessage`, `TestHookOpGuardContract`, `TestHookOpGuardProcess`. Schritt 2: `TestCheck`, `TestDecideSamples`, `TestDecideFailOpen` (anderes Werkzeug), `TestHookOpGuardContract`. Schritt 3: `TestDecideFailOpen`, `TestHookOpGuardContract` (kein JSON). Der Praxistest in Claude Code gehört nicht zum Testfall; er folgt nach der Implementierung (Akt 8 der [Demo](../how-to/50-demo-vorfuehren.md)). |
 
 ## Was die Lücken bedeuten
 
@@ -80,14 +81,13 @@ Die Pakete stehen ohne den Präfix `internal/`.
 - {{ ref("T21") }} bleibt teilweise, bis die Swift-Tests `missingClaims` und `sessionNameUnabridged` den Testfall im Kommentar nennen. Die Freigabe-App zeigt die Leermarke für einen fehlenden Namen.
 - {{ ref("T18") }} ist ein Fall der Release-Kette. Der Teil mit den Secrets lässt sich nur im Workflow prüfen; das Release `v0.1.0` belegt ihn. Offen ist der Praxistest des Release auf dem Mac ({{ ref("G5") }}).
 
-## Ohne Testfall im Design
+## Hook gegen den direkten Aufruf von op
 
-Für den Hook gegen den direkten Aufruf von `op` ({{ ref("F16") }}, Stufe 4) hat das Design keinen Testfall.
-Die Tests nennen deshalb das Feature im Kommentar (`// F16, UC12, D15: …`).
-
-| Feature | Zustand | Testfunktionen | Fehlt oder Anmerkung |
-|---|---|---|---|
-| {{ ref("F16") }} | teilweise | `opguard`: `TestCheck` (Tabelle mit 126 Fällen: `op` als Wort, Pfad, in Anführungszeichen und mit Backslash, hinter `sudo`, `env`, `command`, `exec`, `nohup`, `time`, `nice`, `timeout`, `xargs`, `find -exec`, in Listen, Pipelines, Subshells, Befehlsersetzung, Backticks, `bash -c`, `eval`; Wörter, die nur „op“ enthalten, Argumente, Kommentare, Here-Documents; Token-Datei und Schlüsselbund), `TestCheckDepth`, `TestCheckParsed`, `TestDecideSamples` (Eingaben in der Form von Claude Code unter `testdata/`), `TestDecideFailOpen` (kein JSON, falsche Form, über 1 MiB, anderes Ereignis, anderes Werkzeug), `TestDecideReadsAtMostTheLimit`, `TestDecideReadError`, `TestMessage` (nennt `request_credentials`, nennt keinen anderen Weg), `TestLinuxBuild`, `FuzzDecide`, `FuzzCheck`; `cmd/a38`: `TestHookOpGuardContract` (stdin, stdout, stderr, Exit-Code), `TestHookOpGuardProcess` (echtes Binary mit Pipe), `TestHookPrintConfig`, `TestHookHelp`, `TestHookTokenFileName`, `TestHookKeychainNames` (nur macOS) | Kein Test führt einen geprüften Befehl aus. Offen ist der Praxistest in Claude Code: Hook laden, Meldung sehen, der Agent wechselt zu `a38` (Akt 8 der [Demo](../how-to/50-demo-vorfuehren.md)). Das Feld `umsetzung` von {{ ref("F16") }} steht deshalb auf `teilweise`. |
+Das Feature {{ ref("F16") }} (Stufe 4) hat den Testfall {{ ref("T29") }}.
+Die Tests nennen ihn im Kommentar (`// T29 (steps 1 and 2): …`) neben `// F16, UC12, D15: …`.
+Der Praxistest in Claude Code ist offen (Akt 8 der [Demo](../how-to/50-demo-vorfuehren.md)).
+Das Feld `umsetzung` von {{ ref("F16") }} steht deshalb auf `teilweise`.
+Das Feld `umsetzung` von {{ ref("T29") }} steht auf `vorhanden`.
 
 Das Register trägt denselben Stand im Feld `umsetzung` jedes Testfalls und jedes Features.
 `dg-register get <ID> umsetzung` zeigt ihn.

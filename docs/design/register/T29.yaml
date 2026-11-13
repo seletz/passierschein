@@ -1,0 +1,9 @@
+id: T29
+zustand: eingeloest
+titel: Der Hook op-guard blockiert den Aufruf von op und lässt alles andere durch
+bezug: '#78'
+schluessel: '#78/op-guard'
+lauf: '2.0'
+branch: feat/78-op-hook
+reserviert_am: '2026-11-13'
+eingeloest_am: '2026-11-13'

@@ -4,14 +4,15 @@ id: 'D58'
 titel: 'a38 hook op-guard erkennt op im Bash-Befehl mit einem Shell-Parser und lässt im Zweifel durch'
 bereich: 'Oberflächen'
 lauf: '2.0'
-stand: '2026-11-12'
+stand: '2026-11-13'
 order: 6
 headless: true
 status: gueltig
 use_cases: [UC12]
 beleg:
-  notiz: Vorschlag aus der Entwicklung, zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-13'
+  quelle: [https://github.com/seletz/passierschein/pull/80]
 ---
 # D58 — a38 hook op-guard erkennt op im Bash-Befehl mit einem Shell-Parser und lässt im Zweifel durch
 
@@ -27,4 +28,4 @@ beleg:
 
 **Begründung:** Der Hook ist ein Hinweis und kein Schutz ({{ ref("D15") }}). Ein Agent unter demselben Benutzer erreicht ein Secret auf vielen anderen Wegen ({{ ref("RI5") }}). Der Rest von a38 schließt im Zweifel. Der Hook öffnet im Zweifel, weil er keine Grenze ist: Ein Fehler im Hook darf die normale Arbeit des Agents nicht anhalten. Ein Parser erkennt Pipelines, Anführungszeichen und Befehlsersetzung zuverlässiger als ein Suchmuster. Er meldet weniger falsche Treffer, etwa bei `git commit -m "fix op"`. Die Meldung nennt nur den Weg über `request_credentials` und keinen Umweg ({{ ref("D35") }}, {{ ref("RI8") }}). Der Vertrag über Exit-Codes passt zu mehr als einem Agent-Werkzeug.
 
-**Quelle:** [Issue 78](https://github.com/seletz/passierschein/issues/78); [Hooks reference](https://code.claude.com/docs/en/hooks) und [Hooks guide](https://code.claude.com/docs/en/hooks-guide) von Claude Code, gelesen am 2026-11-12. Annahme der Entwicklung; Stefan bestätigt sie im Praxistest.
+**Quelle:** [Issue 78](https://github.com/seletz/passierschein/issues/78); [Hooks reference](https://code.claude.com/docs/en/hooks) und [Hooks guide](https://code.claude.com/docs/en/hooks-guide) von Claude Code, gelesen am 2026-11-12. Stefan hat die Entscheidung am 2026-11-13 im Review von [PR 80](https://github.com/seletz/passierschein/pull/80) bestätigt. Der Praxistest in Claude Code folgt nach der Implementierung.

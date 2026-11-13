@@ -9,6 +9,7 @@ import (
 	"testing"
 )
 
+// T29 (steps 1 and 2).
 // F16, UC12: the samples in testdata have the shape of the PreToolUse input
 // of Claude Code (testdata/SOURCE.txt names the page and the date).
 func TestDecideSamples(t *testing.T) {
@@ -40,6 +41,7 @@ func TestDecideSamples(t *testing.T) {
 	}
 }
 
+// T29 (steps 2 and 3): other tool, no JSON.
 // D15 (fail-open): input that the guard cannot read or understand is
 // allowed. The note never repeats the input.
 func TestDecideFailOpen(t *testing.T) {
@@ -113,6 +115,7 @@ type errReader struct{}
 
 func (errReader) Read([]byte) (int, error) { return 0, errors.New("broken pipe") }
 
+// T29 (step 1): the message names request_credentials and no other way.
 // F16: the block message names the MCP tool and the server, follows the
 // rules of the skill and suggests no other way.
 func TestMessage(t *testing.T) {
