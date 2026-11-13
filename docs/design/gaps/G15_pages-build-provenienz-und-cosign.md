@@ -3,13 +3,18 @@ render_macros: true
 id: 'G15'
 titel: 'Pages, Build-Provenienz und cosign passen nicht ohne Weiteres zu einem privaten Repo'
 bereich: 'Betrieb und Release'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-12'
 order: 2
 headless: true
 type: Gap
 kind: design
-status: offen
+status: geschlossen
+beleg:
+  wer: Stefan
+  datum: '2026-11-12'
+  quelle: ['#65']
+  notiz: Pages öffentlich von develop (PR 65); Provenienz nur bei öffentlichem Repo; keine Signatur der Prüfsummendatei mit cosign. Alle drei Fragen beantwortet.
 register:
   owner: Stefan
 ---

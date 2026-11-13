@@ -81,6 +81,25 @@ else
   FAULT_MODE_FILE="$DEMO_DIR/fault-mode"
   PID_FILE="$DEMO_DIR/daemon.pid"
 fi
+
+# A38_RUN is the command prefix for every call of a38. The real mode uses
+# the real installation and the real home directory. The rehearsal runs a38
+# with a temporary home directory and XDG directories inside DEMO_DIR, so
+# that a38 doctor and the other commands never see the real LaunchAgent,
+# the real configuration or the real state of the owner. Only a38 gets the
+# changed environment; the builds (Go, Swift) keep their caches.
+if [ "$MODE" = real ]; then
+  A38_RUN=("$A38")
+else
+  REHEARSAL_HOME="$DEMO_DIR/home"
+  A38_RUN=(env
+    "HOME=$REHEARSAL_HOME"
+    "XDG_CONFIG_HOME=$REHEARSAL_HOME/.config"
+    "XDG_STATE_HOME=$REHEARSAL_HOME/.local/state"
+    "XDG_DATA_HOME=$REHEARSAL_HOME/.local/share"
+    "XDG_CACHE_HOME=$REHEARSAL_HOME/.cache"
+    "$A38")
+fi
 APP_EXE="$APP_BUNDLE/Contents/MacOS/Passierschein"
 PROJECT_MARKER="$PROJECT_DIR/.a38-demo"
 
@@ -114,7 +133,7 @@ need_setup() {
 # daemon_answers reports whether a daemon answers on the admin socket of
 # the demo configuration.
 daemon_answers() {
-  [ -x "$A38" ] && "$A38" grants list --config "$CONFIG" >/dev/null 2>&1
+  [ -x "$A38" ] && "${A38_RUN[@]}" grants list --config "$CONFIG" >/dev/null 2>&1
 }
 
 # write_config writes the configuration of the mode to the file $1.
@@ -214,7 +233,7 @@ EOF
   # https://code.claude.com/docs/en/skills). The popup is the control, so
   # the two tools of a38 need no extra prompt of the agent tool.
   mkdir -p "$PROJECT_DIR/.claude/skills/a38"
-  "$A38" llm --skill >"$PROJECT_DIR/.claude/skills/a38/SKILL.md"
+  "${A38_RUN[@]}" llm --skill >"$PROJECT_DIR/.claude/skills/a38/SKILL.md"
   cat >"$PROJECT_DIR/.claude/settings.json" <<'EOF'
 {
   "permissions": {
@@ -342,7 +361,7 @@ cmd_setup_fake() {
     rm -rf "$DEMO_DIR"
   fi
   umask 077
-  mkdir -p "$DEMO_DIR/bin" "$AUDIT_DIR"
+  mkdir -p "$DEMO_DIR/bin" "$AUDIT_DIR" "$REHEARSAL_HOME"
   printf 'created=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$MARKER"
   cp "$ROOT/bin/a38" "$A38"
   install_app
@@ -440,7 +459,7 @@ preflight() {
   fi
 
   local doctor
-  doctor=$("$A38" doctor --config "$CONFIG" 2>&1 || true)
+  doctor=$("${A38_RUN[@]}" doctor --config "$CONFIG" 2>&1 || true)
   if grep -q '^OK *configuration' <<<"$doctor"; then
     pass "configuration $CONFIG loads"
   else
@@ -487,7 +506,7 @@ EOF
     cat <<EOF
 
 Terminal 2 (agent):   cd $PROJECT_DIR && claude
-Terminal 3 (human):   export PATH="$DEMO_DIR/bin:\$PATH" A38_CONFIG=$CONFIG
+Terminal 3 (human):   export PATH="$DEMO_DIR/bin:\$PATH" A38_CONFIG=$CONFIG HOME=$REHEARSAL_HOME XDG_CONFIG_HOME=$REHEARSAL_HOME/.config XDG_STATE_HOME=$REHEARSAL_HOME/.local/state
                       then: a38 doctor | a38 grants list | a38 audit list
 Without an agent:     DEMO_BACKEND=fake mise run demo:request -- akt2
 
@@ -496,7 +515,7 @@ Stop the daemon with Ctrl-C. The daemon log follows.
 EOF
     echo $$ >"$PID_FILE"
   fi
-  exec "$A38" serve "${SERVE_ARGS[@]}"
+  exec "${A38_RUN[@]}" serve "${SERVE_ARGS[@]}"
 }
 
 cmd_status() {
@@ -505,7 +524,7 @@ cmd_status() {
   for c in "doctor" "grants list" "fault status" "audit list --limit 12" "audit verify"; do
     echo "\$ a38 $c"
     # shellcheck disable=SC2086 # split the subcommand on purpose
-    "$A38" $c --config "$CONFIG" || true
+    "${A38_RUN[@]}" $c --config "$CONFIG" || true
     echo
   done
 }
@@ -514,7 +533,7 @@ cmd_status() {
 # directory of the demo configuration.
 check_audit_dir() {
   local audit_file
-  audit_file=$("$A38" doctor --config "$CONFIG" --json 2>/dev/null | sed -nE 's#.*"detail": *"([^"]*audit\.db) exists.*#\1#p' | head -n 1 || true)
+  audit_file=$("${A38_RUN[@]}" doctor --config "$CONFIG" --json 2>/dev/null | sed -nE 's#.*"detail": *"([^"]*audit\.db) exists.*#\1#p' | head -n 1 || true)
   [ -d "$AUDIT_DIR" ] || die "$AUDIT_DIR does not exist; start the daemon first"
   [ -f "$AUDIT_DIR/audit.db" ] || die "$AUDIT_DIR has no audit.db; it is not the audit directory of a38"
   if [ -n "$audit_file" ] && [ "$(dirname "$audit_file")" != "$AUDIT_DIR" ]; then
@@ -586,7 +605,7 @@ cmd_request() {
   # shellcheck disable=SC2064 # expand tmp now
   trap "exec 3>&- 2>/dev/null || true; rm -rf '$tmp'" EXIT
   mkfifo "$tmp/in"
-  (cd "$PROJECT_DIR" && exec "$A38" mcp --config "$CONFIG" --session-name "$HAND_SESSION_NAME" <"$tmp/in" >"$tmp/out" 2>"$tmp/err") &
+  (cd "$PROJECT_DIR" && exec "${A38_RUN[@]}" mcp --config "$CONFIG" --session-name "$HAND_SESSION_NAME" <"$tmp/in" >"$tmp/out" 2>"$tmp/err") &
   mcp_pid=$!
   exec 3>"$tmp/in"
   echo "demo: act $act, session $HAND_SESSION_NAME, project directory $PROJECT_DIR"

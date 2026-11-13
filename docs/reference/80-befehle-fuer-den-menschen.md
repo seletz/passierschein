@@ -1,6 +1,7 @@
 ---
 title: Befehle für den Menschen
 description: "a38 grants, fault, config, service, doctor und audit: Argumente, Ausgabe und Exit-Codes."
+render_macros: true
 tags:
   - Thema/Betrieb
 ---

@@ -8,6 +8,7 @@ weight: 20
 
 Eine Anleitung löst eine bestimmte Aufgabe.
 
+- [a38 aus dem Release installieren](15-a38-aus-dem-release-installieren.md)
 - [Skill für Agents installieren](20-skill-installieren.md)
 - [a38 als MCP-Server anmelden](22-mcp-server-anmelden.md)
 - [Störung finden und beheben](24-stoerung-finden-und-beheben.md)
