@@ -16,7 +16,7 @@ name: macOS
 #
 # Cost: in a private repository a macOS minute counts ten times a Linux
 # minute. So pull requests run this workflow only when they touch a path
-# that matters for it; develop, the nightly run and a manual start always
+# that matters for it (see the filter below); develop, the nightly run and a manual start always
 # run it.
 on:
   push:
@@ -28,28 +28,38 @@ on:
     - cron: "17 2 * * *"
   workflow_dispatch:
   pull_request:
+    # Only what the macOS job builds or runs. Documentation, design set
+    # files, Markdown and the other workflows do not start it: the job runs
+    # on a preview image with little capacity (docs/reference/55-ci.md).
+    # Keep the list of 55-ci.md in step with it.
     paths:
-      - "app/**"
-      - "internal/backend/onepassword/**"
-      - "internal/approval/**"
-      - "internal/token/**"
-      - "internal/tokenfile/**"
-      - "cmd/a38/**"
+      - "**/*.go"
+      - "cmd/**"
+      - "internal/**"
       - "go.mod"
       - "go.sum"
+      - "app/**"
       - "mise.toml"
       - ".goreleaser.yml"
-      - "scripts/**"
+      # The scripts that the job runs (app, release bundle, SBOM,
+      # 1Password test). Not demo.sh, release.sh and the other scripts.
+      - "scripts/app-*.sh"
+      - "scripts/release-app-bundle.sh"
+      - "scripts/release-app-check.sh"
+      - "scripts/release-app-lib.sh"
+      - "scripts/release-app-package.sh"
+      - "scripts/release-app-sign.sh"
+      - "scripts/sbom-check.sh"
+      - "scripts/onepassword-integration*.sh"
       - ".github/workflows/macos.yml"
-      - ".github/workflows/release.yml"
-      - ".github/workflows/signed-snapshot.yml"
 
 permissions:
   contents: read
 
 # A new push to a pull request cancels its old run: this saves macOS
-# minutes and requests to 1Password (rate limits). Runs on develop and the
-# nightly runs never cancel each other.
+# minutes and requests to 1Password (rate limits). Each run on develop, the
+# nightly run and a manual run has its own group (the commit) and is never
+# cancelled; a run waits for a runner, it does not wait for another run.
 concurrency:
   group: macos-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -61,7 +71,9 @@ jobs:
     # 26.6 only. The label is a public preview of GitHub; see
     # docs/reference/55-ci.md for the risk.
     runs-on: xcode-27
-    timeout-minutes: 60
+    # A normal run takes 5 to 10 minutes. The limit stops a hanging job. It
+    # counts from the start on a runner, not from the wait for one.
+    timeout-minutes: 30
     env:
       # The macOS SDK for the swift.org toolchain of mise. A fixed path:
       # when GitHub replaces Xcode 27.2, the job fails loudly here.

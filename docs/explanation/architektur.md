@@ -1,11 +1,11 @@
 ---
 title: Architektur
-description: "Prozesse, Pakete, Abhängigkeitsregel, Protokoll, Konfiguration und Teststrategie von a38 in Stufe 1."
+description: "Prozesse, Pakete, Abhängigkeitsregel, Protokoll, Konfiguration und Teststrategie von a38 in den Stufen 1 bis 3."
 render_macros: true
 ---
 # Architektur
 
-Diese Seite beschreibt den Aufbau des Codes von `a38` für die Stufe 1.
+Diese Seite beschreibt den Aufbau des Codes von `a38` (Stufen 1 bis 3, Stand nach dem Release `v0.1.0`).
 Die verbindlichen Aussagen stehen im [Design-Set](../design/index.md).
 Diese Seite zeigt, wie der Code das Design umsetzt und wo welche Aufgabe liegt.
 
@@ -27,15 +27,12 @@ Drei Arten von Prozessen entstehen daraus.
 |---|---|---|
 | `a38 serve` | Daemon | Der Prozess stellt den Agent-Socket und den Admin-Socket bereit. Er prüft die Policy, bündelt, fragt die Freigabe an, vergibt Grants, schreibt das Audit-Log und liefert aus. Nur dieser Prozess spricht mit dem Backend ({{ ref("D1") }}). |
 | `a38 mcp` | Agent | Der Prozess ist ein MCP-Server über stdio (MCP: Model Context Protocol). Das Agent-Werkzeug startet ihn je Sitzung. Er übersetzt die zwei MCP-Werkzeuge in Nachrichten für den Agent-Socket ({{ ref("D41") }}). Er verbindet sich erst beim ersten Aufruf eines Werkzeugs mit dem Daemon und sendet dann den Namen der Sitzung und den Namen des MCP-Clients in `hello`. Ist der Daemon nicht erreichbar, antwortet er mit `daemon_unavailable` und versucht es beim nächsten Aufruf erneut. Er enthält keinen Code für ein Backend. |
-| Admin-Befehle | Mensch | `a38 grants`, `a38 fault` und `a38 doctor` sprechen mit dem Daemon über den Admin-Socket ({{ ref("D44") }}). `a38 audit` und `a38 tui` lesen die Audit-Datei direkt und nur lesend; `a38 tui` gibt es nur unter macOS ({{ ref("D57") }}). `a38 config onepassword-token` legt das Token des Service Accounts im Schlüsselbund ab ({{ ref("D51") }}). `a38 llm` und `a38 version` brauchen keinen Daemon. |
+| Admin-Befehle | Mensch | `a38 grants`, `a38 fault` und `a38 doctor` sprechen mit dem Daemon über den Admin-Socket ({{ ref("D44") }}). `a38 audit` und `a38 tui` lesen die Audit-Datei direkt und nur lesend; `a38 tui` gibt es nur unter macOS ({{ ref("D57") }}). `a38 config onepassword-token` legt das Token des Service Accounts im Schlüsselbund ab ({{ ref("D51") }}). `a38 service` richtet den Daemon als LaunchAgent ein ({{ ref("D56") }}). `a38 llm` und `a38 version` brauchen keinen Daemon. |
 
-Die Freigabe-UI ist in Stufe 1 kein eigener Prozess der Auslieferung.
+Die Freigabe-UI hat vier Varianten hinter derselben Schnittstelle.
 Die Varianten `auto-approve` und `auto-deny` laufen im Daemon.
 Die Variante `script` startet ein Skript als Kindprozess ({{ ref("D40") }}).
-Die Freigabe-App in Swift folgt in Stufe 2 hinter derselben Schnittstelle.
-
-Der Unterbefehl `service` aus {{ ref("D42") }} gehört zu einer späteren Stufe.
-Das Binary kennt ihn noch nicht.
+Die Variante `app` startet die Freigabe-App „Passierschein“ in Swift als Kindprozess (`a38 serve --ui app`); Stefan hat sie abgenommen ([PR 46](https://github.com/seletz/passierschein/pull/46)).
 
 ## Pakete
 
@@ -88,6 +85,7 @@ Die Abhängigkeitsregel gilt in jedem Fall.
 | `internal/auditstats` | Kennzahlen aus den Einträgen des Audit-Logs (Popups, Ablehnungen, Abweichungen, Auslieferungen, Größe der Bündel, Rangfolgen), Sitzungen und Grants; reine Funktionen ohne Terminal und ohne Uhr; `Clean` entfernt Steuer- und Bidi-Zeichen für jede Ausgabe im Terminal ({{ ref("D57") }}) | 71 |
 | `internal/tui` | Bubble-Tea-Modell von `a38 tui`: Übersicht, Ereignisse mit Filtern und Detail, Sitzungen mit Zeitleiste; liest über eine `Source` und schreibt nie; `cmd/a38/tui_darwin.go` startet es nur im macOS-Build | 71 |
 | `internal/auditdemo` | synthetisches Audit-Log über den echten Store für Tests, Demo und Screenshots; das Programm `internal/auditdemo/gen` ist ein Werkzeug der Entwicklung und nicht Teil des Release | 71 |
+| `internal/service` | LaunchAgent des Daemons: plist erzeugen und lesen, Vorprüfung, `launchctl` hinter einer Schnittstelle, Zustand; nur der macOS-Build von `a38` nutzt das Paket ([LaunchAgent](#launchagent)) | 70 |
 | `internal/keychain` | ein Eintrag im Schlüsselbund von macOS über Security.framework mit `purego`, ohne cgo: anlegen, lesen, löschen, beschreiben; Signatur von `a38`; nur im macOS-Build | 59 |
 
 Vier Pakete aus dem ersten Entwurf entstehen in diesem Issue nicht: `internal/grant`, `internal/policy`, `internal/bundle` und ein Sitzungsregister.
@@ -117,6 +115,7 @@ Die Socket-Schicht setzt {{ ref("D43") }}, {{ ref("D25") }} und {{ ref("D44") }}
 
 - **Start:** Der Daemon legt das Verzeichnis der Sockets mit `0700` an. Hat das Verzeichnis andere Rechte, gehört es einem anderen Benutzer oder ist es ein symbolischer Link, startet der Daemon nicht. Der Daemon korrigiert die Rechte nicht.
 - **Ein Daemon je Verzeichnis:** Der Daemon sperrt das Verzeichnis mit `flock`. Ein zweiter Daemon mit demselben Verzeichnis startet nicht.
+- **Bereitschaft:** Der Daemon bindet jeden Socket unter einem temporären Namen im selben Verzeichnis, setzt den Modus `0600` und benennt die Datei erst um, wenn der Socket lauscht. Die Datei am endgültigen Pfad existiert also nur bei einem Socket, der Verbindungen annimmt. Ein Client, der die Datei sieht und sofort verbindet, wird nie abgewiesen. `removeStale` und die Sperre des Verzeichnisses bleiben unverändert.
 - **Alter Socket:** Der Daemon entfernt einen Socket nur, wenn kein Prozess eine Verbindung annimmt. Eine Datei, die kein Socket ist, entfernt er nie.
 - **Peer-Daten:** Der Kernel liefert Benutzer und Prozess-ID. Unter macOS liest der Daemon Programmpfad und Arbeitsverzeichnis mit dem Systemaufruf `proc_info`, unter Linux aus `/proc`. Beides geht ohne cgo. Ein Wert, den der Daemon nicht lesen kann, bleibt leer. Ohne Arbeitsverzeichnis hat die Sitzung kein Projekt.
 - **Benutzer:** Der Daemon bedient nur Prozesse desselben Benutzers. Er schließt jede andere Verbindung ohne Antwort.
@@ -151,6 +150,7 @@ Die Standardbibliothek ist immer erlaubt.
 | `keychain` | `token`; `purego` nur in Dateien mit `_darwin` |
 | `backend/onepassword` | `backend`, `protocol`, `token`; das SDK von 1Password nur in `sdk_darwin.go` |
 | `doctor` | `protocol`, `config`, `client`, `audit`, `audit/sqlite` (nur lesend), `approval` (nur die Prüfung der Datei der Freigabe-App), `backend` (nur die Namen der Arten), `token` (nur Typen), `tokenfile` (nur die Prüfung der Datei); nie `keychain` |
+| `service` | `config`, `approval` (nur die Prüfung der Datei der Freigabe-App), `token` (nur Typen), `tokenfile` (nur die Prüfung der Datei); nie `keychain` und nie `client` |
 | `skill` | `protocol` |
 | `auditstats` | `audit`, `protocol` |
 | `tui` | `audit`, `auditstats`, `protocol`, `clock`; Bubble Tea, Bubbles und Lip Gloss; nie `audit/sqlite` und kein Socket: die Einträge kommen über `tui.Source` |
@@ -431,7 +431,7 @@ Die App zeigt die Restzeit selbst an und endet mit Exit-Code 11, wenn sie abläu
 Eine Meldung bleibt höchstens 10 Minuten offen.
 Danach, und beim Ende des Daemons, beendet der Daemon die App.
 Ein Fehler der App steht nur im Log ({{ ref("D36") }}, {{ ref("D48") }}, {{ ref("D28") }}).
-Die Wahl „dieselbe App, Art `notice`“ ist ein Vorschlag und wartet auf die Bestätigung durch Stefan ({{ ref("G20") }}).
+Stefan hat die Meldung in der App abgenommen ([PR 46](https://github.com/seletz/passierschein/pull/46)). Offen bleiben Häufigkeit und Name des Befehls ({{ ref("G20") }}, {{ ref("G31") }}).
 
 **Prüfung der Datei.**
 Vor jedem Start prüft der Daemon die Datei der App mit `approval.CheckAppFile`: reguläre Datei (ein Link gilt als sein Ziel), Besitzer ist der Benutzer oder `root`, weder Gruppe noch andere dürfen schreiben, der Besitzer darf ausführen, kein Setuid- oder Setgid-Bit.
@@ -473,7 +473,7 @@ Die Abweichungen:
 | `credentials[].deviation` kennt `outside_scope` nicht. | Eine Anfrage außerhalb der Policy erreicht die Freigabe nie ({{ ref("D28") }}). |
 | `grant.scope` ist nur Anzeige. | Ein Grant umfasst genau die angehakten Zugangsdaten und keinen ganzen Vault ({{ ref("D32") }}, {{ ref("G7") }}). |
 | `verified.vm_name` und `verified.ssh_session` fehlen. | Die Herkunft aus der VM gehört zur Stufe 5 ({{ ref("G1") }}). |
-| Der Typ `notice` ist neu. | Der Prototyp kennt nur Anfrage und Entscheidung. Ob die Freigabe-App die Meldung zeigt, ist offen ({{ ref("G20") }}). |
+| Der Typ `notice` ist neu. | Der Prototyp kennt nur Anfrage und Entscheidung. Die Freigabe-App zeigt die Meldung; Stefan hat das abgenommen ([PR 46](https://github.com/seletz/passierschein/pull/46)). |
 
 Der Prototyp ignoriert unbekannte Felder.
 Die neuen Felder brechen ihn deshalb nicht.
@@ -680,11 +680,24 @@ Es gibt keine Umgebungsvariable für das Token, denn jeder Kindprozess erbt die 
 - Die Signatur von `a38` liest das Paket mit `SecCodeCopySelf` und `SecCodeCopySigningInformation`, ohne Dialog und ohne Kindprozess.
 - Es gibt damit zwei Leser von Signaturen: `keychain` liest die eigene Signatur von `a38` über die Security-API für Anzeige und Partitionsliste, `appui` prüft die Datei der Freigabe-App mit `/usr/bin/codesign` gegen das Team von `a38`; die Zwecke und Build-Grenzen sind verschieden, eine Zusammenlegung ist offen.
 - Ein Test legt nur Einträge `a38-test-…` an. In einem Test-Binary verweigert `keychain.Store` den Eintrag des Produkts. Die Tests von `cmd/a38` nutzen eine Fälschung des Eintrags.
-- Die Grenzen bis zur Signatur mit Developer ID nennt {{ ref("G5") }}: Jeder neue Build braucht eine Bestätigung, und ein anderes Programm kann denselben Dialog auslösen.
+- Die Grenzen ohne Developer ID nennt {{ ref("G5") }}: Jeder neue Build braucht eine Bestätigung, und ein anderes Programm kann denselben Dialog auslösen. Das Release `v0.1.0` ist mit der Developer ID signiert; nach der Dokumentation von macOS bleibt der Eintrag dann bei einem Update gültig. Der Praxistest steht aus ({{ ref("G5") }}).
 
 **Status:** `status_result` nennt im Feld `backend.kind` die Art des Backends.
 `a38 doctor` prüft damit die Quelle des Tokens nur, wenn sie gebraucht wird.
 Der Status nennt die Quelle des Tokens nicht.
+
+## LaunchAgent
+
+Das Paket `internal/service` setzt {{ ref("F15") }} und {{ ref("D56") }} um.
+`cmd/a38/service_darwin.go` verdrahtet es; `cmd/a38/service_other.go` meldet unter Linux „not available on this platform“.
+Der linux-Build enthält das Paket nicht; `mise run deps:linux:check` prüft das.
+
+- **launchctl:** Jeder Aufruf läuft über die Schnittstelle `service.Launchctl`. Die echte Umsetzung (nur darwin) startet `/bin/launchctl` mit festem Pfad, ohne Shell, mit leerer Umgebung bis auf `PATH` und mit einer Zeitgrenze von 15 Sekunden. Sie lässt nur `bootstrap`, `bootout`, `enable`, `kickstart`, `print` und `print-disabled` zu. Die Tests nutzen `service/fakelaunchctl` und ein temporäres HOME; kein Test ruft launchd.
+- **Ausgabe von `launchctl print`:** Apple nennt sie keine API. `service.ParsePrint` liest nur die Zeilen `key = value` der obersten Ebene (`state`, `pid`, `program`, `last exit code`, `last terminating signal`). Ein unbekanntes Format ergibt „unbekannt“, keinen Fehler.
+- **plist:** `Spec.Render` schreibt die Schlüssel in fester Reihenfolge; ein Golden-File und `plutil -lint` prüfen das Ergebnis. Ein Kommentar kennzeichnet die Datei. `Manager.Install` schreibt atomar (temporäre Datei, `0644`, `rename`) und ersetzt einen Link, statt ihm zu folgen.
+- **Vorprüfung:** `service.Probe` erhält Konfiguration, Suche der Freigabe-App, Metadaten des Eintrags im Schlüsselbund und die Frage an den Admin-Socket als Funktionen. `cmd/a38` setzt die echten ein. Die Vorprüfung liest nie das Token.
+- **Neustart:** `KeepAlive` ist `false`. `service.Restarts` bildet die Regeln von `KeepAlive` aus launchd.plist(5) nach; ein Test zeigt, dass die plist nach keinem Exit-Code und keinem Signal neu startet.
+- **doctor:** `doctor` kennt das Paket `service` nicht. Es erhält den Zustand als `doctor.ServiceState` über das Feld `SystemEnv.ServiceState`. Ohne plist ruft `a38 doctor` kein `launchctl` auf.
 
 ## Teststrategie
 
@@ -716,8 +729,11 @@ Der Test liegt hinter den Build-Tags `darwin opintegration` und läuft nur, wenn
 Regeln für einen Test mit Prozessen:
 
 - Die Konfiguration nennt `paths.socket_dir` und `paths.audit_file` in einem temporären Verzeichnis. Der Pfad eines Sockets bleibt unter 103 Byte; unter macOS ist `t.TempDir()` dafür oft zu lang. Der Test legt das Verzeichnis dann unter `/tmp` an.
-- Der Test wartet auf den Socket und nicht auf eine feste Zeit.
+- Der Test wartet auf die Bereitschaft des Daemons und nicht auf eine feste Zeit. Das Signal ist die Logzeile `daemon started`: Der Daemon schreibt sie, nachdem beide Sockets lauschen. Alle Tests in `cmd/a38` nutzen dafür den einen Helfer `waitDaemonStarted` (`ready_test.go`), im Prozess wie als Kindprozess. Der Test wartet nicht auf die Socket-Datei und fragt sie nicht in Schleifen ab: Bei einem Socket, der unter dem endgültigen Namen gebunden wird, existiert die Datei ab `bind` und damit vor `listen`, und ein `connect` dazwischen scheitert mit „connection refused“ (Ursache von [#77](https://github.com/seletz/passierschein/issues/77)).
+- Ein Test, der den Daemon im Testprozess mit `Listen` und `Serve` startet, braucht kein Warten: `Listen` kehrt erst zurück, wenn beide Sockets lauschen.
+- Eine Wartezeit hat immer eine Obergrenze (30 Sekunden für den Start eines Daemons), aber nie eine feste Pause als Bedingung. Ein Test, der eine Reihenfolge braucht, wartet auf ein Ereignis (ein Kanal, eine Logzeile, ein Zählerstand) und nicht auf `time.Sleep`. Ein Test, der prüft, dass etwas *nicht* geschieht, darf eine kurze Zeit warten; er prüft dann nur eine Richtung, die auf einem langsamen Runner nicht zu falschen Fehlern führt.
 - Der Test beendet die Kindprozesse in `t.Cleanup`.
+- Der Test startet das Binary nur über `a38Cmd`. Das Kind erhält ein temporäres `HOME`, temporäre XDG-Verzeichnisse, kein `A38_CONFIG` und den Testeintrag `A38_TEST_KEYCHAIN_SERVICE=a38-test-…`. So findet `a38 doctor` im Kind keine plist des Menschen, ruft kein `launchctl` auf und schaut nie auf den Eintrag `a38.onepassword`. `TestOnlyA38CmdStartsTheBinary` prüft, dass kein Test das Binary anders startet.
 - Ein Kennwert im Fake-Backend zeigt, ob ein Secret-Wert in eine Ausgabe gelangt ({{ ref("T8") }}).
 
 ## Abhängigkeiten
@@ -746,7 +762,7 @@ Der eigene Code über `purego` ist klein und bleibt im Paket `internal/keychain`
 Die Version v4.0.0 ist eine Woche alt (Stand 2026-11-11).
 Die Version v3 ist erprobt und reicht für beide Dateien.
 
-Das MCP-SDK steht seit Issue 24 in `go.mod`. Das SQLite-Modul steht noch nicht darin.
+Das MCP-SDK steht seit Issue 24 und das SQLite-Modul seit dem Audit-Log in `go.mod`.
 Das Issue, das ein Modul braucht, nimmt es auf und prüft dabei die aktuelle Version.
 `modernc.org/sqlite` gehört nur in den Daemon, in `a38 audit` und in `a38 tui`.
 Bubble Tea v2 und Lip Gloss v2 sind die gepflegten Hauptversionen (Stand 2026-11-12). Lip Gloss v2.1.0 war drei Tage alt; `a38` nutzt v2.0.6. `a38 tui` nutzt aus Bubbles nur `key` und `help`: Fußzeile und Hilfe entstehen aus derselben Tastenbelegung. Die Versionen sind dieselben wie in Stefans anderen Oberflächen mit Bubble Tea.
@@ -755,7 +771,7 @@ Das MCP-SDK gehört nur in `internal/mcp`.
 ## Was diese Seite nicht entscheidet
 
 - Die Form des Startwerts für den Namen der Sitzung ist in Issue 24 gewählt: das Argument `--session-name` und die Umgebungsvariable `A38_SESSION_NAME` von `a38 mcp`, das Argument hat Vorrang ({{ ref("G19") }}). Wer den Wert je Sitzung setzt, bleibt offen.
-- Der Name des Admin-Befehls zum Aufheben der Sperre ist offen ({{ ref("G20") }}). Das Protokoll nennt die Nachricht `fault_clear`. Issue 25 wählt auf der Kommandozeile `a38 fault clear` und `a38 fault status`; Stefan bestätigt den Namen.
-- Ob die Freigabe-App die Meldung zeigt, ist offen ({{ ref("G20") }}). In Stufe 1 erhält das Skript der Oberfläche die Meldung.
+- Der Name des Admin-Befehls zum Aufheben der Sperre ist offen ({{ ref("G20") }}, {{ ref("G31") }}). Das Protokoll nennt die Nachricht `fault_clear`. Issue 25 wählt auf der Kommandozeile `a38 fault clear` und `a38 fault status`; Stefan bestätigt den Namen.
+- Die Freigabe-App zeigt die Meldung (abgenommen, [PR 46](https://github.com/seletz/passierschein/pull/46)); offen sind Häufigkeit und Form der Aktionen ({{ ref("G20") }}).
 - Ob ein Agent die Namen der Items über ein Werkzeug findet, ist offen ({{ ref("G6") }}). Das Protokoll hat dafür keine Nachricht. `Backend.Vaults` listet nur Vaults.
 - Ob eine Verbindung je Agent die richtige Sitzung ist, ist offen ({{ ref("G2") }}). Der Code setzt {{ ref("D25") }} um.

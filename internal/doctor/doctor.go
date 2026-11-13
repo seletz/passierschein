@@ -82,6 +82,7 @@ func Checks(env Env) []Check {
 	return []Check{
 		configCheck{env},
 		socketCheck{env},
+		serviceCheck{env},
 		daemonCheck{env},
 		lockCheck{},
 		projectCheck{},

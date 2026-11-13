@@ -9,12 +9,14 @@ tags:
 
 Diese Seite hält die Durchsicht der offenen Gaps vom 2026-11-12 fest ([Issue 58](https://github.com/seletz/passierschein/issues/58)).
 Zu Beginn waren 30 Gaps offen.
+Die Tabelle trägt den Stand nach dem Release `v0.1.0` (2026-11-12) nach.
+Seit der Durchsicht sind {{ ref("D51") }} und {{ ref("D54") }} bestätigt, {{ ref("G4") }}, {{ ref("G34") }} und {{ ref("G15") }} geschlossen.
 
 ## Regel der Durchsicht
 
 - Ein Gap ist geschlossen, wenn jede offene Frage eine Antwort hat.
 - Eine Antwort ist eine Entscheidung ohne `beleg.annahme`, eine Aussage von Stefan in einem gemergten Pull Request oder einem Artefakt, ein bestandener Test oder ein festgehaltener Praxistest.
-- Eine Annahme der Entwicklung schließt kein Gap. Das gilt auch für eine Entscheidung mit `beleg.annahme: true` ({{ ref("D49") }}, {{ ref("D51") }}, {{ ref("D52") }}).
+- Eine Annahme der Entwicklung schließt kein Gap. Das gilt auch für eine Entscheidung mit `beleg.annahme: true` ({{ ref("D49") }}, {{ ref("D52") }}).
 - Ein Gap ist vertagt, wenn es eine spätere Stufe betrifft und nichts in den Stufen 1 bis 3 davon abhängt ({{ ref("D23") }}).
 - Ein Gap mit einer Teilantwort bleibt offen. Die Tabelle nennt den Rest.
 
@@ -22,10 +24,11 @@ Zu Beginn waren 30 Gaps offen.
 
 | Ergebnis | Anzahl |
 |---|---|
-| geschlossen | 1 |
+| geschlossen | 6 |
 | vertagt | 3 |
-| offen | 26 |
+| offen | 25 |
 
+Die Zahlen sind der Stand der Register nach dem Release (`dg-register list --alle --familie G`).
 Die offenen Gaps stehen nach ihrer Bedeutung für das MVP geordnet.
 Rang 1 ist am wichtigsten.
 
@@ -35,8 +38,8 @@ Rang 1 ist am wichtigsten.
 |---|---|---|---|---|---|---|
 | 1 | {{ ref("G30") }} | Grant hängt an Namen statt an einer festen Kennung | offen | {{ ref("D52") }} beantwortet beide Fragen; Tests `TestReadByID`, `TestDuplicateTitlesFailClosed` | {{ ref("D52") }} ist eine Annahme. | Stefan entscheidet |
 | 2 | {{ ref("G23") }} | Referenz in anderer Schreibweise | offen | {{ ref("D52") }}: genauer Vergleich, keine Kennung im Segment des Items | {{ ref("D52") }} ist eine Annahme. | Stefan entscheidet |
-| 3 | {{ ref("G3") }} | Zugang zu 1Password | offen | Integrationstest {{ ref("T15") }} und Praxistest am 2026-11-12 bestanden ([PR 51](https://github.com/seletz/passierschein/pull/51), [PR 52](https://github.com/seletz/passierschein/pull/52)); Ziel Schlüsselbund von Stefan festgelegt ({{ ref("D51") }}, Punkt 1); Namen ohne Werte: das SDK liefert die Felder nur mit Werten, `Resolve` verwirft das Item sofort | Wie viele Vaults der Service Account liest; ob das Rate Limit reicht; Bestätigung der Token-Datei als Übergang ({{ ref("D51") }} ist eine Annahme); Entscheidung über die Empfehlung des [Spikes zum Schlüsselbund](../explanation/spikes/50-token-im-schluesselbund.md) und dessen Praxistest; Desktop-Integration unter einem LaunchAgent | Stefan entscheidet; Praxistest |
-| 4 | {{ ref("G5") }} | Signatur der Freigabe-App mit Developer ID | offen | {{ ref("D50") }} legt fest, wie der Daemon die App findet; Swift 6.4.2 ist je Task in `mise.toml` festgelegt ([PR 46](https://github.com/seletz/passierschein/pull/46)) | Notarisierung und Ticket im Archiv; Ablage durch `mise` mit dem Backend `github:`; ob der Daemon die Signatur prüft (heute `NoopVerifier`); Swift auf dem macOS-Runner ([Issue 55](https://github.com/seletz/passierschein/issues/55)); neu aus dem Spike zum Schlüsselbund: Signiert der Release-Job auch `a38` mit Hardened Runtime? | Entwicklung (Release-Job); Stefan entscheidet über die Prüfung der Signatur; Praxistest mit Developer ID |
+| 3 | {{ ref("G3") }} | Zugang zu 1Password | offen | Integrationstest {{ ref("T15") }} und Praxistest am 2026-11-12 bestanden ([PR 51](https://github.com/seletz/passierschein/pull/51), [PR 52](https://github.com/seletz/passierschein/pull/52)); Schlüsselbund als Standard von Stefan abgenommen ({{ ref("D51") }}, [PR 61](https://github.com/seletz/passierschein/pull/61)); Namen ohne Werte: das SDK liefert die Felder nur mit Werten, `Resolve` verwirft das Item sofort | Wie viele Vaults der Service Account liest; ob das Rate Limit reicht; Praxistest des Schlüsselbunds mit der signierten Version (siehe {{ ref("G5") }}; [Spike zum Schlüsselbund](../explanation/spikes/50-token-im-schluesselbund.md)); Desktop-Integration unter einem LaunchAgent | Stefan entscheidet; Praxistest |
+| 4 | {{ ref("G5") }} | Signatur der Freigabe-App mit Developer ID | offen | Release `v0.1.0` vom 2026-11-12: App mit der Developer ID signiert, notarisiert, Ticket angeheftet, geprüft (`codesign`, `spctl`: `Notarized Developer ID`, `stapler`); `a38` im Bundle und im tar-Archiv signiert (Hardened Runtime); der Daemon prüft die Signatur der App; Swift 6.4.2 je Task in `mise.toml`, Runner `xcode-27`; `mise` wählt das tar-Archiv, nicht das ZIP ([Anleitung](../how-to/15-a38-aus-dem-release-installieren.md#mit-mise-installieren)); {{ ref("D50") }} und {{ ref("D54") }} sind von Stefan bestätigt | Praxistest des Release auf dem Mac von Stefan: Installation, Start, Eintrag im Schlüsselbund ohne Dialog nach einem Update, die Prüfung der Signatur durch den Daemon mit der echten App | Stefan (Praxistest) |
 | 5 | {{ ref("G19") }} | Name der Sitzung | offen | {{ ref("D25") }}: Name aus der Anmeldung des MCP-Servers, unbestätigt, gleicher Name ist ein Fehler; Praxistest: der Name stimmt ([PR 52](https://github.com/seletz/passierschein/pull/52)) | Form `--session-name` und `A38_SESSION_NAME` ist nicht als Entscheidung festgehalten; wer den Wert je neuer Sitzung setzt; Anzeige nach einer Umbenennung; Gegenstück in anderen Agent-Werkzeugen | Stefan entscheidet |
 | 6 | {{ ref("G2") }} | Eine Verbindung je Agent unter herdr | offen | {{ ref("D33") }}: ein Grant überlebt keinen Neustart des Agents | Ob jedes Werkzeug und jeder Unteragent einen eigenen Prozess `a38 mcp` startet; ob das Arbeitsverzeichnis in einem Worktree das Projekt ergibt ({{ ref("D49") }} ist eine Annahme) | Praxistest unter herdr; Stefan bestätigt {{ ref("D49") }} |
 | 7 | {{ ref("G28") }} | Welche Fehler die ganze Anfrage beenden | offen | Code setzt die Annahme um ([PR 34](https://github.com/seletz/passierschein/pull/34)) | Ob Einträge unter einem gültigen Grant trotz Ablehnung der neuen Einträge geliefert werden | Stefan entscheidet |
@@ -56,12 +59,16 @@ Rang 1 ist am wichtigsten.
 | 21 | {{ ref("G8") }} | Aufbewahrung im Audit-Log | offen | – | Dauer, Löschung mit neuem Anker, Kürzung der Begründung | Stefan entscheidet |
 | 22 | {{ ref("G12") }} | Maß für Freigabemüdigkeit | offen | `a38 tui` und `a38 audit stats` zeigen Popups je Tag, Anteil der Ablehnungen, Abweichungen und Größe der Bündel; Definitionen in {{ ref("D57") }} (Annahme) | Annehmbare Zahl je Tag, Warnsignal, Hinweise in der Freigabeanfrage | Stefan entscheidet; Praxistest liefert Zahlen |
 | 23 | {{ ref("G14") }} | Design-Check in der CI | offen | `mise run design:check` läuft weiter nur lokal | Token für den Download von `dg-register` | Stefan entscheidet |
-| 24 | {{ ref("G15") }} | Pages, Provenienz und cosign im privaten Repo | offen | Der Release-Workflow attestiert nur bei einem öffentlichen Repo | Öffentliche Doku, Provenienz, Signatur der Prüfsummendatei | Stefan entscheidet |
-| 25 | {{ ref("G16") }} | Persönlicher Assistent auf dem Mac | offen | – | Ausnahme oder Weg über `a38` | Stefan entscheidet |
-| 26 | {{ ref("G10") }} | Persona der Coding Agents im Cluster | offen | {{ ref("D14") }}: nicht Teil von `a38` | Name, Tag und Rechte der Persona | Stefan entscheidet, außerhalb von `a38` |
+| 24 | {{ ref("G16") }} | Persönlicher Assistent auf dem Mac | offen | – | Ausnahme oder Weg über `a38` | Stefan entscheidet |
+| 25 | {{ ref("G10") }} | Persona der Coding Agents im Cluster | offen | {{ ref("D14") }}: nicht Teil von `a38` | Name, Tag und Rechte der Persona | Stefan entscheidet, außerhalb von `a38` |
 | – | {{ ref("G1") }} | Erkennung der VM und Transport in die VM | vertagt | Spike 40 empfiehlt Tailscale; Stufe 5 nach {{ ref("D23") }} | Entscheidung über die Empfehlung und Praxistest | Spätere Stufe (5) |
 | – | {{ ref("G11") }} | Auslieferung als Datei auf einem tmpfs | vertagt | {{ ref("D24") }}: die Auslieferung als Datei entsteht mit der VM | Entwurf des Ablaufs | Spätere Stufe (5) |
 | – | {{ ref("G9") }} | Freigabe, wenn der Mac nicht erreichbar ist | vertagt | {{ ref("D53") }}: der Daemon läuft nur auf dem Mac; {{ ref("D23") }}: das MVP ist lokal | Freigabe ohne erreichbaren Mac | Spätere Stufe (5 und später) |
+| – | {{ ref("G4") }} | Touch ID und OmniWM nicht geprüft | geschlossen | Praxistest von Stefan am 2026-11-12 ([Issue 39](https://github.com/seletz/passierschein/issues/39)); der Rest steht in {{ ref("G33") }} | – | – |
+| – | {{ ref("G15") }} | Pages, Provenienz und cosign im privaten Repo | geschlossen | Stefan, 2026-11-12: Doku öffentlich von `develop` ([PR 65](https://github.com/seletz/passierschein/pull/65)); Provenienz nur bei öffentlichem Repo; kein cosign | – | – |
+| – | {{ ref("G34") }} | Sprache im Dialog von Touch ID | geschlossen | Stefan im Praxistest am 2026-11-12: der Text folgt der Sprache des Systems | – | – |
+| – | {{ ref("G7") }} | Umfang eines Grants | geschlossen | Stefan im Review am 2026-11-11: Grant über die angehakten Zugangsdaten | – | – |
+| – | {{ ref("G17") }} | Format und Ort der Konfiguration | geschlossen | {{ ref("D49") }} (Annahme der Entwicklung, [Issue 16](https://github.com/seletz/passierschein/issues/16)) | – | – |
 | – | {{ ref("G26") }} | Prototyp zeigt ausgeschlossene Fälle | geschlossen | Abnahme der Oberfläche durch Stefan ([PR 46](https://github.com/seletz/passierschein/pull/46), [Issue 39](https://github.com/seletz/passierschein/issues/39)); Text zum Umfang: „The grant covers only the selected credentials …“; {{ ref("D32") }}, {{ ref("D24") }} | – | – |
 
 ## Was eine aufgezeichnete Entscheidung braucht
@@ -71,11 +78,12 @@ Zwei Antworten hat Stefan gegeben, aber kein Artefakt hält sie als Entscheidung
 - Die Form des Namens der Sitzung: `a38 mcp --session-name` und `A38_SESSION_NAME` in der Anmeldung des MCP-Servers ({{ ref("G19") }}, {{ ref("G31") }}).
 - Die Abnahme der Oberfläche der Freigabe-App mit Sprache, Meldung und Zeile „Agent“ steht nur im Pull Request und im Issue ({{ ref("G20") }}, {{ ref("G24") }}).
 
-Drei Entscheidungen warten auf die Bestätigung durch Stefan.
+Zwei Entscheidungen warten auf die Bestätigung durch Stefan.
 Jede Bestätigung schließt Gaps:
 
 | Entscheidung | Schließt nach der Bestätigung |
 |---|---|
 | {{ ref("D52") }} | {{ ref("G30") }}, {{ ref("G23") }}; {{ ref("G25") }}, wenn kein Attribut nötig ist |
-| {{ ref("D51") }} | engt {{ ref("G3") }} weiter ein |
 | {{ ref("D49") }} | Teil von {{ ref("G2") }} |
+
+{{ ref("D51") }} und {{ ref("D54") }} hat Stefan am 2026-11-12 bestätigt.

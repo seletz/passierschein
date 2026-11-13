@@ -5,15 +5,25 @@ Kommandozeilenwerkzeug heißt `a38`.
 
 ## Stand
 
+**Das erste Release `v0.1.0` ist veröffentlicht (2026-11-12).** Es liefert
+`Passierschein.app` mit `a38` im Bundle als ZIP für macOS, signiert mit der
+Developer ID, notarisiert und mit angeheftetem Ticket. Dazu kommen tar-Archive
+mit dem einzelnen `a38` für macOS und Linux, SBOMs und Prüfsummen. Der Praxistest
+des Release auf dem Mac von Stefan ist offen. Die Anleitung
+[a38 aus dem Release installieren](docs/how-to/15-a38-aus-dem-release-installieren.md)
+zeigt den Weg. Die Doku steht unter <https://seletz.github.io/passierschein/>
+und zeigt den Stand von `develop`.
+
 **Stufe 1 ist fertig.** Sie läuft lokal mit einem Fake-Backend und einer
 gefälschten Freigabe.
 
-**Stufe 2 ist gebaut und abgenommen, der Praxistest ist offen.** Die
+**Stufe 2 ist gebaut, abgenommen und im Praxistest bestanden.** Die
 Freigabe-App „Passierschein“ (Swift, Ordner `app/`) zeigt das Popup und fragt
 Touch ID. Der Daemon startet sie mit `a38 serve --ui app`. Der Ablauf über
 echte Prozesse läuft mit der Debug-App und gefälschter Authentifizierung
-(`mise run app:e2e`). Offen sind der Praxistest mit dem echten Touch ID am
-Bildschirm und unter OmniWM. Die
+(`mise run app:e2e`). Stefan hat am 2026-11-12 das echte Touch ID und die Sicht
+unter OmniWM geprüft. Offen sind Vollbild, Wechsel des Arbeitsbereichs,
+Zeitablauf und die Meldungen am Bildschirm. Die
 Anleitung [Freigabe-App lokal ausprobieren](docs/how-to/40-freigabe-app-ausprobieren.md)
 zeigt, wie du die App ohne Touch ID startest.
 
@@ -50,16 +60,13 @@ Was in Stufe 1 funktioniert:
 - Backend aus einer YAML-Datei (`--backend fake`) und Freigabe ohne Mensch
   (`--ui auto-approve`, `auto-deny`, `script`) für Tests und zum Lernen
 
-**Release mit signierter App ist gebaut.** Der signierte Snapshot mit der
-echten Developer ID ist grün; ein echtes Release ist offen. Das Release liefert `Passierschein.app` mit `a38`
-im Bundle als ZIP, signiert mit der Developer ID, notarisiert und mit
-angeheftetem Ticket. Der Daemon prüft die Signatur der App, wenn `a38`
-selbst mit der Developer ID signiert ist. Die Anleitung
+**Das Release ist signiert und notarisiert.** Der Daemon prüft die Signatur
+der App, wenn `a38` selbst mit der Developer ID signiert ist. Die Anleitung
 [Release signieren und prüfen](docs/how-to/60-release-signieren-und-pruefen.md)
-beschreibt Secrets, Prüfung und Installation.
+beschreibt für Maintainer die Secrets und die Prüfung eines Release.
 
 Noch nicht vorhanden: `a38 service install`, der Hook gegen `op`, der Betrieb mit Agents
-in der VM und die Auslieferung außerhalb von dev.
+in der VM und Homebrew (das folgt, wenn das Repo öffentlich ist).
 
 25 von 28 Testfällen des Designs sind belegt, 3 teilweise. Die App, der darwin-Code und der 1Password-Integrationstest laufen in einem eigenen macOS-Workflow ([CI](docs/reference/55-ci.md)). Die
 Übersicht steht in der [Testabdeckung](docs/reference/90-testabdeckung.md).
@@ -74,9 +81,16 @@ in der VM und die Auslieferung außerhalb von dev.
 
 Nur der Daemon hat Zugriff auf 1Password.
 
+## Installation
+
+Die Anleitung [a38 aus dem Release installieren](docs/how-to/15-a38-aus-dem-release-installieren.md)
+beschreibt den Weg für macOS (App mit `a38`, Prüfung der Signatur, Token im
+Schlüsselbund, Update) und für Linux (nur der Client `a38 mcp`). Mit `mise`
+installierst du das einzelne `a38` aus dem tar-Archiv.
+
 ## Einstieg
 
-Voraussetzung: [mise](https://mise.jdx.dev/).
+Zum Bauen und Ausprobieren aus dem Quelltext: [mise](https://mise.jdx.dev/).
 
 ```sh
 mise install        # Werkzeuge in den festgelegten Versionen
@@ -84,7 +98,8 @@ mise run build      # baut bin/a38
 ```
 
 Das [Tutorial](docs/tutorials/10-erste-schritte.md) führt in wenigen Schritten
-durch den ganzen Ablauf mit dem Fake-Backend. Das
+durch den ganzen Ablauf mit dem Fake-Backend. Die [How-tos](docs/how-to/index.md)
+lösen einzelne Aufgaben. Das
 [Design-Set](docs/design/index.md) ist die Spezifikation.
 
 ## Entwicklung

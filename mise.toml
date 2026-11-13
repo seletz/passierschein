@@ -160,6 +160,7 @@ depends = ["uv:sync"]
 run = """
 uv run --locked zensical build --clean --strict
 grep -q "$(git rev-parse --short HEAD)" site/index.html || { echo "site/index.html lacks the commit hash: macros not rendered" >&2; exit 1; }
+bash scripts/docs-macros-check.sh
 """
 
 [tasks.release]

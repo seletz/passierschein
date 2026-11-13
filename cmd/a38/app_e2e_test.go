@@ -221,7 +221,7 @@ func TestAppE2E(t *testing.T) {
 		}
 		noGrants(t, socketDir)
 		stop()
-		out2, err := exec.Command(bin, "audit", "list", "--config", cfgPath, "--json").Output()
+		out2, err := a38Cmd(context.Background(), t, bin, "audit", "list", "--config", cfgPath, "--json").Output()
 		if err != nil {
 			t.Fatal(err)
 		}

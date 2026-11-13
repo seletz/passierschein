@@ -182,7 +182,7 @@ func TestMCPProcessesEndToEnd(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer cancel()
 
-			cmd := exec.CommandContext(ctx, bin, "mcp", "--config", cfgPath, "--session-name", "beispiel-koordinator")
+			cmd := a38Cmd(ctx, t, bin, "mcp", "--config", cfgPath, "--session-name", "beispiel-koordinator")
 			var mcpErr syncBuffer
 			cmd.Stderr = &mcpErr
 			cs, err := mcp.NewClient(&mcp.Implementation{Name: "coding-agent", Version: "1"}, nil).
@@ -244,13 +244,13 @@ func TestMCPProcessesEndToEnd(t *testing.T) {
 	}
 }
 
-// startServe starts "a38 serve" as a process and waits for the agent
-// socket. The returned function stops the daemon and waits for its end.
+// startServe starts "a38 serve" as a process and waits for the line
+// "daemon started" (waitDaemonStarted). The returned function stops the daemon and waits for its end.
 func startServe(t *testing.T, bin, cfgPath, socketDir string, args ...string) func() {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	var serveErr syncBuffer
-	serve := exec.CommandContext(ctx, bin, append([]string{"serve", "--config", cfgPath}, args...)...)
+	serve := a38Cmd(ctx, t, bin, append([]string{"serve", "--config", cfgPath}, args...)...)
 	serve.Stderr = &serveErr
 	serve.Cancel = func() error { return serve.Process.Signal(os.Interrupt) }
 	if err := serve.Start(); err != nil {
@@ -267,22 +267,14 @@ func startServe(t *testing.T, bin, cfgPath, socketDir string, args ...string) fu
 		})
 	}
 	t.Cleanup(stop)
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		if _, err := os.Stat(filepath.Join(socketDir, "agent.sock")); err == nil {
-			return stop
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("no agent socket; stderr:\n%s", serveErr.String())
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	waitDaemonStarted(t, &serveErr, nil)
+	return stop
 }
 
 // auditTypes reads the event types with "a38 audit list --json".
 func auditTypes(t *testing.T, bin, cfgPath string) []string {
 	t.Helper()
-	out, err := exec.Command(bin, "audit", "list", "--config", cfgPath, "--json").Output()
+	out, err := a38Cmd(context.Background(), t, bin, "audit", "list", "--config", cfgPath, "--json").Output()
 	if err != nil {
 		t.Fatalf("a38 audit list: %v", err)
 	}

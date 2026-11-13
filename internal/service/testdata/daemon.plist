@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Written by a38 service install. a38 service uninstall removes it. Do not edit; a38 service install writes it again. -->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>io.github.seletz.passierschein.daemon</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Applications/Passierschein.app/Contents/MacOS/a38</string>
+		<string>serve</string>
+		<string>--backend</string>
+		<string>1password</string>
+		<string>--ui</string>
+		<string>app</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<false/>
+	<key>LimitLoadToSessionType</key>
+	<string>Aqua</string>
+	<key>ProcessType</key>
+	<string>Interactive</string>
+	<key>AssociatedBundleIdentifiers</key>
+	<array>
+		<string>io.github.seletz.passierschein</string>
+	</array>
+	<key>ExitTimeOut</key>
+	<integer>20</integer>
+	<key>WorkingDirectory</key>
+	<string>/</string>
+	<key>Umask</key>
+	<integer>63</integer>
+	<key>StandardOutPath</key>
+	<string>/Users/beispiel/Library/Logs/a38/serve.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/beispiel/Library/Logs/a38/serve.log</string>
+</dict>
+</plist>

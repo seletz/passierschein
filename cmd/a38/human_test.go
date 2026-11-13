@@ -18,7 +18,7 @@ import (
 // a38Out runs the binary and returns the exit code, stdout and stderr.
 func a38Out(t *testing.T, bin string, args ...string) (int, string, string) {
 	t.Helper()
-	cmd := exec.Command(bin, args...)
+	cmd := a38Cmd(context.Background(), t, bin, args...)
 	var o, e syncBuffer
 	cmd.Stdout, cmd.Stderr = &o, &e
 	err := cmd.Run()

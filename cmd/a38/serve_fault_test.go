@@ -175,7 +175,7 @@ func TestServeGlobalLock(t *testing.T) {
 // log, in their sequence.
 func lockDetails(t *testing.T, bin, cfgPath string) []string {
 	t.Helper()
-	out, err := exec.Command(bin, "audit", "list", "--config", cfgPath, "--json").Output()
+	out, err := a38Cmd(context.Background(), t, bin, "audit", "list", "--config", cfgPath, "--json").Output()
 	if err != nil {
 		t.Fatalf("a38 audit list: %v", err)
 	}

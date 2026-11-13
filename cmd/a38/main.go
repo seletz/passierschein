@@ -44,6 +44,7 @@ var commands = []command{
 	{"audit", "List the audit log, verify its hash chain and print its figures (stats)", runAudit},
 	{"tui", "Show approvals and deliveries of the audit log in the terminal (read-only, macOS)", runTUI},
 	{"config", "Manage the configuration file (path, show, init, validate, vault, project) and the 1Password token", runConfig},
+	{"service", "Install, remove, restart and show the daemon as a LaunchAgent (macOS)", runService},
 	{"doctor", "Check the state of a38 and name the next step for each finding", runDoctor},
 	{"llm", "Print the instructions for agents (--skill)", runLLM},
 	{"version", "Print the version", runVersion},

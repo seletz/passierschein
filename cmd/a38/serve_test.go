@@ -252,16 +252,7 @@ func TestServeRuns(t *testing.T) {
 		done <- serve(ctx, []string{"--config", cfg, "--backend", "fake", "--fake-file", fakeFile, "--ui", "auto-approve"}, &stdout, &stderr)
 	}()
 	agentSocket := filepath.Join(socketDir, "agent.sock")
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		if _, err := os.Stat(agentSocket); err == nil {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("the agent socket does not exist; stderr:\n%s", stderr.String())
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	waitDaemonStarted(t, &stderr, nil)
 	reqCtx, reqCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer reqCancel()
 
