@@ -60,6 +60,8 @@ mise run docs:build
 
 Der Task baut die Site streng nach `site/`. Ein toter Link bricht den Build
 ab. Die CI führt denselben Task aus.
+Der Task schreibt auch `llms.txt` und `llms-full.txt` für Agenten und prüft sie.
+Eine neue Seite erscheint dort automatisch, wenn sie in einem der Ordner liegt, die `zensical.toml` unter `[project.plugins.llmstxt.sections]` nennt.
 
 ## Sprache
 

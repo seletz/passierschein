@@ -93,7 +93,7 @@ keinen Zugriff.
 |---|---|
 | `uv:sync` | Installiert die Werkzeuge der Doku nach `.venv`. |
 | `docs:serve` | Zeigt die Doku lokal und lädt Änderungen neu. |
-| `docs:build` | Baut die Doku streng nach `site/`. |
+| `docs:build` | Baut die Doku streng nach `site/`, schreibt `llms.txt` und `llms-full.txt` und prüft beide ([CI](55-ci.md#ausgabe-fur-agenten-llmstxt)). |
 
 ## Release
 

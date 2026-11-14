@@ -39,6 +39,7 @@ Nur der Daemon hat Zugriff auf 1Password. Der Agent hat keinen Zugriff auf
 
 Die Doku folgt [Diátaxis](https://diataxis.fr/). Jeder Abschnitt beantwortet
 eine Art von Frage.
+Agenten lesen die Doku als Markdown: [llms.txt](llms.txt) listet alle Seiten, [llms-full.txt](llms-full.txt) enthält alle Seiten in einer Datei.
 
 <div class="grid cards" markdown>
 
