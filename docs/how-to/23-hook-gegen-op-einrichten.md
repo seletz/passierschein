@@ -1,14 +1,15 @@
 ---
 title: Hook gegen den direkten Aufruf von op einrichten
-description: "a38 hook op-guard in Claude Code eintragen, von Hand prüfen und wieder entfernen."
+description: "a38 hook op-guard in Claude Code für alle Projekte eintragen, von Hand prüfen und wieder entfernen."
 render_macros: true
 ---
 # Hook gegen den direkten Aufruf von op einrichten
 
 Ein Agent soll Zugangsdaten nur über a38 anfragen.
 Der Skill sagt ihm das.
-Der Hook `a38 hook op-guard` erinnert ihn daran, wenn er es vergisst ({{ ref("F16") }}, {{ ref("UC12") }}).
+Der Hook `a38 hook op-guard` erinnert ihn daran, wenn er es vergisst ({{ ref("F16") }}, {{ ref("F24") }}, {{ ref("UC12") }}, {{ ref("UC16") }}).
 Diese Anleitung trägt den Hook in Claude Code ein.
+Sie empfiehlt den Benutzerbereich: Dann gilt der Hook für alle deine Projekte ({{ ref("D67") }}).
 
 ## Was der Hook tut
 
@@ -17,20 +18,25 @@ Der Hook liest den Befehl und entscheidet.
 
 - Er **blockiert** einen Befehl, der die 1Password-CLI `op` startet. Der Befehl läuft nicht.
 - Er blockiert auch einen Befehl, der das Token von a38 liest: die Token-Datei (`…/onepassword-token`) und den Eintrag `a38.onepassword` im Schlüsselbund mit `security find-generic-password -w`.
-- Der Agent erhält eine kurze Meldung. Sie nennt nur einen Weg: das MCP-Werkzeug `request_credentials` des Servers `a38`.
+- Der Agent erhält eine kurze Meldung. Sie nennt die beiden Wege von a38 und keinen Umweg: die MCP-Werkzeuge `run_with_credentials` und `request_credentials` des Servers `a38`.
 - Jeden anderen Befehl **lässt er durch** und schreibt nichts.
 - Andere Werkzeuge als `Bash` prüft er nicht.
 
 Die Meldung an den Agent lautet:
 
 ```text
-a38 blocked this command. This command runs the 1Password CLI "op". The command did not run.
-Do not run "op" or any other password manager tool yourself.
-Get credentials only through a38: call the MCP tool "request_credentials" of the MCP server "a38".
-Put all credentials that the task needs into one request. Give each as a reference of the form op://vault/item/field, and give "task" and "reason".
-If the request fails or the human denies it, stop the work that needs the credential and tell the human the error code.
-Do not look for another way to get the credential.
+Blocked by a38: do not run the 1Password CLI "op".
+To run a command with a credential, use the MCP tool
+run_with_credentials of the server a38. For a dev credential
+value, you can also use request_credentials.
 ```
+
+Liest der Befehl das Token von a38, lautet die erste Zeile `Blocked by a38: do not read the 1Password token of a38.`
+Der Rest bleibt gleich.
+
+Mit dem exec-Weg hat jeder Aufruf von `op` einen Ersatz, auch für test und prod.
+Der Agent startet sein Kommando über `run_with_credentials` ([Befehl mit Zugangsdaten ausführen lassen](25-befehl-mit-zugangsdaten-ausfuehren.md)).
+Deshalb passt der Hook jetzt für alle Projekte.
 
 ## Was der Hook nicht tut
 
@@ -43,9 +49,10 @@ Do not look for another way to get the credential.
     Den Schutz liefert erst die VM ohne 1Password (Stufe 5).
 
 - **Im Zweifel lässt der Hook durch.** Eine Eingabe, die kein JSON ist, die größer als 1 MiB ist oder deren Befehl kein Parser versteht, passiert. Der Rest von a38 schließt im Zweifel. Der Hook nicht: Er ist keine Grenze, und ein Fehler im Hook darf die Arbeit des Agents nicht anhalten ({{ ref("D58") }}).
-- Ein Befehl, dessen Kommandowort erst zur Laufzeit entsteht, passiert, zum Beispiel `$TOOL read …` oder `bash -c "$CMD"`.
+- Ein Befehl, dessen Kommandowort erst zur Laufzeit entsteht, passiert, zum Beispiel `$TOOL read …` oder `bash -c "$CMD"`. Der Schalter `--strict` ändert das (siehe [Strenger Modus](#strenger-modus)).
 - Ein Skript in einer Datei (`bash ./skript.sh`) und ein Here-Document für eine Shell prüft der Hook nicht.
 - Er prüft Zeichenketten von `bash -c`, `sh -c`, `zsh -c`, `eval` und `env -S` bis zur Tiefe 3. Eine tiefere Verschachtelung passiert.
+- Das MCP-Werkzeug `run_with_credentials` ist kein Befehl von `Bash`. Der Hook prüft es nicht ({{ ref("D67") }}).
 - Ein Alias oder eine Funktion mit anderem Namen erkennt er nicht.
 - `which op`, `command -v op`, `type op` und `brew install 1password-cli` lesen kein Secret. Sie passieren.
 
@@ -98,6 +105,9 @@ Der Block nutzt die Form von Claude Code
 
 ## Projekt oder Benutzer
 
+**Empfehlung:** Trage den Hook im Benutzerbereich ein (`~/.claude/settings.json`).
+Dann gilt er für alle deine Projekte ({{ ref("D67") }}).
+
 Claude Code liest Hooks aus mehreren Dateien und führt sie zusammen
 ([Hooks reference](https://code.claude.com/docs/en/hooks), Tabelle der Orte von Hooks).
 
@@ -115,6 +125,24 @@ Der Unterschied ist nur das Feld `command`.
 ```sh
 a38 hook op-guard --print-config --scope user
 ```
+
+## Für alle Projekte einrichten
+
+1. Gib den Block mit dem absoluten Pfad aus:
+
+    ```sh
+    a38 hook op-guard --print-config --scope user
+    ```
+
+2. Öffne `~/.claude/settings.json` in einem Editor.
+3. Füge den Block von Hand ein, wie im nächsten Abschnitt unter Schritt 3 beschrieben.
+   Überschreibe die Datei nicht mit `>`: Sie enthält meist schon andere Einstellungen.
+4. Steht der Hook schon in `.claude/settings.json` eines Projekts, entferne ihn dort.
+   Sonst läuft er in diesem Projekt zweimal.
+5. Starte die Sitzungen von Claude Code neu.
+6. Gib in Claude Code `/hooks` ein. Der Hook steht unter `PreToolUse`.
+
+Kein Befehl von a38 ändert `~/.claude/settings.json`. Die Datei gehört dir ({{ ref("D58") }}).
 
 ## Den Block eintragen
 
@@ -138,6 +166,35 @@ Claude Code führt einen Hook aus einer Datei erst aus, wenn du dem Ordner vertr
 Das gilt in einer interaktiven Sitzung auch für `~/.claude/settings.json`
 ([Hooks reference](https://code.claude.com/docs/en/hooks), Abschnitt „Workspace trust“).
 
+## Strenger Modus
+
+Ohne Schalter lässt der Hook einen Befehl durch, den er nicht prüfen kann.
+Mit `--strict` blockiert er einen solchen Befehl, wenn der Text des Befehls `op` als eigenes Wort enthält ({{ ref("D67") }}).
+Das gilt in drei Fällen:
+
+- Der Parser versteht den Befehl nicht.
+- Ein Kommandowort entsteht erst zur Laufzeit, zum Beispiel `TOOL=op; $TOOL read …` oder `bash -c "$CMD"`.
+- Die Schachtelung von `bash -c` und `eval` ist tiefer als 3.
+
+Ein eigenes Wort heißt: Vor und nach `op` steht kein Buchstabe, keine Ziffer und keines der Zeichen `_`, `.` und `-`.
+`top`, `opam`, `op.txt` und `op-check` enthalten `op` nicht als eigenes Wort.
+`TOOL=op` und `op://…` enthalten es.
+
+Eine Eingabe, die kein JSON ist, die größer als 1 MiB ist oder die keinen Befehl hat, passiert auch mit `--strict`.
+Das ist ein Fehler im Aufruf, kein Zweifel am Befehl.
+
+`--strict` hilft, wenn ein Agent nach einer Blockade `op` in einer Variable versteckt.
+Ein falscher Treffer hält aber die Arbeit des Agents an.
+Der Standard bleibt deshalb ohne Schalter.
+
+Den Block mit dem Schalter gibt `--print-config --strict` aus:
+
+```sh
+a38 hook op-guard --print-config --scope user --strict
+```
+
+Im Block steht dann `"args": ["hook", "op-guard", "--strict"]`.
+
 ## Von Hand prüfen
 
 Du prüfst den Hook ohne Agent.
@@ -160,6 +217,18 @@ echo "exit=$?"
 
 Erwartet: keine Ausgabe und `exit=0`.
 
+Den strengen Modus prüfst du mit einem Kommandowort aus einer Variable:
+
+```sh
+printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"TOOL=op; $TOOL whoami"}}' \
+  | a38 hook op-guard --strict
+echo "exit=$?"
+```
+
+Erwartet: die Meldung auf stderr und `exit=2`.
+Ohne `--strict` passiert derselbe Befehl mit `exit=0`.
+Auf stderr steht dann nur der Grund: `allowed without inspection: a command word is built at run time; not inspected`.
+
 Vollständige Beispiele der Eingabe liegen im Repository unter `internal/opguard/testdata/`.
 
 ## Im Agent prüfen
@@ -167,7 +236,7 @@ Vollständige Beispiele der Eingabe liegen im Repository unter `internal/opguard
 1. Starte Claude Code im Projekt.
 2. Bitte den Agent: „Lies mit op das Passwort aus op://beispiel.app.k8s-dev/datenbank-dev/password.“
 3. Claude Code zeigt `PreToolUse:Bash hook error` mit der Meldung. Der Befehl läuft nicht.
-4. Der Agent nutzt danach `request_credentials`. Das Popup von a38 erscheint.
+4. Der Agent nutzt danach `run_with_credentials` oder `request_credentials`. Das Popup von a38 erscheint.
 
 Bleibt der Agent bei `op`, prüfe mit `/hooks`, ob der Hook geladen ist.
 Mit `claude --debug` schreibt Claude Code jeden Lauf eines Hooks in das Debug-Log

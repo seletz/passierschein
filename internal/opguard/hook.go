@@ -39,10 +39,19 @@ type bashInput struct {
 	Command *string `json:"command"`
 }
 
+// Options change the decision of the guard.
+type Options struct {
+	// Strict blocks a case of doubt if the raw command has the word op
+	// (D67, point 3). An input error still passes.
+	Strict bool
+}
+
 // Decide reads one hook input (JSON) from r and decides. It reads at most
 // MaxInput+1 bytes. Each input that it cannot read or understand is
-// allowed (fail-open, D15); Note then names the reason.
-func Decide(r io.Reader) Decision {
+// allowed (fail-open, D15); Note then names the reason. A command that the
+// guard cannot inspect fully (a Doubt) is allowed too, except with
+// opts.Strict when the raw command has the word op (RuleOpDoubt).
+func Decide(r io.Reader, opts Options) Decision {
 	data, err := io.ReadAll(io.LimitReader(r, MaxInput+1))
 	if err != nil {
 		return Decision{Note: "cannot read the input"}
@@ -68,9 +77,14 @@ func Decide(r io.Reader) Decision {
 	if err := json.Unmarshal(in.ToolInput, &bash); err != nil || bash.Command == nil {
 		return Decision{Note: "Bash input has no command"}
 	}
-	rule, parsed := Check(*bash.Command)
-	if !parsed {
-		return Decision{Note: "command is not parsable; not inspected"}
+	rule, doubt := Inspect(*bash.Command)
+	switch {
+	case rule != "":
+		return Decision{Rule: rule}
+	case doubt == "":
+		return Decision{}
+	case opts.Strict && MentionsOp(*bash.Command):
+		return Decision{Rule: RuleOpDoubt}
 	}
-	return Decision{Rule: rule}
+	return Decision{Note: string(doubt) + "; not inspected"}
 }

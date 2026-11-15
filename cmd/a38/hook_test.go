@@ -25,7 +25,8 @@ func sample(t *testing.T, name string) string {
 	return string(data)
 }
 
-// T29 (steps 1 to 3): exit codes and streams.
+// T29 (steps 1 to 3) and T40 (part): exit codes and streams, also with
+// --strict.
 // F16, UC12: the stdin, stdout and exit code contract of
 // "a38 hook op-guard". A block is exit 2 with the message on stderr and
 // nothing on stdout; an allow is exit 0 without any output.
@@ -37,7 +38,11 @@ func TestHookOpGuardContract(t *testing.T) {
 		wantCode   int
 		wantStderr string
 	}{
-		{"block op", []string{"hook", "op-guard"}, sample(t, "claude-code-bash-op.json"), 2, `"request_credentials"`},
+		{"block op", []string{"hook", "op-guard"}, sample(t, "claude-code-bash-op.json"), 2, "run_with_credentials of the server a38"},
+		{"block op strict", []string{"hook", "op-guard", "--strict"}, sample(t, "claude-code-bash-op.json"), 2, "run_with_credentials of the server a38"},
+		{"allow strict", []string{"hook", "op-guard", "--strict"}, sample(t, "claude-code-bash-allowed.json"), 0, ""},
+		{"allow invalid JSON strict", []string{"hook", "op-guard", "--strict"}, "op read op://v/i/f", 0, "input is not JSON"},
+		{"usage: strict with scope", []string{"hook", "op-guard", "--strict", "--scope", "user"}, "", 1, "--scope needs --print-config"},
 		{"block token file", []string{"hook", "op-guard"}, sample(t, "claude-code-bash-token-file.json"), 2, "token of a38"},
 		{"allow", []string{"hook", "op-guard"}, sample(t, "claude-code-bash-allowed.json"), 0, ""},
 		{"allow text with op", []string{"hook", "op-guard"}, sample(t, "claude-code-bash-mentions-op.json"), 0, ""},
@@ -90,6 +95,8 @@ func TestHookHelp(t *testing.T) {
 	}
 }
 
+// T40 (part): --print-config --strict prints the block with the switch
+// (D67, point 3).
 // --print-config prints a hooks block for Claude Code: PreToolUse, matcher
 // Bash, exec form with the arguments "hook op-guard". Project scope uses
 // the bare name, user scope the absolute path of the running a38.
@@ -102,10 +109,13 @@ func TestHookPrintConfig(t *testing.T) {
 		name        string
 		args        []string
 		wantCommand string
+		wantArgs    string
 	}{
-		{"default", []string{"hook", "op-guard", "--print-config"}, "a38"},
-		{"project", []string{"hook", "op-guard", "--print-config", "--scope", "project"}, "a38"},
-		{"user", []string{"hook", "op-guard", "--print-config", "--scope=user"}, "/opt/beispiel/bin/a38"},
+		{"default", []string{"hook", "op-guard", "--print-config"}, "a38", "hook op-guard"},
+		{"project", []string{"hook", "op-guard", "--print-config", "--scope", "project"}, "a38", "hook op-guard"},
+		{"user", []string{"hook", "op-guard", "--print-config", "--scope=user"}, "/opt/beispiel/bin/a38", "hook op-guard"},
+		{"strict", []string{"hook", "op-guard", "--print-config", "--strict"}, "a38", "hook op-guard --strict"},
+		{"user strict", []string{"hook", "op-guard", "--print-config", "--scope", "user", "--strict"}, "/opt/beispiel/bin/a38", "hook op-guard --strict"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -134,7 +144,7 @@ func TestHookPrintConfig(t *testing.T) {
 				t.Fatalf("unexpected hooks block: %+v", settings)
 			}
 			h := groups[0].Hooks[0]
-			if h.Type != "command" || h.Command != tt.wantCommand || strings.Join(h.Args, " ") != "hook op-guard" || h.Timeout != opguard.HookTimeout {
+			if h.Type != "command" || h.Command != tt.wantCommand || strings.Join(h.Args, " ") != tt.wantArgs || h.Timeout != opguard.HookTimeout {
 				t.Errorf("handler = %+v", h)
 			}
 		})
@@ -196,9 +206,68 @@ func TestHookOpGuardProcess(t *testing.T) {
 			if tt.wantCode == 0 && stderr.Len() != 0 {
 				t.Errorf("stderr = %q, want no output", stderr.String())
 			}
-			if tt.wantCode == 2 && !strings.Contains(stderr.String(), `"request_credentials"`) {
+			if tt.wantCode == 2 && !strings.Contains(stderr.String(), "run_with_credentials") {
 				t.Errorf("stderr = %q, want the block message", stderr.String())
 			}
 		})
+	}
+}
+
+// T40: the switch --strict with the real flag parsing. A case of doubt
+// with the word op blocks only with --strict; a case of doubt without op
+// passes in both modes.
+func TestHookOpGuardStrict(t *testing.T) {
+	input := func(command string) string {
+		data, err := json.Marshal(map[string]any{
+			"hook_event_name": "PreToolUse",
+			"tool_name":       "Bash",
+			"tool_input":      map[string]string{"command": command},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(data)
+	}
+	tests := []struct {
+		name       string
+		stdin      string
+		wantNormal int
+		wantStrict int
+	}{
+		{"step 1: op read", input("op read op://beispiel.app.k8s-dev/datenbank-dev/password"), 2, 2},
+		{"step 2: unparsable with op", input("op read 'op://beispiel.app.k8s-dev/datenbank-dev/password"), 0, 2},
+		{"step 3: runtime word with op", input("TOOL=op; $TOOL read op://beispiel.app.k8s-dev/datenbank-dev/password"), 0, 2},
+		{"step 4: runtime word without op", input("X=1; $X --version"), 0, 0},
+		{"step 5: not JSON", "op read op://beispiel.app.k8s-dev/datenbank-dev/password", 0, 0},
+	}
+	for _, tt := range tests {
+		for _, mode := range []struct {
+			args []string
+			want int
+		}{
+			{[]string{"hook", "op-guard"}, tt.wantNormal},
+			{[]string{"hook", "op-guard", "--strict"}, tt.wantStrict},
+		} {
+			t.Run(tt.name+" "+strings.Join(mode.args[2:], " "), func(t *testing.T) {
+				old := hookStdin
+				hookStdin = strings.NewReader(tt.stdin)
+				t.Cleanup(func() { hookStdin = old })
+				var stdout, stderr bytes.Buffer
+				if got := run(mode.args, &stdout, &stderr); got != mode.want {
+					t.Errorf("exit code = %d, want %d (stderr %q)", got, mode.want, stderr.String())
+				}
+				if stdout.Len() != 0 {
+					t.Errorf("stdout = %q, want no output", stdout.String())
+				}
+				if mode.want == hookBlock {
+					msg := stderr.String()
+					if !strings.Contains(msg, "run_with_credentials") || !strings.Contains(msg, "request_credentials") {
+						t.Errorf("stderr = %q, want both ways of a38", msg)
+					}
+				} else if strings.Contains(stderr.String(), "op read") || strings.Contains(stderr.String(), "$") {
+					t.Errorf("stderr repeats the input: %q", stderr.String())
+				}
+			})
+		}
 	}
 }

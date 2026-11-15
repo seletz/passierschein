@@ -30,7 +30,7 @@ func TestDecideSamples(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			d := Decide(bytes.NewReader(data))
+			d := Decide(bytes.NewReader(data), Options{})
 			if d.Rule != tt.want {
 				t.Errorf("Decide = %q, want %q", d.Rule, tt.want)
 			}
@@ -67,7 +67,7 @@ func TestDecideFailOpen(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := Decide(strings.NewReader(tt.input))
+			d := Decide(strings.NewReader(tt.input), Options{})
 			if d.Blocked() {
 				t.Fatalf("Decide blocks with %q, want allow", d.Rule)
 			}
@@ -84,7 +84,7 @@ func TestDecideFailOpen(t *testing.T) {
 // The guard reads at most MaxInput+1 bytes of a huge input.
 func TestDecideReadsAtMostTheLimit(t *testing.T) {
 	r := &countingReader{}
-	if d := Decide(r); d.Blocked() {
+	if d := Decide(r, Options{}); d.Blocked() {
 		t.Fatal("Decide blocks an endless input")
 	}
 	if r.n > MaxInput+1+32*1024 {
@@ -105,7 +105,7 @@ func (c *countingReader) Read(p []byte) (int, error) {
 
 // A read error allows.
 func TestDecideReadError(t *testing.T) {
-	d := Decide(errReader{})
+	d := Decide(errReader{}, Options{})
 	if d.Blocked() || d.Note == "" {
 		t.Errorf("Decide = %+v, want allow with a note", d)
 	}
@@ -115,17 +115,17 @@ type errReader struct{}
 
 func (errReader) Read([]byte) (int, error) { return 0, errors.New("broken pipe") }
 
-// T29 (step 1): the message names request_credentials and no other way.
-// F16: the block message names the MCP tool and the server, follows the
-// rules of the skill and suggests no other way.
+// T29 (step 1) and T40 (step 1): the message names both ways of a38
+// and no other way.
+// F24, D67: the block message names the MCP tools run_with_credentials and
+// request_credentials of the server a38 and suggests no other way.
 func TestMessage(t *testing.T) {
-	for _, rule := range []Rule{RuleOpCLI, RuleTokenFile, RuleKeychainToken} {
+	for _, rule := range []Rule{RuleOpCLI, RuleOpDoubt, RuleTokenFile, RuleKeychainToken} {
 		t.Run(string(rule), func(t *testing.T) {
 			msg := Message(rule)
 			for _, want := range []string{
-				`"request_credentials"`, `MCP server "a38"`, "op://vault/item/field",
-				"one request", "stop", "tell the human", "did not run",
-				"Do not look for another way",
+				"Blocked by a38: do not ", "use the MCP tool\nrun_with_credentials of the server a38.",
+				"For a dev credential\nvalue, you can also use request_credentials.",
 			} {
 				if !strings.Contains(msg, want) {
 					t.Errorf("message lacks %q:\n%s", want, msg)
@@ -133,7 +133,7 @@ func TestMessage(t *testing.T) {
 			}
 			lower := strings.ToLower(msg)
 			for _, bad := range []string{
-				"instead run", "you can", "try", "sudo", "env ", "bash -c", "export",
+				"instead run", "try", "sudo", "env ", "bash -c", "export",
 				"op read", "op item", "op inject", "op run", "op signin",
 				"service_account", "token file", "keychain", "security ", "1password app",
 				"--", "retry", "grant_status", "http",
@@ -147,8 +147,15 @@ func TestMessage(t *testing.T) {
 			}
 		})
 	}
-	if !strings.Contains(Message(RuleOpCLI), `1Password CLI "op"`) {
-		t.Error("the message for op-cli does not name the CLI")
+	const d67 = `Blocked by a38: do not run the 1Password CLI "op".
+To run a command with a credential, use the MCP tool
+run_with_credentials of the server a38. For a dev credential
+value, you can also use request_credentials.
+`
+	for _, rule := range []Rule{RuleOpCLI, RuleOpDoubt} {
+		if got := Message(rule); got != d67 {
+			t.Errorf("Message(%q) =\n%s\nwant the text of D67:\n%s", rule, got, d67)
+		}
 	}
 	if !strings.Contains(Message(RuleTokenFile), "token of a38") {
 		t.Error("the message for the token file does not name the token")
@@ -163,7 +170,8 @@ func FuzzDecide(f *testing.F) {
 	f.Add(`{"tool_name":"Bash","tool_input":{"command":"echo $'\\x6f'p ${a:-op} $((1+2)) {a,b}"}}`)
 	f.Add("not json")
 	f.Fuzz(func(t *testing.T, in string) {
-		_ = Decide(strings.NewReader(in))
+		_ = Decide(strings.NewReader(in), Options{})
+		_ = Decide(strings.NewReader(in), Options{Strict: true})
 	})
 }
 
