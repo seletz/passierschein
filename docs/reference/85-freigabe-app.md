@@ -303,14 +303,14 @@ Der Workflow `macos.yml` führt sie auf einem macOS-Runner aus ([CI](55-ci.md)).
 
 ### App-Icon
 
-Das App-Icon zeigt eine stilisierte Ausweiskarte ({{ ref("D69") }}).
+Das App-Icon zeigt einen stilisierten Reisepass ({{ ref("D69") }}).
 Die Quelle ist das Swift-Programm `app/Icon/render-icon.swift`.
 Es zeichnet drei Entwürfe mit Core Graphics:
 
 | Entwurf | Motiv |
 |---|---|
-| 1 | Ausweiskarte mit Fotofeld und Textzeilen (im Bundle) |
-| 2 | Reisepass mit einem Siegel aus Ring und Schlüsselloch |
+| 1 | Ausweiskarte mit Fotofeld und Textzeilen |
+| 2 | Reisepass mit einem Siegel aus Ring und Schlüsselloch (im Bundle) |
 | 3 | Passierschein mit Eselsohr und Stempel mit Haken |
 
 `mise run app:icon` übersetzt das Programm mit der festgelegten Swift-Version.
@@ -318,7 +318,8 @@ Der Task zeichnet jeden Entwurf in zehn PNG-Dateien von 16 bis 1024 Pixel.
 `iconutil` fügt die Dateien zu `AppIcon.icns` zusammen.
 Jede Größe hat ein eigenes Pixelraster.
 Unter 64 Pixel entfallen feine Linien.
-Die Variable `APP_ICON_DRAFT` wählt den Entwurf des Bundles, Vorgabe 1.
+Die Variable `APP_ICON_DRAFT` wählt den Entwurf des Bundles, Vorgabe 2.
+Die Entwürfe 1 und 3 bleiben in der Quelle als verworfene Varianten.
 Der Task zeichnet den gewählten Entwurf zweimal und vergleicht die beiden Dateien ({{ ref("T42") }}).
 
 `app:build` und `release:app` rufen `scripts/app-icon.sh` auf.

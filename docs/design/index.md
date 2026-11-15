@@ -68,8 +68,10 @@ Eine Entscheidung hat eine von zwei Herkünften:
   mit dem [Pull Request 94](https://github.com/seletz/passierschein/pull/94)
   bestätigt. Sie ersetzen {{ ref("D10") }}, {{ ref("D24") }}, {{ ref("D32") }}
   und {{ ref("D41") }}.
-- **Vorschlag in Lauf 2, offen:** {{ ref("D69") }} (App-Icon, Wahl des
-  Entwurfs durch Stefan in Issue 104).
+- **In Lauf 2 bestätigt:** {{ ref("D69") }} (App-Icon: stilisierter
+  Reisepass). Stefan hat den Entwurf am 2026-11-15 im
+  [Pull Request 109](https://github.com/seletz/passierschein/pull/109)
+  gewählt.
 
 Drei Entscheidungen ruhen auf Spikes: {{ ref("D39") }} (1Password-SDK),
 {{ ref("D31") }} und {{ ref("D45") }} (Freigabe-UI), {{ ref("D46") }}

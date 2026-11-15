@@ -11,7 +11,7 @@
 #   app/.build/icon/draft-<n>/AppIcon.icns
 #   app/.build/icon/AppIcon.icns              the icon of the bundle
 #
-# APP_ICON_DRAFT selects the draft of the bundle (D69: draft 1).
+# APP_ICON_DRAFT selects the draft of the bundle (D69: draft 2).
 #
 # T42: the script draws the selected draft a second time and fails if the
 # two icns files differ. The icon depends only on the source.
@@ -19,7 +19,7 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT="$ROOT/app/.build/icon"
-SELECTED=${APP_ICON_DRAFT:-1}
+SELECTED=${APP_ICON_DRAFT:-2}
 
 bash "$ROOT/scripts/app-swift-check.sh"
 
