@@ -8,7 +8,7 @@ stand: '2026-11-15'
 order: 3
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F22, D66, UC16]
 ---
 # T37 — Der Daemon lädt Auslieferungswege, Laufzeiten und Grenzen je Umgebung und lehnt verbotene Werte ab

@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -205,6 +206,7 @@ type showDoc struct {
 	Projects    []showProject     `json:"projects"`
 	Valid       bool              `json:"valid"`
 	Problems    []string          `json:"problems"`
+	Deprecated  []string          `json:"deprecated"`
 	TokenSource string            `json:"token_source"`
 }
 
@@ -276,7 +278,6 @@ func buildShow(loc config.Location, cfg *config.Config, in config.Inspection) sh
 		Path: loc.Path, Source: string(loc.Source), Why: loc.Why,
 		Values: []showValue{
 			val("version", fmt.Sprint(config.FileVersion)),
-			val("grant.lifetime", cfg.Grant.Lifetime.String()),
 			val("bundle.window", cfg.Bundle.Window.String()),
 			val("bundle.max_entries", fmt.Sprint(cfg.Bundle.MaxEntries)),
 			val("session_name.max_length", fmt.Sprint(cfg.SessionName.MaxLength)),
@@ -298,7 +299,31 @@ func buildShow(loc config.Location, cfg *config.Config, in config.Inspection) sh
 		Vaults:      []showVault{},
 		Projects:    []showProject{},
 		Problems:    []string{},
+		Deprecated:  []string{},
 		TokenSource: string(cfg.Backend.OnePassword.TokenSource),
+	}
+	// The environments and the limits of the exec way (D66). The deprecated
+	// key grant.lifetime sets the lifetime of dev; its origin is the file.
+	var env []showValue
+	for _, e := range []config.Environment{config.EnvDev, config.EnvTest, config.EnvProd} {
+		p := cfg.Policy(e)
+		key := func(k string) string { return "environments." + string(e) + "." + k }
+		lifetime := val(key("grant_lifetime"), p.GrantLifetime.String())
+		if e == config.EnvDev && in.Present["grant.lifetime"] {
+			lifetime.Origin = "file"
+		}
+		env = append(env,
+			val(key("delivery"), config.FormatDelivery(p.Delivery)),
+			lifetime,
+			val(key("binding"), string(p.Binding)))
+	}
+	env = append(env,
+		val("exec.default_timeout", cfg.Exec.DefaultTimeout.String()),
+		val("exec.max_timeout", cfg.Exec.MaxTimeout.String()),
+		val("exec.output_limit", config.FormatSize(cfg.Exec.OutputLimit)))
+	doc.Values = slices.Insert(doc.Values, 1, env...)
+	for _, d := range cfg.Deprecations {
+		doc.Deprecated = append(doc.Deprecated, d.String())
 	}
 	for _, v := range cfg.Vaults {
 		doc.Vaults = append(doc.Vaults, showVault{Name: v.Name, Environment: string(v.Environment)})
@@ -363,6 +388,9 @@ func renderShow(w io.Writer, d showDoc, loc config.Location) {
 		if pr.Invalid != "" {
 			p("    problem  %s\n", pr.Invalid)
 		}
+	}
+	for _, text := range d.Deprecated {
+		p("\nDeprecated\n  %s\n", text)
 	}
 	p("\nValidation\n")
 	if d.Valid {

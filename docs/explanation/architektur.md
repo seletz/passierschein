@@ -576,8 +576,9 @@ projects:
       - ~/develop/beispielprojekt__worktrees
     vaults:
       - beispiel.app.k8s-dev
-grant:
-  lifetime: 4h
+environments:
+  dev:
+    grant_lifetime: 4h
 bundle:
   window: 3s
   max_entries: 10   # 1 bis 50, siehe unten

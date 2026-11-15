@@ -62,6 +62,15 @@ func setHome(t *testing.T) {
 	t.Setenv("A38_CONFIG", "")
 }
 
+// defaultEnvironments returns the defaults of D66 with the lifetime of dev.
+func defaultEnvironments(dev time.Duration) map[Environment]EnvironmentPolicy {
+	return map[Environment]EnvironmentPolicy{
+		EnvDev:  {Delivery: []Delivery{DeliveryMCP, DeliveryExec}, GrantLifetime: dev, Binding: BindingNone},
+		EnvTest: {Delivery: []Delivery{DeliveryExec}, GrantLifetime: 30 * time.Minute, Binding: BindingProgram},
+		EnvProd: {Delivery: []Delivery{}, GrantLifetime: 0, Binding: BindingCommand},
+	}
+}
+
 func TestParseDefaults(t *testing.T) {
 	// T4 (part): without a value the grant lifetime is four hours.
 	// T19 (part): the defaults of the bundle are three seconds and ten entries.
@@ -72,8 +81,10 @@ func TestParseDefaults(t *testing.T) {
 		t.Fatalf("Parse: %v", err)
 	}
 	want := &Config{
-		Grant:  Grant{Lifetime: 4 * time.Hour},
-		Bundle: Bundle{Window: 3 * time.Second, MaxEntries: 10},
+		Grant:        Grant{Lifetime: 4 * time.Hour},
+		Environments: defaultEnvironments(4 * time.Hour),
+		Exec:         Exec{DefaultTimeout: 2 * time.Minute, MaxTimeout: 10 * time.Minute, OutputLimit: 64 << 10},
+		Bundle:       Bundle{Window: 3 * time.Second, MaxEntries: 10},
 		SessionName: SessionNameRules{
 			MaxLength:         80,
 			AllowedCharacters: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -_():",
@@ -121,11 +132,15 @@ func TestParseExample(t *testing.T) {
 				MissingPaths: []string{"/home/beispiel/develop/zweitprojekt"},
 				Vaults:       []string{"beispiel.app.k8s-dev", "beispiel.app.k8s-test"}},
 		},
-		Grant:       Grant{Lifetime: 30 * time.Minute},
-		Bundle:      Bundle{Window: 1500 * time.Millisecond, MaxEntries: 3},
-		SessionName: SessionNameRules{MaxLength: 20, AllowedCharacters: "abcdefghijklmnopqrstuvwxyz-."},
-		Paths:       Paths{SocketDir: "/home/beispiel/a38/run", AuditFile: "/home/beispiel/a38/audit.db"},
-		Backend:     Backend{OnePassword: OnePassword{TokenSource: TokenSourceFile, TokenFile: "/home/beispiel/a38/onepassword-token"}},
+		Grant:        Grant{Lifetime: 30 * time.Minute},
+		Environments: defaultEnvironments(30 * time.Minute),
+		Exec:         Exec{DefaultTimeout: 2 * time.Minute, MaxTimeout: 10 * time.Minute, OutputLimit: 64 << 10},
+		// The example sets the deprecated key grant.lifetime.
+		Deprecations: []Deprecation{{Key: "grant.lifetime", Replacement: "environments.dev.grant_lifetime"}},
+		Bundle:       Bundle{Window: 1500 * time.Millisecond, MaxEntries: 3},
+		SessionName:  SessionNameRules{MaxLength: 20, AllowedCharacters: "abcdefghijklmnopqrstuvwxyz-."},
+		Paths:        Paths{SocketDir: "/home/beispiel/a38/run", AuditFile: "/home/beispiel/a38/audit.db"},
+		Backend:      Backend{OnePassword: OnePassword{TokenSource: TokenSourceFile, TokenFile: "/home/beispiel/a38/onepassword-token"}},
 	}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("Parse(example) =\n%+v\nwant\n%+v", cfg, want)
