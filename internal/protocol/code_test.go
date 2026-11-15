@@ -7,12 +7,14 @@ import (
 )
 
 func TestCodes(t *testing.T) {
-	// The list of D35. A change here is a change of the design.
+	// The list of D35, plus exec_required and exec_failed of D61. A change
+	// here is a change of the design.
 	want := []Code{
 		"denied", "timeout", "not_allowed", "bundle_too_large",
 		"daemon_unavailable", "backend_locked", "backend_unavailable",
 		"ui_failed", "audit_failed", "daemon_faulted", "config_invalid",
 		"session_name_conflict", "not_found", "invalid_request",
+		"exec_required", "exec_failed",
 	}
 	got := Codes()
 	if len(got) != len(want) {

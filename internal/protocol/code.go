@@ -46,14 +46,24 @@ const (
 	CodeNotFound Code = "not_found"
 	// CodeInvalidRequest: the message does not obey the schema.
 	CodeInvalidRequest Code = "invalid_request"
+	// CodeExecRequired: the vault delivers only on the exec way.
+	// request_credentials gives no value for it; the agent asks again with
+	// run_with_credentials (D61, D62).
+	CodeExecRequired Code = "exec_required"
+	// CodeExecFailed: "a38 mcp" did not start the command after the
+	// delivery, for example because the file is not executable any more.
+	// Only "a38 mcp" creates this code for the agent; it reports it to the
+	// daemon in exec_result (D61).
+	CodeExecFailed Code = "exec_failed"
 )
 
-// codes lists all codes in the sequence of the design.
+// codes lists all codes in the sequence of the design: D35, then D61.
 var codes = [...]Code{
 	CodeDenied, CodeTimeout, CodeNotAllowed, CodeBundleTooLarge,
 	CodeDaemonUnavailable, CodeBackendLocked, CodeBackendUnavailable,
 	CodeUIFailed, CodeAuditFailed, CodeDaemonFaulted, CodeConfigInvalid,
 	CodeSessionNameConflict, CodeNotFound, CodeInvalidRequest,
+	CodeExecRequired, CodeExecFailed,
 }
 
 // Codes returns all stable error codes. The caller owns the slice.

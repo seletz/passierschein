@@ -130,7 +130,8 @@ func roundTripCases(t testing.TB) []struct {
 	value := NewSecret("kennwert-nur-fuer-tests")
 	grantedAt := time.Date(2026, 11, 11, 17, 30, 0, 0, time.UTC)
 	expiresAt := grantedAt.Add(4 * time.Hour)
-	return []struct {
+	// T32 (part): the messages of the exec way are part of the round trip.
+	return append([]struct {
 		name string
 		set  Set
 		msg  Message
@@ -171,7 +172,7 @@ func roundTripCases(t testing.TB) []struct {
 		{"fault_clear", AdminRequests, &FaultClear{ID: "a4"}},
 		{"fault_clear_result", AdminResponses, &FaultClearResult{ID: "a4", Cleared: false, Finding: "The daemon cannot write the audit log."}},
 		{"admin error", AdminResponses, &ErrorResponse{ID: "a2", Error: Error{Code: CodeNotFound, Message: "The grant does not exist."}}},
-	}
+	}, execRoundTripCases(t)...)
 }
 
 func TestRoundTrip(t *testing.T) {

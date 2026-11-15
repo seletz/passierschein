@@ -28,14 +28,18 @@ var (
 		TypeHello:              func() Message { return new(Hello) },
 		TypeRequestCredentials: func() Message { return new(RequestCredentials) },
 		TypeGrantStatus:        func() Message { return new(GrantStatus) },
+		TypeRequestExec:        func() Message { return new(RequestExec) },
+		TypeExecResult:         func() Message { return new(ExecResult) },
 	}}
 	// AgentResponses are the messages that the daemon sends on the agent
 	// socket.
 	AgentResponses = Set{"agent response", map[Type]func() Message{
-		TypeWelcome:     func() Message { return new(Welcome) },
-		TypeCredentials: func() Message { return new(Credentials) },
-		TypeGrants:      func() Message { return new(Grants) },
-		TypeError:       func() Message { return new(ErrorResponse) },
+		TypeWelcome:         func() Message { return new(Welcome) },
+		TypeCredentials:     func() Message { return new(Credentials) },
+		TypeGrants:          func() Message { return new(Grants) },
+		TypeError:           func() Message { return new(ErrorResponse) },
+		TypeExecCredentials: func() Message { return new(ExecCredentials) },
+		TypeExecRecorded:    func() Message { return new(ExecRecorded) },
 	}}
 	// AdminRequests are the messages that the daemon accepts on the admin
 	// socket.
@@ -231,7 +235,8 @@ type wireEntry struct {
 // sets the version and the type. It fails if the message is invalid or
 // larger than the size limit.
 //
-// Encode is the only function that writes the value of a [Secret].
+// Encode is the only function that writes the value of a [Secret]: in
+// [Credentials] and in [ExecCredentials].
 func Encode(m Message) ([]byte, error) {
 	if m == nil {
 		return nil, errors.New("protocol: cannot encode a nil message")
@@ -242,6 +247,9 @@ func Encode(m Message) ([]byte, error) {
 	h := m.header()
 	h.Version, h.Type = Version, m.MessageType()
 	var payload any = m
+	if c, ok := m.(*ExecCredentials); ok {
+		payload = c.wire()
+	}
 	if c, ok := m.(*Credentials); ok {
 		w := wireCredentials{Header: c.Header, ID: c.ID, Entries: make([]wireEntry, len(c.Entries))}
 		for i, e := range c.Entries {

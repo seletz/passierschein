@@ -94,6 +94,10 @@ func requestID(m protocol.Message) string {
 		return m.ID
 	case *protocol.FaultClear:
 		return m.ID
+	case *protocol.RequestExec:
+		return m.ID
+	case *protocol.ExecResult:
+		return m.ID
 	}
 	return ""
 }
@@ -268,6 +272,11 @@ func (s *Server) agentRequest(ctx context.Context, sess session.Session, msg pro
 			r.ID = id
 		}
 		resp = result(id, r, r != nil, perr)
+	case *protocol.RequestExec, *protocol.ExecResult:
+		// The broker does not implement the exec way yet (issue 99). The
+		// daemon delivers nothing and records nothing.
+		return &protocol.ErrorResponse{ID: id, Error: *protocol.Errorf(protocol.CodeNotAllowed,
+			"this version of the daemon does not implement the exec way")}
 	default:
 		return faulted(id)
 	}
