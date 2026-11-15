@@ -15,7 +15,7 @@ import (
 	"github.com/seletz/passierschein/internal/protocol"
 )
 
-// Names of the tools (D41). The skill text names the same tools.
+// Names of the tools (D61). The skill text names the same tools.
 const (
 	// ToolRequestCredentials is the tool that asks for credentials.
 	ToolRequestCredentials = "request_credentials"
@@ -42,6 +42,19 @@ type Options struct {
 	// Logger receives the log. Nil discards it. The log never holds a
 	// secret value.
 	Logger *slog.Logger
+	// WorkDir is the working directory of "a38 mcp": the default of cwd
+	// of run_with_credentials. Empty means the working directory of the
+	// process.
+	WorkDir string
+	// ProjectFor returns the name of the project of a directory without
+	// symbolic links (D49). run_with_credentials accepts only a cwd in
+	// the project of WorkDir (D64). Nil skips this check; the daemon
+	// checks again in each case.
+	ProjectFor func(dir string) (project string, ok bool)
+	// Environ returns the environment of "a38 mcp": the base of the
+	// environment of a command and the PATH for the search of the
+	// program. Nil means os.Environ.
+	Environ func() []string
 }
 
 // Server is the MCP server. Create it with [New].
@@ -54,7 +67,7 @@ type Server struct {
 	conn *client.Conn
 }
 
-// New returns a server with the two tools.
+// New returns a server with the three tools.
 func New(opts Options) *Server {
 	s := &Server{opts: opts, log: opts.Logger}
 	if s.log == nil {
@@ -76,6 +89,15 @@ func New(opts Options) *Server {
 		Description: "List the grants of this session and how long they last. Never returns a value.",
 		InputSchema: json.RawMessage(`{"type":"object","additionalProperties":false}`),
 	}, s.grantStatus)
+	s.mcp.AddTool(&mcp.Tool{
+		Name: ToolRunWithCredentials,
+		Description: "Run one command with credentials in its environment. a38 asks the human if necessary. " +
+			"Returns exit_code, signal, timed_out, stdout and stderr, never a value. " +
+			"An exact value in the output becomes [masked:NAME]; an encoded value is not masked. " +
+			"A command that ran is never an error, also with an exit code other than 0. " +
+			"On an error, stop and tell the human the code.",
+		InputSchema: runSchema,
+	}, s.runWithCredentials)
 	return s
 }
 
