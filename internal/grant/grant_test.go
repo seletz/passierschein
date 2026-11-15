@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/seletz/passierschein/internal/config"
 	"github.com/seletz/passierschein/internal/protocol"
 	"github.com/seletz/passierschein/internal/session"
 )
@@ -95,5 +96,74 @@ func TestAddCopies(t *testing.T) {
 	gr.Refs[0] = r("password")
 	if _, ok := s.Cover("s-a", r("username"), t0); !ok {
 		t.Error("a change of the caller changed the grant")
+	}
+}
+
+// T36, D63: the binding decides which commands a grant covers. A grant of
+// the MCP way and a grant with the binding none cover each command; a
+// grant with the binding program covers the same program and variable
+// names; a grant with the binding command covers only the same command.
+func TestCoverCommand(t *testing.T) {
+	psql := Command{Program: "/opt/homebrew/bin/psql", Args: []string{"-c", "select 1"}, Cwd: "/work/beispielprojekt", EnvNames: []string{"PGPASSWORD"}}
+	other := func(mut func(*Command)) Command {
+		c := psql
+		c.Args = append([]string(nil), psql.Args...)
+		c.EnvNames = append([]string(nil), psql.EnvNames...)
+		mut(&c)
+		return c
+	}
+	otherArgs := other(func(c *Command) { c.Args = []string{"-c", "select 2"} })
+	otherProgram := other(func(c *Command) { c.Program = "/usr/bin/env" })
+	otherCwd := other(func(c *Command) { c.Cwd = "/work/beispielprojekt/sub" })
+	otherNames := other(func(c *Command) { c.EnvNames = []string{"DB_PASSWORD"} })
+	noArgs := other(func(c *Command) { c.Args = nil })
+	tests := []struct {
+		name    string
+		binding config.Binding
+		cmd     Command
+		want    bool
+	}{
+		{"none, same", config.BindingNone, psql, true},
+		{"none, other program", config.BindingNone, otherProgram, true},
+		{"program, same", config.BindingProgram, psql, true},
+		{"program, other arguments", config.BindingProgram, otherArgs, true},
+		{"program, other directory", config.BindingProgram, otherCwd, true},
+		{"program, other program", config.BindingProgram, otherProgram, false},
+		{"program, other names", config.BindingProgram, otherNames, false},
+		{"command, same", config.BindingCommand, psql, true},
+		{"command, other arguments", config.BindingCommand, otherArgs, false},
+		{"command, no arguments", config.BindingCommand, noArgs, false},
+		{"command, other directory", config.BindingCommand, otherCwd, false},
+		{"command, other names", config.BindingCommand, otherNames, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := NewStore()
+			gr := g("g1", "s-a", time.Hour, "password")
+			gr.Binding, gr.Command = tt.binding, psql
+			s.Add(gr)
+			if _, ok := s.CoverCommand("s-a", r("password"), tt.cmd, t0); ok != tt.want {
+				t.Errorf("CoverCommand = %v, want %v", ok, tt.want)
+			}
+			// The MCP way uses only a grant with the binding none.
+			if _, ok := s.Cover("s-a", r("password"), t0); ok != (tt.binding == config.BindingNone) {
+				t.Errorf("Cover = %v for the binding %s", ok, tt.binding)
+			}
+		})
+	}
+	// A grant of the MCP way has no binding: it covers each command.
+	s := NewStore()
+	s.Add(g("g1", "s-a", time.Hour, "password"))
+	if _, ok := s.CoverCommand("s-a", r("password"), psql, t0); !ok {
+		t.Error("a grant of the MCP way does not cover a command in dev")
+	}
+	// The order of the variable names does not matter.
+	two := other(func(c *Command) { c.EnvNames = []string{"PGUSER", "PGPASSWORD"} })
+	gr := g("g2", "s-b", time.Hour, "password")
+	gr.Binding, gr.Command = config.BindingCommand, two
+	s.Add(gr)
+	swapped := other(func(c *Command) { c.EnvNames = []string{"PGPASSWORD", "PGUSER"} })
+	if _, ok := s.CoverCommand("s-b", r("password"), swapped, t0); !ok {
+		t.Error("the order of the variable names changes the cover")
 	}
 }
