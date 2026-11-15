@@ -10,8 +10,9 @@ headless: true
 status: gueltig
 use_cases: [UC1, UC11]
 beleg:
-  notiz: zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-15'
+  quelle: ['#90']
 ---
 # D59 — a38 trägt das Entitlement allow-unsigned-executable-memory für den WebAssembly-Kern des 1Password-SDK
 
