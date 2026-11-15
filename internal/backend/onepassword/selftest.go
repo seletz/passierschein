@@ -6,10 +6,6 @@ import (
 	"strings"
 )
 
-// selfTestToken is no token of a service account. The core of the SDK
-// rejects it before it calls the network. It is not secret.
-const selfTestToken = "ops_a38-selftest-no-token"
-
 // errSelfTest is the error of [SelfTest] when the core of the SDK ran but
 // did not answer as expected.
 var errSelfTest = errors.New("the WebAssembly core of the 1Password SDK did not reject the invalid token as expected")

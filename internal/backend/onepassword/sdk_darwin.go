@@ -28,6 +28,10 @@ func connectSDK(ctx context.Context, token token.Token, version string) (api, er
 	return sdkAPI{c: c}, nil
 }
 
+// selfTestToken is no token of a service account. The core of the SDK
+// rejects it before it calls the network. It is not secret.
+const selfTestToken = "ops_a38-selftest-no-token"
+
 // selfTestConnect builds a client of the SDK with the invalid token of
 // [SelfTest]. This loads and runs the WebAssembly core of the SDK.
 func selfTestConnect(ctx context.Context) error {
