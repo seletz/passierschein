@@ -1,0 +1,14 @@
+--- a/plugin.go
++++ b/plugin.go
+@@ -122,7 +122,10 @@
+ 
+ 	runtimeConfig := config.RuntimeConfig
+ 	if runtimeConfig == nil {
+-		runtimeConfig = wazero.NewRuntimeConfig()
++		// Passierschein: the interpreter, not the compiler. The compiler makes
++		// executable memory, which the hardened runtime of macOS forbids
++		// without an entitlement (issue #89, decision D59).
++		runtimeConfig = wazero.NewRuntimeConfigInterpreter()
+ 	}
+ 
+ 	// Make sure function calls are cancelled if the context is cancelled
