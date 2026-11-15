@@ -1,6 +1,12 @@
 // Package mcp is the MCP server of "a38 mcp". It runs in the zone of the
-// agent. It offers two tools (D41), request_credentials and grant_status,
-// and translates them into messages for the agent socket of the daemon.
+// agent. It offers three tools (D61): request_credentials, grant_status and
+// run_with_credentials. It translates them into messages for the agent
+// socket of the daemon.
+//
+// run_with_credentials is the exec way. The server gets the values from
+// the daemon, starts the command itself with the values in its
+// environment, masks the values in the output and gives the agent only the
+// result (D61, D64). The daemon never starts a program.
 //
 // One [Server] has at most one connection to the daemon at a time. The
 // connection is the session (D25). The server connects on the first tool

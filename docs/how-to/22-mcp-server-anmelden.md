@@ -5,7 +5,9 @@ description: "a38 mcp im Agent-Werkzeug anmelden und den Namen der Sitzung je Si
 # a38 als MCP-Server anmelden
 
 Das Agent-Werkzeug startet `a38 mcp` als MCP-Server über stdio.
-Der Server bietet die Werkzeuge `request_credentials` und `grant_status`.
+Der Server bietet die Werkzeuge `request_credentials`, `grant_status` und `run_with_credentials`.
+`run_with_credentials` startet ein Kommando mit den Werten in dessen Umgebung und gibt nur das Ergebnis zurück.
+Der Daemon liefert über diesen Weg erst mit dem Broker für den exec-Weg aus; bis dahin antwortet er mit `not_allowed`.
 Diese Anleitung zeigt die Anmeldung in Claude Code.
 
 ## Voraussetzungen

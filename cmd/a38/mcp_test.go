@@ -306,3 +306,80 @@ func slicesEqual(a, b []string) bool {
 	}
 	return true
 }
+
+func TestMCPRunWithCredentialsWiring(t *testing.T) {
+	// T34 step 5 (part): "a38 mcp" checks cwd against the projects of the
+	// configuration. A cwd in the project reaches the daemon, which
+	// answers not_allowed until the broker supports the exec way.
+	cfgPath, _, _ := writeConfig(t)
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := &nameBroker{}
+	srv, err := daemon.New(daemon.Options{Config: cfg, Agent: b, Admin: b})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := srv.Listen(); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	served := make(chan error, 1)
+	go func() { served <- srv.Serve(ctx) }()
+	defer func() {
+		cancel()
+		if err := <-served; err != nil {
+			t.Errorf("Serve() error = %v", err)
+		}
+	}()
+	st, ct := mcp.NewInMemoryTransports()
+	var stderr syncBuffer
+	done := make(chan int, 1)
+	go func() {
+		done <- runMCPWith(ctx, []string{"--config", cfgPath}, st, &stderr, func(string) string { return "" })
+	}()
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "coding-agent", Version: "1"}, nil).Connect(ctx, ct, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tt := range []struct {
+		cwd  string
+		want protocol.Code
+	}{
+		{"", protocol.CodeNotAllowed},
+		{outside, protocol.CodeInvalidRequest},
+	} {
+		args := map[string]any{
+			"command": "/bin/sh",
+			"args":    []string{"-c", "exit 0"},
+			"env":     map[string]string{"DB_PASSWORD": "op://beispiel.app.k8s-dev/datenbank-dev/password"},
+			"task":    "Run the migration of beispielprojekt",
+			"reason":  "The migration needs the password of datenbank-dev.",
+		}
+		if tt.cwd != "" {
+			args["cwd"] = tt.cwd
+		}
+		res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "run_with_credentials", Arguments: args})
+		if err != nil {
+			t.Fatal(err)
+		}
+		sc, _ := json.Marshal(res.StructuredContent)
+		var got struct {
+			Error struct {
+				Code protocol.Code `json:"code"`
+			} `json:"error"`
+		}
+		if err := json.Unmarshal(sc, &got); err != nil || !res.IsError || got.Error.Code != tt.want {
+			t.Errorf("cwd %q: result %s, want %s", tt.cwd, sc, tt.want)
+		}
+	}
+	_ = cs.Close()
+	if code := <-done; code != exitOK {
+		t.Errorf("exit code = %d; stderr:\n%s", code, stderr.String())
+	}
+}

@@ -1,0 +1,9 @@
+id: G40
+zustand: eingeloest
+titel: Das Design nennt kein Ende der Prozessgruppe nach dem Kommando und keine Quelle für die Prüfung des Arbeitsverzeichnisses in a38 mcp
+bezug: '#97'
+schluessel: '#97/prozessgruppe-cwd'
+lauf: '2.0'
+branch: feat/97-run-with-credentials
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

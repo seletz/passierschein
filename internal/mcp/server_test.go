@@ -207,7 +207,7 @@ func entries(t *testing.T, res *mcp.CallToolResult) []struct {
 }
 
 func TestListTools(t *testing.T) {
-	// T1 (part): the server offers the two tools of D41.
+	// T1 (part), T32 (part): the server offers the three tools of D61.
 	cfg := testConfig(t)
 	d := startDaemon(t, cfg, &fakeBroker{creds: valueFor})
 	cs := connectClient(t, d.AgentSocket(), "", "coding-agent", nil)
@@ -219,17 +219,25 @@ func TestListTools(t *testing.T) {
 	for _, tool := range res.Tools {
 		got[tool.Name] = tool
 	}
-	if len(got) != 2 || got["request_credentials"] == nil || got["grant_status"] == nil {
-		t.Fatalf("tools = %v, want request_credentials and grant_status", got)
+	if len(got) != 3 || got["request_credentials"] == nil || got["grant_status"] == nil || got["run_with_credentials"] == nil {
+		t.Fatalf("tools = %v, want request_credentials, grant_status and run_with_credentials", got)
 	}
-	schema, _ := json.Marshal(got["request_credentials"].InputSchema)
-	for _, p := range []string{`"references"`, `"task"`, `"reason"`} {
-		if !strings.Contains(string(schema), p) {
-			t.Errorf("schema %s lacks %s", schema, p)
+	params := map[string][]string{
+		"request_credentials":  {`"references"`, `"task"`, `"reason"`},
+		"run_with_credentials": {`"command"`, `"args"`, `"env"`, `"cwd"`, `"timeout_seconds"`, `"task"`, `"reason"`},
+	}
+	for tool, want := range params {
+		schema, _ := json.Marshal(got[tool].InputSchema)
+		for _, p := range want {
+			if !strings.Contains(string(schema), p) {
+				t.Errorf("schema of %s %s lacks %s", tool, schema, p)
+			}
 		}
 	}
-	if got["request_credentials"].Description == "" || got["grant_status"].Description == "" {
-		t.Error("a tool has no description")
+	for name, tool := range got {
+		if tool.Description == "" {
+			t.Errorf("the tool %s has no description", name)
+		}
 	}
 }
 
