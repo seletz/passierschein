@@ -30,11 +30,12 @@ A running daemon reads the file only at its start. Restart it after a change.
 
 const configProjectUsage = `Usage:
   a38 config project add NAME --path DIR [--path DIR ...] --vault VAULT [--vault VAULT ...] [--config FILE]
+  a38 config project add-path NAME --path DIR [--path DIR ...] [--config FILE]
   a38 config project remove NAME [--config FILE]
   a38 config project list [--config FILE] [--json]
 
-"add" and "remove" change the project list in the configuration file. They
-keep the comments, the order and the blank lines of the file. They check
+"add", "add-path" and "remove" change the project list in the configuration
+file. They keep the comments, the order and the blank lines of the file. They check
 the change with the rules of the daemon before they write it.
 
 Each --path must be absolute or start with "~/"; a38 writes the text as
@@ -42,6 +43,12 @@ you give it. A relative path is refused: it would mean another directory
 for each working directory. A path that does not exist is accepted with
 a note. Each --vault must be in the vault list (a38 config vault list).
 The path of a project must not belong to another project.
+
+"add-path" adds paths to a project that is in the list already. Use it for
+the directory of the worktrees next to the repository: a session in a
+worktree matches the project only if the worktree directory is a path of
+the project. It fails if the project is not in the list, if the project has
+the path already, or if another project has it.
 
 A running daemon reads the file only at its start. Restart it after a change.
 `
@@ -54,6 +61,7 @@ var vaultCommands = cmdTable{name: "config vault", usage: configVaultUsage, cmds
 
 var projectCommands = cmdTable{name: "config project", usage: configProjectUsage, cmds: []command{
 	{"add", "Add a project", runProjectAdd},
+	{"add-path", "Add a path to a project", runProjectAddPath},
 	{"remove", "Remove a project", runProjectRemove},
 	{"list", "List the projects", runProjectList},
 }}
@@ -190,6 +198,30 @@ func runProjectAdd(args []string, stdout, stderr io.Writer) int {
 	return applyEdit("project add", af.configPath, stdout, stderr, func(b []byte) (config.Edit, error) {
 		return config.AddProject(b, name, paths, vaults)
 	}, fmt.Sprintf("Added the project %q (paths: %s; vaults: %s)", name, strings.Join(paths, ", "), strings.Join(vaults, ", ")))
+}
+
+func runProjectAddPath(args []string, stdout, stderr io.Writer) int {
+	var (
+		af    adminFlags
+		paths stringList
+	)
+	fs := newFlagSet("config project add-path", stderr)
+	af.register(fs)
+	fs.Var(&paths, "path", "directory to add (repeat for more); absolute or starting with ~/")
+	pos, code, done := parseCmd(fs, configProjectUsage, args, stdout, stderr)
+	if done {
+		return code
+	}
+	if len(pos) != 1 {
+		return usageError(stderr, "project add-path", configProjectUsage, "give exactly one project name")
+	}
+	if len(paths) == 0 {
+		return usageError(stderr, "project add-path", configProjectUsage, "--path is necessary")
+	}
+	name := pos[0]
+	return applyEdit("project add-path", af.configPath, stdout, stderr, func(b []byte) (config.Edit, error) {
+		return config.AddProjectPath(b, name, paths)
+	}, fmt.Sprintf("Added the paths %s to the project %q", strings.Join(paths, ", "), name))
 }
 
 func runProjectRemove(args []string, stdout, stderr io.Writer) int {

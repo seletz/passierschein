@@ -380,3 +380,78 @@ func assertFileMode(t *testing.T, path string, want os.FileMode) {
 		t.Errorf("%s mode = %o, want %o", path, fi.Mode().Perm(), want)
 	}
 }
+
+func TestConfigProjectAddPath(t *testing.T) {
+	// F15 (part), issue 92: a second path for an existing project, for
+	// the directory of the worktrees.
+	home := configHome(t)
+	proj := filepath.Join(home, "develop", "beispielprojekt")
+	if err := os.MkdirAll(proj, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustA38(t, "config", "init")
+	mustA38(t, "config", "vault", "add", "datenbank-dev", "--environment", "dev")
+	mustA38(t, "config", "project", "add", "beispielprojekt", "--path", proj, "--vault", "datenbank-dev")
+
+	wt := proj + "__worktrees"
+	out := mustA38(t, "config", "project", "add-path", "beispielprojekt", "--path", wt)
+	for _, want := range []string{"beispielprojekt", wt, "do not exist yet", "reads the configuration file only at its start"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("add-path output lacks %q:\n%s", want, out)
+		}
+	}
+	list := mustA38(t, "config", "project", "list")
+	if !strings.Contains(list, wt) {
+		t.Errorf("project list lacks the new path:\n%s", list)
+	}
+
+	// Errors: unknown project, no path, path already there.
+	tests := []struct {
+		name string
+		args []string
+		code int
+		want string
+	}{
+		{"unknown project", []string{"config", "project", "add-path", "nope", "--path", wt + "2"}, 1, "not in the list"},
+		{"no path", []string{"config", "project", "add-path", "beispielprojekt"}, 2, "--path"},
+		{"no name", []string{"config", "project", "add-path", "--path", wt + "2"}, 2, "exactly one project name"},
+		{"path already there", []string{"config", "project", "add-path", "beispielprojekt", "--path", wt}, 1, "already a path"},
+		{"help", []string{"config", "project", "add-path", "--help"}, 0, "a38 config project add-path"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			code, o, e := a38(t, tt.args...)
+			if code != tt.code || !strings.Contains(o+e, tt.want) {
+				t.Errorf("code %d\nstdout: %s\nstderr: %s", code, o, e)
+			}
+		})
+	}
+}
+
+func TestConfigValidateMissingUIApp(t *testing.T) {
+	// T27 (part), issue 92: a paths.ui_app that does not exist is a
+	// finding of "a38 config validate", with the cause and the next step.
+	home := configHome(t)
+	p := filepath.Join(home, "c.yaml")
+	missing := filepath.Join(home, "Passierschein.app", "Contents", "MacOS", "Passierschein")
+	src := "version: 1\npaths:\n  ui_app: " + missing + "\n"
+	if err := os.WriteFile(p, []byte(src), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	code, out, _ := a38(t, "config", "validate", "--config", p)
+	for _, want := range []string{"paths.ui_app", missing, "Next step"} {
+		if code != 1 || !strings.Contains(out, want) {
+			t.Fatalf("code %d, output lacks %q:\n%s", code, want, out)
+		}
+	}
+	// The file exists: no finding.
+	if err := os.MkdirAll(filepath.Dir(missing), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(missing, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if out := mustA38(t, "config", "validate", "--config", p); !strings.Contains(out, "No findings.") {
+		t.Errorf("validate with the app present:\n%s", out)
+	}
+}

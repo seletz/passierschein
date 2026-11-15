@@ -359,3 +359,78 @@ func assertMode(t *testing.T, path string, want os.FileMode) {
 		t.Errorf("%s mode = %o, want %o", path, fi.Mode().Perm(), want)
 	}
 }
+
+func TestAddProjectPath(t *testing.T) {
+	// F15 (part), issue 92: a second path for an existing project, for
+	// example the directory of the worktrees next to the repository.
+	shortHome(t)
+	tmpl, err := Template()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// withVault is the template with a vault and a project that has an
+	// empty-looking style; it shows that another style also works.
+	tests := []struct {
+		name    string
+		src     string
+		name2   string
+		paths   []string
+		wantErr string
+		want    string
+	}{
+		{
+			name: "appends after the last path and keeps the rest", src: commented, name2: "beispielprojekt",
+			paths: []string{"/srv/beispielprojekt__worktrees"},
+			want:  strings.Replace(commented, "      - /srv/beispielprojekt\n", "      - /srv/beispielprojekt\n      - /srv/beispielprojekt__worktrees\n", 1),
+		},
+		{
+			name: "two paths in the sequence given", src: commented, name2: "beispielprojekt",
+			paths: []string{"~/a", "/srv/b"},
+			want:  strings.Replace(commented, "      - /srv/beispielprojekt\n", "      - /srv/beispielprojekt\n      - ~/a\n      - /srv/b\n", 1),
+		},
+		{name: "unknown project", src: commented, name2: "nope", paths: []string{"/srv/x"}, wantErr: "not in the list"},
+		{name: "no path", src: commented, name2: "beispielprojekt", wantErr: "at least one path"},
+		{name: "relative path", src: commented, name2: "beispielprojekt", paths: []string{"rel/dir"}, wantErr: "must be absolute"},
+		{name: "path already in the project", src: commented, name2: "beispielprojekt", paths: []string{"/srv/beispielprojekt"}, wantErr: "already a path of the project"},
+		{name: "path twice in the call", src: commented, name2: "beispielprojekt", paths: []string{"/srv/x", "/srv/x"}, wantErr: "twice"},
+		{
+			name:  "path of another project",
+			src:   strings.Replace(commented, "# Grants.", "  - name: zweitprojekt\n    paths:\n      - /srv/zweit\n    vaults:\n      - beispiel.app.k8s-dev\n\n# Grants.", 1),
+			name2: "beispielprojekt", paths: []string{"/srv/zweit"}, wantErr: "also belongs",
+		},
+		{name: "broken file", src: "version: 2\n", name2: "p", paths: []string{"/srv/x"}, wantErr: "fix it first"},
+		{name: "template has no project", src: string(tmpl), name2: "p", paths: []string{"/srv/x"}, wantErr: "not in the list"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := AddProjectPath([]byte(tt.src), tt.name2, tt.paths)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("error = %v, want %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got.Data) != tt.want {
+				t.Errorf("result:\n%s\nwant:\n%s", got.Data, tt.want)
+			}
+			if _, err := Parse(got.Data); err != nil {
+				t.Errorf("result does not load: %v", err)
+			}
+		})
+	}
+}
+
+func TestAddProjectPathMissingIsNote(t *testing.T) {
+	// F15 (part): a path that does not exist is a note, as for "add".
+	shortHome(t)
+	got, err := AddProjectPath([]byte(commented), "beispielprojekt", []string{"/nonexistent-a38/wt"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Notes) != 1 || !strings.Contains(got.Notes[0], "/nonexistent-a38/wt") {
+		t.Errorf("notes = %v", got.Notes)
+	}
+}
