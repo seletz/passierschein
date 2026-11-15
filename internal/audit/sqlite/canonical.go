@@ -16,6 +16,12 @@ const genesisHash = "00000000000000000000000000000000000000000000000000000000000
 // the form needs a new version.
 const canonicalVersion = "a38-audit-v1"
 
+// canonicalVersionExec is the first field of the canonical form of an
+// entry with a command or the result of a command (D65). An entry without
+// both keeps the form "a38-audit-v1", so that the hashes of older entries
+// stay valid.
+const canonicalVersionExec = "a38-audit-v2"
+
 // canonical returns the canonical form of an entry. The hash covers it.
 //
 // The form is a sequence of fields. Each field is written as an unsigned
@@ -46,6 +52,18 @@ const canonicalVersion = "a38-audit-v1"
 //  20. Result.LifetimeSeconds, in decimal
 //  21. Result.Detail
 //
+// An entry with a command or the result of a command (D65) starts with the
+// version text "a38-audit-v2" and adds after field 21:
+//
+//  22. "command" or the empty text if the entry has no command,
+//     then Way, Program, the number of arguments, each argument,
+//     ArgsTruncated ("1" or "0"), Cwd, the number of variables, for each
+//     variable Name, Vault, Item, Field, TimeoutSeconds and Binding
+//  23. "execution" or the empty text if the entry has no result,
+//     then ExecRequestID, NotStarted, ExitCode, Signal, TimedOut,
+//     DurationMS, StdoutBytes, StderrBytes, StdoutTruncated,
+//     StderrTruncated and Masked
+//
 // The length prefix makes the form unambiguous: no text of one field can
 // move into the next field. The form does not contain PrevHash and Hash;
 // [entryHash] adds PrevHash.
@@ -57,7 +75,19 @@ func canonical(e audit.Entry) []byte {
 	}
 	num := func(n int64) { put(strconv.FormatInt(n, 10)) }
 
-	put(canonicalVersion)
+	flag := func(v bool) {
+		if v {
+			put("1")
+		} else {
+			put("0")
+		}
+	}
+	exec := e.Command != nil || e.Execution != nil
+	if exec {
+		put(canonicalVersionExec)
+	} else {
+		put(canonicalVersion)
+	}
 	put(strconv.FormatUint(e.Seq, 10))
 	num(e.Time.UTC().UnixNano())
 	put(string(e.Type))
@@ -83,6 +113,47 @@ func canonical(e audit.Entry) []byte {
 	put(e.Result.GrantID)
 	num(e.Result.LifetimeSeconds)
 	put(e.Result.Detail)
+	if !exec {
+		return b
+	}
+	if c := e.Command; c == nil {
+		put("")
+	} else {
+		put("command")
+		put(string(c.Way))
+		put(c.Program)
+		num(int64(len(c.Args)))
+		for _, a := range c.Args {
+			put(a)
+		}
+		flag(c.ArgsTruncated)
+		put(c.Cwd)
+		num(int64(len(c.Env)))
+		for _, v := range c.Env {
+			put(v.Name)
+			put(v.Reference.Vault)
+			put(v.Reference.Item)
+			put(v.Reference.Field)
+		}
+		num(int64(c.TimeoutSeconds))
+		put(c.Binding)
+	}
+	if x := e.Execution; x == nil {
+		put("")
+	} else {
+		put("execution")
+		put(x.ExecRequestID)
+		flag(x.NotStarted)
+		num(int64(x.ExitCode))
+		put(x.Signal)
+		flag(x.TimedOut)
+		num(x.DurationMS)
+		num(x.StdoutBytes)
+		num(x.StderrBytes)
+		flag(x.StdoutTruncated)
+		flag(x.StderrTruncated)
+		num(int64(x.Masked))
+	}
 	return b
 }
 

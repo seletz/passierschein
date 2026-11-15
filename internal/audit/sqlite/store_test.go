@@ -504,3 +504,120 @@ func TestProbe(t *testing.T) {
 		t.Fatal("Probe passed on a read-only store")
 	}
 }
+
+// execEvent returns an event of the exec way with the command and the
+// result of the command.
+func execEvent() audit.Event {
+	ev := event(audit.EventExecution, "beispielprojekt", refDB())
+	ev.Command = &audit.Command{
+		Way: audit.WayExec, Program: "/usr/bin/env", Args: []string{"-i", "a b"}, ArgsTruncated: true,
+		Cwd: "/work/beispielprojekt", Env: []audit.EnvVar{{Name: "DB_PASSWORD", Reference: refDB()}},
+		TimeoutSeconds: 120, Binding: "program",
+	}
+	ev.Execution = &audit.Execution{
+		ExecRequestID: "c-2", ExitCode: -1, Signal: "SIGTERM", TimedOut: true, DurationMS: 120000,
+		StdoutBytes: 70000, StderrBytes: 12, StdoutTruncated: true, Masked: 2,
+	}
+	return ev
+}
+
+// T38, D65: the store keeps the command and the result of a command, and
+// the hash covers them.
+func TestCommandRoundTrip(t *testing.T) {
+	s, path, _ := openTemp(t)
+	ctx := context.Background()
+	want := execEvent()
+	if _, err := s.Append(ctx, event(audit.EventRequest, "beispielprojekt", refDB())); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Append(ctx, want); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.List(ctx, audit.Filter{})
+	if err != nil || len(got) != 2 {
+		t.Fatalf("List = %d, %v", len(got), err)
+	}
+	if got[0].Command != nil || got[0].Execution != nil {
+		t.Errorf("an event of the MCP way has a command: %+v", got[0])
+	}
+	if !reflect.DeepEqual(got[1].Event, want) {
+		t.Errorf("event = %+v\nwant %+v", got[1].Event, want)
+	}
+	if v, err := s.Verify(ctx); err != nil || !v.OK {
+		t.Fatalf("Verify = %+v, %v", v, err)
+	}
+	// A change of the command breaks the chain.
+	rawExec(t, path, `UPDATE entries SET command = replace(command, '/usr/bin/env', '/usr/bin/true') WHERE seq = 2`)
+	if v, err := s.Verify(ctx); err != nil || v.OK || v.FirstBadSeq != 2 {
+		t.Errorf("Verify after a change of the command = %+v, %v", v, err)
+	}
+	rawExec(t, path, `UPDATE entries SET command = '' WHERE seq = 2`)
+	if v, err := s.Verify(ctx); err != nil || v.OK || v.FirstBadSeq != 2 {
+		t.Errorf("Verify after the removal of the command = %+v, %v", v, err)
+	}
+}
+
+// The canonical form of the command and the result separates the fields.
+func TestCanonicalCommandUnambiguous(t *testing.T) {
+	base := audit.Entry{Seq: 1, Time: t0, Event: execEvent(), PrevHash: genesisHash}
+	mutations := map[string]func(*audit.Event){
+		"args":       func(e *audit.Event) { e.Command.Args = []string{"-i a", "b"} },
+		"truncated":  func(e *audit.Event) { e.Command.ArgsTruncated = false },
+		"cwd":        func(e *audit.Event) { e.Command.Cwd = "/work" },
+		"env":        func(e *audit.Event) { e.Command.Env[0].Name = "DB_PASS" },
+		"timeout":    func(e *audit.Event) { e.Command.TimeoutSeconds = 60 },
+		"binding":    func(e *audit.Event) { e.Command.Binding = "command" },
+		"exit code":  func(e *audit.Event) { e.Execution.ExitCode = 0 },
+		"masked":     func(e *audit.Event) { e.Execution.Masked = 0 },
+		"no result":  func(e *audit.Event) { e.Execution = nil },
+		"no command": func(e *audit.Event) { e.Command = nil },
+		"not started": func(e *audit.Event) {
+			e.Execution.NotStarted = true
+		},
+	}
+	h := entryHash(base)
+	for name, mut := range mutations {
+		e := base
+		ev := execEvent()
+		mut(&ev)
+		e.Event = ev
+		if entryHash(e) == h {
+			t.Errorf("%s: the hash does not change", name)
+		}
+	}
+}
+
+// An audit file of an earlier version has no columns for the command. Open
+// adds them; the old entries keep their hashes.
+func TestOpenOldFile(t *testing.T) {
+	s, path, clk := openTemp(t)
+	fill(t, s, clk, 2)
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	rawExec(t, path, `ALTER TABLE entries DROP COLUMN command`, `ALTER TABLE entries DROP COLUMN execution`)
+
+	ro, err := OpenReadOnly(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, err := ro.Verify(context.Background()); err != nil || !v.OK || v.Entries != 2 {
+		t.Errorf("read-only Verify of the old file = %+v, %v", v, err)
+	}
+	if got, err := ro.List(context.Background(), audit.Filter{}); err != nil || len(got) != 2 {
+		t.Errorf("read-only List of the old file = %d, %v", len(got), err)
+	}
+	_ = ro.Close()
+
+	s2, err := Open(path, WithClock(clk))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s2.Close() }()
+	if _, err := s2.Append(context.Background(), execEvent()); err != nil {
+		t.Fatal(err)
+	}
+	if v, err := s2.Verify(context.Background()); err != nil || !v.OK || v.Entries != 3 {
+		t.Errorf("Verify after the upgrade = %+v, %v", v, err)
+	}
+}
