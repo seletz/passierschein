@@ -19,7 +19,15 @@ public enum TestSwitches {
     public static let names: Set<String> = [
         "--request", "--skip-auth", "--fake-auth", "--auto-close", "--no-window",
         "--demo-select", "--demo-scroll-end", "--demo-lifetime-open", "--demo-arm-delay", "--demo-confirm", "--debug-window",
+        "--demo-appearance",
     ]
+}
+
+/// The appearance of the window for a screenshot (test switch
+/// --demo-appearance).
+public enum DemoAppearance: String, Equatable, Sendable {
+    case light
+    case dark
 }
 
 public struct Options: Equatable, Sendable {
@@ -50,6 +58,9 @@ public struct Options: Equatable, Sendable {
     public var demoConfirm = false
     /// Write the window attributes to the standard error.
     public var debugWindow = false
+    /// Show the window in this appearance, not in the appearance of the
+    /// system. For screenshots only.
+    public var demoAppearance: DemoAppearance?
 
     public init() {}
 }
@@ -86,6 +97,7 @@ Test switches (debug build only):
   --demo-arm-delay <s>      Use another delay before the confirm action.
   --demo-confirm            Click the confirm action once it is active.
   --debug-window            Write the window attributes to the standard error.
+  --demo-appearance <a>     Show the window light or dark.
 """
 #else
 let usageTestSwitches = ""
@@ -166,6 +178,11 @@ private func parseTestSwitch(_ flag: String, into options: inout Options,
         options.demoConfirm = true
     case "--debug-window":
         options.debugWindow = true
+    case "--demo-appearance":
+        guard let appearance = DemoAppearance(rawValue: try value(flag)) else {
+            throw UsageError(message: "the value of --demo-appearance must be light or dark")
+        }
+        options.demoAppearance = appearance
     default:
         throw UsageError(message: "the option \(flag) is not known")
     }

@@ -21,6 +21,40 @@ public enum DisplayText {
         return String(out)
     }
 
+    /// One argument of a command as one word of a POSIX shell, without
+    /// loss: a plain word stays as it is, another word gets single quotes,
+    /// a word with a line break or a tab gets the form $'...' with "\\n"
+    /// and "\\t". The human sees where each argument starts and ends (D65). The
+    /// request has no other control character (Decoding).
+    public static func shellWord(_ arg: String) -> String {
+        if arg.isEmpty { return "''" }
+        if arg.unicodeScalars.allSatisfy(isPlainShellCharacter) { return arg }
+        if arg.contains("\n") || arg.contains("\t") {
+            var out = "$'"
+            for c in arg.unicodeScalars {
+                switch c {
+                case "\n": out += "\\n"
+                case "\t": out += "\\t"
+                case "\\": out += "\\\\"
+                case "'": out += "\\'"
+                default: out.unicodeScalars.append(c)
+                }
+            }
+            return out + "'"
+        }
+        return "'" + arg.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
+    private static func isPlainShellCharacter(_ c: Unicode.Scalar) -> Bool {
+        ("a"..."z").contains(c) || ("A"..."Z").contains(c) || ("0"..."9").contains(c)
+            || "_@%+=:,./-".unicodeScalars.contains(c)
+    }
+
+    /// The arguments of a command as shell words, separated by a space.
+    public static func shellWords(_ args: [String]) -> String {
+        args.map(shellWord).joined(separator: " ")
+    }
+
     /// A time as local date and time, for example "2026-11-11 21:30".
     public static func time(_ date: Date, timeZone: TimeZone = .current) -> String {
         let formatter = DateFormatter()

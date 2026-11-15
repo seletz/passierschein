@@ -53,6 +53,7 @@ Eine Übersetzung ändert nur diese Datei.
 ## Fälle des Popups
 
 Die App leitet den Fall aus den Daten ab.
+`exec` kennzeichnet ein Kommando des exec-Wegs.
 `existing_grant` kennzeichnet eine Abweichung.
 Ein eigenes Feld für den Fall gibt es nicht.
 
@@ -60,11 +61,47 @@ Ein eigenes Feld für den Fall gibt es nicht.
 |---|---|---|
 | Erste Anfrage | kein `existing_grant`, 1 bis 6 Einträge | Blaues Banner „Credential request“. Die Liste rollt nicht. |
 | Bündel | kein `existing_grant`, mehr als 6 Einträge | Blaues Banner. Nur die Liste rollt. Unter der Liste steht die Zahl der Einträge und der Vaults. |
+| Kommando | `exec` gesetzt | Banner „Run a command with credentials“: blau bei dev, orange bei test, rot bei prod. Bei test und prod steht die Umgebung groß im Banner und farbig bei den Fakten. Darunter stehen Kommando, Variablen, Angaben des Agents und die Art der Freigabe (siehe [Kommando des exec-Wegs](#kommando-des-exec-wegs)). |
 | Abweichung | `existing_grant` gesetzt | Orangefarbenes Banner „Deviation from active grant“. Die geprüften Fakten nennen den bestehenden Grant mit Kennung, Anzahl, Vaults und Ablaufzeit. Jeder Eintrag trägt die Marke „NEW ITEM“ oder „NEW VAULT“. |
 
-Eine Anfrage außerhalb von dev erreicht die App im MVP nie ({{ ref("D24") }}, {{ ref("G26") }}).
-Die App lehnt einen Eintrag mit `environment` `test` oder `prod` deshalb als ungültig ab.
-Der Fall „außerhalb von dev“ des Prototyps fehlt in der App.
+Eine Anfrage ohne `exec` außerhalb von dev erreicht die App nie ({{ ref("D62") }}).
+Die App lehnt einen Eintrag mit `environment` `test` oder `prod` ohne `exec` deshalb als ungültig ab.
+Test und prod erscheinen nur beim exec-Weg.
+
+## Kommando des exec-Wegs
+
+Beim exec-Weg zeigt die App das Kommando ({{ ref("D65") }}, {{ ref("F23") }}).
+Der Daemon schreibt dafür das Objekt `exec` in die Freigabeanfrage.
+Ohne `exec` bleibt die Freigabeanfrage unverändert.
+
+### Felder von `exec`
+
+| Feld | Go-Feld | Regel |
+|---|---|---|
+| `exec.environment` | `ExecCommand.Environment` | `dev`, `test` oder `prod`; die strengste Umgebung der Einträge (prod vor test vor dev, {{ ref("D62") }}) |
+| `exec.program` | `ExecCommand.Program` | absoluter, bereinigter Pfad, höchstens 1024 Bytes, ohne Steuerzeichen; unverändert aus `request_exec` |
+| `exec.args` | `ExecCommand.Args` | Liste, auch leer oder `null`; höchstens 256 Argumente, zusammen höchstens 16 KiB; Zeilenumbruch und Tabulator erlaubt, sonst kein Steuerzeichen |
+| `exec.cwd` | `ExecCommand.Cwd` | absoluter, bereinigter Pfad wie `program` |
+| `exec.env` | `ExecCommand.Env` | Liste `{"name", "credential_id"}`, 1 bis 100 Einträge; Name nach `protocol.CheckEnvName`, jeder Name einmal; `credential_id` ist die Kennung eines Eintrags von `credentials`; jeder Eintrag hat mindestens eine Variable |
+| `exec.approval.kind` | `ExecApproval.Kind` | `grant` bei dev und test, `once` bei prod |
+| `exec.approval.binding` | `ExecApproval.Binding` | `none`, `program` oder `command`; bei test nicht `none`; bei `once` nur `command`. Der Daemon schreibt die wirksame Bindung: bei einem Programm ohne Aussage `command` ({{ ref("D63") }}) |
+| `exec.approval.lifetime_choices_seconds` | `ExecApproval.LifetimeChoicesSeconds` | nur bei `grant`: der erste Wert ist `grant.ttl_seconds`, jeder weitere Wert ist kürzer, absteigend und größer als 0; fehlt bei `once` |
+
+Bei `once` ist `grant.ttl_seconds` 0.
+Bei `grant` liegt `grant.ttl_seconds` zwischen 1 und 86400 Sekunden ({{ ref("D66") }}).
+`approval.ExecLifetimeChoices` bildet die Auswahl: die Laufzeit, ihre Hälfte (auf Minuten abgerundet), 15 min und 5 min; jeder kürzere Wert ist mindestens 5 min.
+Bei 30 min sind das 30, 15 und 5 min.
+
+### Darstellung
+
+- Die Umgebung steht als erste Zeile der geprüften Fakten. Bei test und prod ist sie farbig hervorgehoben und steht zusätzlich groß im Banner.
+- Programm, Argumente und Arbeitsverzeichnis stehen ungekürzt in Festbreitenschrift. Lange Argumente brechen um; die App trennt kein Wort mit einem Bindestrich.
+- Jedes Argument erscheint als Wort einer POSIX-Shell: ein einfaches Wort unverändert, ein Wort mit Leerzeichen oder Sonderzeichen in einfachen Anführungszeichen, ein Wort mit Zeilenumbruch oder Tabulator in der Form `$'…'` mit `\n` und `\t`.
+- Hat das Kommando mehr als 480 Zeichen, rollt nur der Rahmen des Kommandos (Höhe 220 pt). Darunter stehen die Zahl der Argumente und der Zeichen.
+- Je Eintrag gibt es ein Häkchen mit den Namen der Variablen und darunter „Vault › Item › Feld“ mit den Namen des Backends.
+- Die Bestätigung ist erst aktiv, wenn jede Variable angehakt ist („Select every variable“, dann „Run with Touch ID“).
+- Bei `grant` zeigt die App die Laufzeit mit „Shorter…“ und die Werte aus `lifetime_choices_seconds`, dazu die Bindung als Satz („Applies to: …“).
+- Bei `once` zeigt die App „Approval: Only this command, one time“ ohne Wahl der Laufzeit.
 
 ## Aufbau des Popups
 
@@ -162,10 +199,11 @@ Die App lehnt jede dieser Nachrichten ab, ohne ein Fenster zu öffnen:
 | eine Kennung ist leer, länger als 128 Zeichen oder enthält andere Zeichen als Buchstaben, Ziffern, `.`, `_`, `:`, `-` | `invalid_request` |
 | `timeout_seconds` liegt nicht zwischen 1 und 3600 | `invalid_request` |
 | keine Einträge, mehr als 50 Einträge oder doppelte Kennungen | `invalid_request` |
-| `environment` ist nicht `dev` | `invalid_request` |
+| `environment` ist nicht `dev`, `test` oder `prod`, oder ist ohne `exec` nicht `dev` | `invalid_request` |
 | `deviation` ist nicht `new_item` oder `new_vault` | `invalid_request` |
 | `deviation` ohne `existing_grant` oder `existing_grant` mit einem Eintrag ohne `deviation` | `invalid_request` |
-| `grant.ttl_seconds` ist nicht größer als 0 | `invalid_request` |
+| `grant.ttl_seconds` ist nicht größer als 0 (ohne `exec` und bei `grant`) oder nicht 0 (bei `once`) | `invalid_request` |
+| `exec` verletzt eine Regel aus [Felder von `exec`](#felder-von-exec) | `invalid_request` |
 | eine Zeit ist nicht RFC 3339 | `invalid_request` |
 | eine Meldung über ein Projekt ohne `project` oder eine Störung des Daemons mit `project` | `invalid_request` |
 
@@ -192,6 +230,10 @@ Ist `request_id` lesbar, wiederholt die Entscheidung sie.
 
 Vor der Ausgabe prüft die App eine Freigabe ein letztes Mal.
 Eine Freigabe ohne bestandene Authentifizierung, ohne Eintrag, mit fremder Kennung oder mit zu langer Laufzeit wird zu `error` mit dem Code `internal`.
+Bei einem Kommando muss die Freigabe jeden Eintrag nennen.
+Bei `grant` muss `ttl_seconds` einer der angebotenen Werte sein.
+Bei `once` fehlt `ttl_seconds`; Go liest dafür 0.
+`approval.ValidateDecision` im Daemon prüft dieselben Regeln.
 Im Release-Build muss die Richtlinie `biometrics` sein.
 
 ### Exit-Codes
@@ -252,6 +294,7 @@ Er lehnt jeden Schalter mit Exit-Code 64 ab.
 | `--demo-arm-delay <s>` | ändert die Sperre der Bestätigung |
 | `--demo-confirm` | klickt die Bestätigung, sobald sie aktiv ist (mit `--no-window`) |
 | `--debug-window` | schreibt die Eigenschaften des Fensters auf die Standardfehlerausgabe |
+| `--demo-appearance <a>` | zeigt das Fenster hell (`light`) oder dunkel (`dark`), unabhängig vom System (nur für Screenshots) |
 
 Die gefälschte Authentifizierung meldet die Richtlinie `skipped`.
 Der Daemon nimmt `skipped` nie als Freigabe an.
@@ -328,6 +371,10 @@ Zum Entwickeln nutzt du ein selbst gebautes `a38` (`mise run build`).
 | `bundle.json` | Bündel mit zehn Einträgen in zwei Vaults (7 und 3) |
 | `deviation.json` | Abweichung mit „NEW ITEM“ und „NEW VAULT“ |
 | `long-claims.json` | lange Angaben des Agents und langer Name der Sitzung |
+| `exec-dev.json` | Kommando in dev, Grant mit 4 h und Bindung `none` |
+| `exec-test.json` | Kommando in test, Grant mit 30 min und Bindung `program` |
+| `exec-prod.json` | Kommando in prod, „nur dieses Kommando“, zwei Variablen |
+| `exec-long.json` | sehr langes Kommando in test mit 16 Argumenten, Zeilenumbruch und Anführungszeichen |
 | `notice-daemon-fault.json` | Meldung einer Störung des Daemons |
 | `notice-project-config-invalid.json` | Meldung einer fehlerhaften Konfiguration eines Projekts |
 
@@ -346,6 +393,7 @@ Die alten Beispiele unter `spikes/ui-popup/samples` bleiben als Aufzeichnung des
 | Regeln des Popups, Fälle, Laufzeit, Fakten und Angaben, Zeitablauf | `ApprovalViewModelTests.swift` |
 | Entscheidung, Exit-Codes, letzte Prüfung, Schalter, Meldung | `DecisionTests.swift` |
 | Programm als Prozess wie vom Daemon gestartet ({{ ref("T14") }}, Teil 1) | `ProcessTests.swift` |
+| Kommando des exec-Wegs: Prüfung, Zustand, letzte Prüfung, Darstellung, Prozess ({{ ref("T38") }}, Teil Freigabeanfrage) | `ExecTests.swift` |
 | Beispiele gegen die Go-Typen | Go: `TestAppSamples` in `internal/approval` |
 | Daemon und App über echte Prozesse | Go: `TestAppE2E` in `cmd/a38` (`mise run app:e2e`) |
 

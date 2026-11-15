@@ -1,0 +1,9 @@
+id: G44
+zustand: eingeloest
+titel: Was eine Teilauswahl der Variablen bei einem Kommando bedeutet
+bezug: '#98'
+schluessel: '#98/teilauswahl-kommando'
+lauf: '2.0'
+branch: feat/98-freigabe-kommando
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

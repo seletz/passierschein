@@ -98,6 +98,7 @@ struct OptionsTests {
     static let switches: [[String]] = [
         ["--request", "x.json"], ["--skip-auth"], ["--fake-auth", "success"], ["--auto-close", "5"], ["--no-window"],
         ["--demo-select", "all"], ["--demo-scroll-end"], ["--demo-lifetime-open"], ["--demo-arm-delay", "0"], ["--demo-confirm"], ["--debug-window"],
+        ["--demo-appearance", "dark"],
     ]
 
     @Test("T14: a release build rejects each test switch", arguments: switches)

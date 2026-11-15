@@ -1,6 +1,8 @@
 // The layout of the approval popup, as accepted in the spike report
 // (section "Aufbau des Popups"): banner, verified facts, claims of the
-// agent, credentials, grant, footer. The view shows the state of the
+// agent, credentials, grant, footer. A command of the exec way (D65) has
+// its own body: banner with the environment, verified facts, command,
+// variables, claims of the agent, kind of approval, footer. The view shows the state of the
 // ApprovalViewModel and calls its actions; it has no rules of its own.
 // No control is focusable and no button is the default button (D31).
 import A38ApprovalCore
@@ -14,9 +16,16 @@ struct PopupView: View {
         VStack(alignment: .leading, spacing: 12) {
             banner
             verifiedSection
-            claimsSection
-            credentialSection
-            grantSection
+            if model.request.exec != nil {
+                commandSection
+                variableSection
+                claimsSection
+                execApprovalSection
+            } else {
+                claimsSection
+                credentialSection
+                grantSection
+            }
             if let message = model.message {
                 Text(message).font(.callout).foregroundStyle(.red)
             }
@@ -36,15 +45,29 @@ struct PopupView: View {
             style = (UIText.bannerFirstTitle, UIText.bannerFirstDetail, "key.fill", .blue)
         case .deviation:
             style = (UIText.bannerDeviationTitle, UIText.bannerDeviationDetail, "exclamationmark.triangle.fill", .orange)
+        case .command(let environment):
+            style = (UIText.bannerCommandTitle, UIText.bannerCommandDetail(environment), "terminal.fill",
+                     Self.bannerColor(environment))
         }
         return HStack(spacing: 10) {
             Image(systemName: style.icon).font(.title2)
             VStack(alignment: .leading, spacing: 2) {
                 Text(style.title).font(.headline)
                 Text(style.detail).font(.callout)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
-            Text(UIText.brand).font(.caption.monospaced()).opacity(0.8)
+            VStack(alignment: .trailing, spacing: 4) {
+                Text(UIText.brand).font(.caption.monospaced()).opacity(0.8)
+                if case .command(let environment) = model.popupCase, environment != .dev {
+                    // D65: test and prod stand out.
+                    Text(UIText.environmentBadge(environment))
+                        .font(.title3.monospaced().bold())
+                        .padding(.horizontal, 8).padding(.vertical, 2)
+                        .foregroundStyle(style.color)
+                        .background(.white, in: RoundedRectangle(cornerRadius: 4))
+                }
+            }
         }
         .foregroundStyle(.white)
         .padding(10)
@@ -60,6 +83,13 @@ struct PopupView: View {
                 .font(.subheadline.bold())
                 .foregroundStyle(.green)
             Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 3) {
+                if let exec = model.request.exec {
+                    GridRow {
+                        Text(UIText.factEnvironment).foregroundStyle(.secondary)
+                        environmentMark(exec.environment)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
                 ForEach(model.verifiedRows) { row in
                     GridRow {
                         Text(row.label).foregroundStyle(.secondary)
@@ -69,6 +99,127 @@ struct PopupView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
+            }
+        }
+    }
+
+    // MARK: Command (exec way, D65)
+
+    /// The colour of an environment: dev neutral, test orange, prod red.
+    static func environmentColor(_ environment: ExecEnvironment) -> Color {
+        switch environment {
+        case .dev: return .secondary
+        case .test: return .orange
+        case .prod: return .red
+        }
+    }
+
+    static func bannerColor(_ environment: ExecEnvironment) -> Color {
+        environment == .dev ? .blue : environmentColor(environment)
+    }
+
+    private func environmentMark(_ environment: ExecEnvironment) -> some View {
+        let highlighted = environment != .dev
+        return Text(highlighted ? UIText.environmentBadge(environment) : environment.rawValue)
+            .font(.body.monospaced().bold())
+            .padding(.horizontal, highlighted ? 6 : 0)
+            .foregroundStyle(highlighted ? Color.white : Color.primary)
+            .background(highlighted ? Self.environmentColor(environment) : Color.clear,
+                        in: RoundedRectangle(cornerRadius: 4))
+    }
+
+    private var commandSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Label(UIText.commandHeading, systemImage: "terminal")
+                    .font(.subheadline.bold())
+                Text(UIText.commandNote).font(.caption).foregroundStyle(.secondary)
+            }
+            if model.commandScrolls {
+                // A long command scrolls inside a frame. Nothing is cut
+                // (D65). Banner, variables and footer stay visible.
+                ScrollView { commandGrid.padding(8).padding(.trailing, 8) }
+                    .scrollIndicators(.visible)
+                    .frame(height: 220)
+                    .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.separator))
+                Text(UIText.commandScrolls(arguments: model.request.exec?.args.count ?? 0,
+                                           characters: model.commandLength))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                commandGrid
+            }
+        }
+    }
+
+    private var commandGrid: some View {
+        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 4) {
+            ForEach(model.commandRows) { row in
+                GridRow {
+                    Text(row.label).foregroundStyle(.secondary)
+                    // No line limit and no hyphenation: long arguments
+                    // wrap, nothing is cut or added.
+                    CommandText(text: row.value)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+    }
+
+    // MARK: Variables (exec way, D65)
+
+    private var variableSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(UIText.variablesHeading).font(.subheadline.bold())
+                Spacer()
+                Text(model.selectedCountText)
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(model.selected.isEmpty ? .secondary : .primary)
+            }
+            ForEach(model.variableRows) { row in
+                Toggle(isOn: binding(for: row.id)) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(spacing: 6) {
+                            Text(row.names.joined(separator: ", ")).font(.body.monospaced().bold())
+                            if let deviation = row.credential.deviation {
+                                badge(deviation == .newItem ? UIText.deviationNewItem : UIText.deviationNewVault, .orange)
+                            }
+                        }
+                        Text(row.reference).font(.callout.monospaced()).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .toggleStyle(.checkbox)
+                .focusable(false)
+                .disabled(!model.canEditSelection)
+            }
+        }
+    }
+
+    // MARK: Kind of approval (exec way, D63, D65)
+
+    private var execApprovalSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if model.request.exec?.approval.kind == .once {
+                HStack(spacing: 8) {
+                    Text(UIText.approvalOnceLabel + ":").font(.callout)
+                    Text(model.approvalText).font(.callout.bold())
+                    Spacer()
+                }
+                Text(UIText.approvalOnceDetail)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                lifetimeControls
+                Text(model.bindingText)
+                    .font(.callout)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(model.scopeText)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -216,6 +367,16 @@ struct PopupView: View {
 
     private var grantSection: some View {
         VStack(alignment: .leading, spacing: 6) {
+            lifetimeControls
+            Text(model.scopeText)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var lifetimeControls: some View {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Text(UIText.lifetimeLabel + ":").font(.callout)
                 Text(model.lifetimeText).font(.callout.bold())
@@ -245,10 +406,6 @@ struct PopupView: View {
                     Spacer()
                 }
             }
-            Text(model.scopeText)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
