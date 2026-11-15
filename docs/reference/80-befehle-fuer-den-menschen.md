@@ -14,7 +14,7 @@ Ein Befehl zeigt nie einen Secret-Wert.
 
 Alle Befehle lesen die Konfigurationsdatei mit `--config <datei>`.
 Ohne das Argument gilt `A38_CONFIG`, danach der Standardort.
-Die Befehle `grants`, `fault`, `doctor`, `config path`, `config show`, `config validate`, `config vault list`, `config project list` und `config onepassword-token status` kennen `--json`.
+Die Befehle `grants`, `fault`, `doctor`, `config path`, `config show`, `config validate`, `config account list`, `config vault list`, `config project list` und `config onepassword-token status` kennen `--json`.
 
 Die Schalter dürfen vor und nach den Argumenten stehen.
 `a38 grants revoke <grant-id> --config <datei>` und `a38 grants revoke --config <datei> <grant-id>` sind gleich.
@@ -46,28 +46,62 @@ Der Mensch startet ihn, nicht der Agent.
 
 ### Konfiguration des 1Password-Backends
 
+Die Konfiguration nennt die 1Password-Konten ({{ ref("D71") }}).
+Jedes Konto hat einen eigenen Service Account und ein eigenes Token.
+Jeder Vault nennt sein Konto ({{ ref("D70") }}); es gibt kein Standardkonto.
+
+```yaml
+vaults:
+  - name: beispiel.app.k8s-dev
+    environment: dev
+    account: privat
+  - name: datenbank-dev
+    environment: dev
+    account: firma
+backend:
+  onepassword:
+    accounts:
+      - name: privat
+      - name: firma
+        token_source: file
+        token_file: ~/.config/a38/onepassword-token-firma
+```
+
 | Schlüssel | Standard | Bedeutung |
 |---|---|---|
-| `backend.onepassword.token_source` | `keychain` | Quelle des Tokens des Service Accounts: `keychain` (Schlüsselbund von macOS) oder `file` (Token-Datei). Ein anderer Wert verhindert das Laden der Konfiguration. |
-| `backend.onepassword.token_file` | `$XDG_CONFIG_HOME/a38/onepassword-token`, ohne die Variable `~/.config/a38/onepassword-token` | Token-Datei des Service Accounts. Nur `--backend 1password` mit `token_source: file` liest sie. |
+| `backend.onepassword.accounts[].name` | – (Pflicht) | Name des Kontos in `a38`. Kleinbuchstaben, Ziffern und Bindestrich, 1 bis 32 Zeichen, am Anfang ein Buchstabe oder eine Ziffer. Jeder Name nur einmal. `service-account` ist gesperrt. |
+| `backend.onepassword.accounts[].token_source` | `keychain` | Quelle des Tokens: `keychain` (Schlüsselbund von macOS) oder `file` (Token-Datei). Ein anderer Wert verhindert das Laden der Konfiguration. |
+| `backend.onepassword.accounts[].token_file` | `$XDG_CONFIG_HOME/a38/onepassword-token-<name>`, ohne die Variable `~/.config/a38/onepassword-token-<name>` | Token-Datei des Kontos. Nur `--backend 1password` mit `token_source: file` liest sie. Zwei Konten mit derselben Datei sind ein Fehler. |
+| `vaults[].account` | – (Pflicht) | Name des Kontos des Vaults. Das Konto muss in `accounts` stehen. |
 
-Die Quelle `keychain` ist der Standard ({{ ref("D51") }}).
-Der Daemon liest dann den Eintrag `a38.onepassword` (Konto `service-account`) im Anmelde-Schlüsselbund.
-`a38 config onepassword-token set` legt ihn an (siehe [a38 config](#a38-config)).
-Fehlt der Eintrag, startet der Daemon mit `--backend 1password` nicht.
-Die Meldung nennt den Befund und den Befehl `a38 config onepassword-token set`.
-Wartet der Schlüsselbund länger als zwei Minuten, zum Beispiel auf einen Dialog von macOS, bricht der Start ebenfalls ab.
+Ein Konto ohne Vault ist erlaubt; der Daemon liest sein Token nicht, und `a38 doctor` nennt es als Hinweis.
+Der Name eines Vaults ist über alle Konten eindeutig ({{ ref("G41") }}).
+Die Referenz des Agents nennt kein Konto; der Daemon findet das Konto über den Vault.
+
+Die Schlüssel `backend.onepassword.token_source` und `backend.onepassword.token_file` direkt unter `onepassword` stammen aus der Konfiguration mit einem Token.
+Sie verhindern das Laden ({{ ref("D75") }}).
+Die Meldung nennt den Umbau; die Schritte stehen in [Mehrere 1Password-Konten einrichten](../how-to/31-mehrere-1password-konten.md#von-einem-token-auf-konten-umstellen).
+
+Die Quelle `keychain` ist der Standard ({{ ref("D72") }}).
+Der Daemon liest dann den Eintrag mit dem Dienst `a38.onepassword` und dem Konto `<name>` im Anmelde-Schlüsselbund.
+`a38 config onepassword-token set --account <name>` legt ihn an (siehe [a38 config](#a38-config)).
+Wartet der Schlüsselbund länger als zwei Minuten, zum Beispiel auf einen Dialog von macOS, gilt das Token des Kontos als fehlend.
 
 Die Quelle `file` ist der Ausweichweg für Entwicklung und CI.
 Die Token-Datei ist eine reguläre Datei, gehört dem Benutzer und hat genau den Modus `0600`.
-Sonst startet der Daemon mit `--backend 1password` nicht, und die Meldung nennt den Befund.
 Jeder Prozess desselben Benutzers kann die Datei lesen, auch ein Agent ({{ ref("RI5") }}).
 `A38_CONFIG` verschiebt die Token-Datei nicht.
 
-Der Daemon liest das Token einmal beim Start, aus genau einer Quelle.
-Eine Änderung des Tokens wirkt erst nach einem Neustart des Daemons.
-Ein ungültiges Token oder ein fehlendes Netz verhindern den Start nicht: Jede Anfrage endet dann mit `backend_locked` oder `backend_unavailable`.
-Die Einrichtung beschreibt [1Password-Backend einrichten](../how-to/30-1password-backend-einrichten.md).
+Beim Start ({{ ref("D73") }}):
+
+- Der Daemon liest das Token jedes Kontos einmal, in der Reihenfolge der Konfiguration. Ein Konto ohne Vault liest er nicht.
+- Fehlt das Token eines Kontos, startet der Daemon trotzdem. Jede Anfrage an einen Vault dieses Kontos endet mit `backend_locked`. Das Log nennt das Konto und den nächsten Schritt.
+- Hat kein Konto ein Token, startet der Daemon nicht. Die Meldung nennt jedes Konto mit Befund und nächstem Schritt.
+- Das Backend hält einen Client des SDK je Konto. Lehnt 1Password das Token eines Kontos ab, sperrt das nur die Vaults dieses Kontos.
+- Eine Änderung eines Tokens wirkt erst nach einem Neustart des Daemons.
+- Ein ungültiges Token oder ein fehlendes Netz verhindern den Start nicht: Jede Anfrage an das Konto endet dann mit `backend_locked` oder `backend_unavailable`.
+
+Die Einrichtung beschreiben [1Password-Backend einrichten](../how-to/30-1password-backend-einrichten.md) und [Mehrere 1Password-Konten einrichten](../how-to/31-mehrere-1password-konten.md).
 
 ### Umgebungen und exec-Weg
 
@@ -273,18 +307,21 @@ Die Entscheidung dazu ist {{ ref("D55") }}.
 | Unterbefehl | Wirkung |
 |---|---|
 | `path` | Zeigt die Datei, die gilt, den Grund (Schalter, `A38_CONFIG`, `XDG_CONFIG_HOME`, Standard) und ob sie existiert. Exit-Code 0. |
-| `show` | Zeigt jeden Wert mit der Herkunft (`file`, `default`), auch die Schlüssel von `environments` und `exec`, die aufgelösten Pfade (Sockets, Audit-Datei, Quelle des Tokens), die vorhandenen Vaults und die Projekte mit Pfaden (geschrieben, aufgelöst, fehlend) und die Prüfung. Eine Datei, die nicht lädt, gibt den Fehler mit Zeile und Exit-Code 1, nie eine Teilausgabe. Der Befehl liest das Token nie. |
+| `show` | Zeigt jeden Wert mit der Herkunft (`file`, `default`), auch die Schlüssel von `environments` und `exec`, die aufgelösten Pfade (Sockets, Audit-Datei), die Konten mit ihrer Quelle des Tokens, die vorhandenen Vaults mit Umgebung und Konto und die Projekte mit Pfaden (geschrieben, aufgelöst, fehlend) und die Prüfung. Eine Datei, die nicht lädt, gibt den Fehler mit Zeile und Exit-Code 1, nie eine Teilausgabe. Der Befehl liest das Token nie. |
 | `init [--force]` | Legt die Datei mit den Standardwerten (auch `environments` und `exec`) und Kommentaren an (Verzeichnis 0700, Datei 0600). Eine vorhandene Datei bleibt; der Befehl endet mit 1. `--force` verschiebt sie nach `config.yaml.bak-<Zeitstempel>`. |
 | `validate` | Lädt und prüft die Datei wie die Prüfung `configuration` von `a38 doctor`. Exit-Code 0 ohne Befund, sonst 1 mit dem nächsten Schritt. |
-| `vault add <name> --environment dev\|test\|prod` | Trägt einen Vault ein. Ein doppelter Name oder eine andere Umgebung ist ein Fehler. |
+| `account add <name> [--token-source keychain\|file] [--token-file <pfad>]` | Trägt ein 1Password-Konto ein ({{ ref("D71") }}). `--token-file` gilt nur mit der Quelle `file`. Ein doppelter oder ungültiger Name ist ein Fehler. Die Ausgabe nennt den nächsten Schritt `a38 config onepassword-token set --account <name>`. |
+| `account remove <name>` | Entfernt ein Konto. Nennt ein Vault das Konto, endet der Befehl mit 1 und nennt die Vaults. Der Eintrag im Schlüsselbund bleibt. |
+| `account list` | Listet die Konten mit Quelle und Vaults. |
+| `vault add <name> --environment dev\|test\|prod --account <konto>` | Trägt einen Vault ein. Ein doppelter Name, eine andere Umgebung oder ein Konto, das nicht in der Liste steht, ist ein Fehler. Ohne `--account` endet der Befehl mit 2. |
 | `vault remove <name>` | Entfernt einen Vault. Nutzt ihn ein Projekt, endet der Befehl mit 1 und nennt die Projekte. |
-| `vault list` | Listet die Vaults. |
+| `vault list` | Listet die Vaults mit Umgebung und Konto. |
 | `project add <name> --path <dir> [--path …] --vault <vault> [--vault …]` | Trägt ein Projekt ein. Jeder Pfad ist absolut oder beginnt mit `~/`. Jeder Vault steht in der Liste. Ein fehlender Pfad ist ein Hinweis. |
 | `project remove <name>` | Entfernt ein Projekt. |
 | `project list` | Listet die Projekte. |
 | `onepassword-token` | Siehe unten. |
 
-Die Befehle `vault add|remove` und `project add|remove` ändern nur den Block der Liste.
+Die Befehle `account add|remove`, `vault add|remove` und `project add|remove` ändern nur den Block der Liste.
 Kommentare, Reihenfolge und Leerzeilen bleiben erhalten; ein Kommentar über einem entfernten Eintrag bleibt stehen.
 Die Änderung durchläuft vor dem Schreiben dieselben Regeln wie das Laden.
 Eine Datei, die nicht lädt, ändern sie nicht.
@@ -296,37 +333,40 @@ Ein Schalter darf vor und nach den Argumenten stehen.
 
 ### a38 config onepassword-token
 
-Der Befehl verwaltet das Token des 1Password-Service-Accounts im Schlüsselbund von macOS ({{ ref("D51") }}).
+Der Befehl verwaltet das Token des Service Accounts jedes 1Password-Kontos im Schlüsselbund von macOS ({{ ref("D72") }}).
+Jedes Konto hat einen eigenen Eintrag: Dienst `a38.onepassword`, Konto `<name>`.
 Nur der macOS-Build kennt ihn.
 Unter Linux endet jeder Unterbefehl mit „not available on this platform“ und dem Exit-Code 1.
 
 | Aufruf | Wirkung |
 |---|---|
-| `a38 config onepassword-token set [--replace]` | Liest das Token vom Terminal und legt es im Eintrag `a38.onepassword` ab. Ein vorhandener Eintrag bleibt ohne `--replace` unverändert; der Befehl endet dann mit 1. |
-| `a38 config onepassword-token status [--json]` | Zeigt die Quelle, die Metadaten des Eintrags, die Signatur von `a38` und eine übrige Token-Datei. Exit-Code 1, wenn die konfigurierte Quelle kein Token hat. |
-| `a38 config onepassword-token delete` | Löscht den Eintrag. Die Ausgabe nennt, was der Daemon beim nächsten Start tut. |
+| `a38 config onepassword-token set --account <name> [--replace]` | Liest das Token vom Terminal und legt es im Eintrag des Kontos ab. Das Konto muss in der Konfiguration stehen; sonst liest der Befehl nichts und endet mit 1. Ohne `--account` endet er mit 2. Ein vorhandener Eintrag bleibt ohne `--replace` unverändert; der Befehl endet dann mit 1. |
+| `a38 config onepassword-token status [--account <name>] [--json]` | Zeigt je Konto Vaults, Quelle, die Metadaten des Eintrags und die Token-Datei; dazu den alten Eintrag und die alte Token-Datei der Konfiguration mit einem Token und die Signatur von `a38`. Mit `--account` nur dieses Konto. Exit-Code 1, wenn ein Konto mit Vault kein Token hat oder die Konfiguration nicht lädt. |
+| `a38 config onepassword-token delete --account <name>` | Löscht den Eintrag des Kontos. Das Konto muss nicht in der Konfiguration stehen. Die Ausgabe nennt, was der Daemon beim nächsten Start tut. |
+| `a38 config onepassword-token delete --legacy` | Löscht den alten Eintrag `a38.onepassword/service-account` der Konfiguration mit einem Token ({{ ref("D75") }}). Der Daemon liest ihn nicht mehr. |
 
-Alle drei kennen `--config <datei>`.
-Ohne Konfigurationsdatei gilt die Quelle `keychain`.
+Alle Aufrufe kennen `--config <datei>`.
 Kein Unterbefehl zeigt das Token oder einen Wert, der daraus abgeleitet ist (Länge, Prüfsumme).
 
 `set`:
 
-- Die Standardeingabe muss ein Terminal sein. Der Befehl fragt auf stderr nach dem Token und liest ohne Echo.
+- Die Standardeingabe muss ein Terminal sein. Der Befehl fragt auf stderr nach dem Token des genannten Kontos und liest ohne Echo.
 - Ist die Standardeingabe kein Terminal, zum Beispiel eine Pipe oder eine Datei, liest der Befehl nichts und endet mit dem Exit-Code 2.
 - Das Token ist nie ein Argument und nie eine Umgebungsvariable. Ein Argument ist ein Aufruffehler (Exit-Code 2); der Befehl wiederholt es nicht.
 - Die Prüfung der Form: nicht leer, mindestens 16 und höchstens 4096 Bytes, kein Leerzeichen, kein Steuerzeichen. Ein zu kurzes Token endet mit „too short“. Ein Token ohne den Anfang `ops_` ergibt nur eine Warnung, denn dieser Anfang ist eine Annahme.
-- Die Ausgabe nennt nur den Eintrag.
+- Die Ausgabe nennt nur Konto und Eintrag.
 - `a38` legt den Eintrag selbst an, nicht über `/usr/bin/security`. Der Schlüsselbund vertraut dann nur diesem Build von `a38`.
 - `--replace` löscht den alten Eintrag und legt ihn neu an. Danach vertraut der Eintrag dem neuen Build.
+- Nutzt das Konto die Quelle `file`, legt der Befehl den Eintrag trotzdem an und weist darauf hin, dass der Daemon ihn nicht liest.
 
 `status`:
 
-- Der Befehl liest das Token nie. Er zeigt deshalb nie einen Dialog von macOS.
-- Die Zeile `Keychain` nennt den Eintrag, das Datum der Anlage und der letzten Änderung, die vertrauten Programme und die Partitionsliste.
+- Der Befehl liest kein Token. Er zeigt deshalb nie einen Dialog von macOS.
+- Je Konto: die Zeile `Account` mit den Vaults, die Zeile `Source`, die Zeile `Keychain` mit Eintrag, Datum der Anlage und der letzten Änderung, vertrauten Programmen und Partitionsliste, und die Zeile `Token file`.
 - Nennt die Partitionsliste nicht den Hash dieses Builds (`cdhash:`), folgt ein Hinweis: Der nächste Start des Daemons zeigt einen Dialog.
+- Die Zeile `Token file` nennt die Token-Datei des Kontos. Der Befehl prüft nur Besitzer und Rechte und liest den Inhalt nicht. Ist die Quelle der Schlüsselbund, ist eine übrige Datei ein Befund.
+- Die Zeilen `Old item` und `Old file` nennen den Eintrag und die Token-Datei der Konfiguration mit einem Token, wenn es sie noch gibt, mit dem nächsten Schritt.
 - Die Zeile `Signature` nennt die Art der Signatur von `a38`: `unsigned`, `ad-hoc`, `developer-id` oder `other-certificate`. Ohne Developer ID folgt eine Warnung ({{ ref("G5") }}).
-- Die Zeile `Token file` nennt die Token-Datei. Der Befehl prüft nur Besitzer und Rechte und liest den Inhalt nicht. Ist die Quelle der Schlüsselbund, ist eine übrige Datei ein Befund.
 
 ## a38 doctor
 
@@ -347,7 +387,7 @@ Der Exit-Code ist 0 ohne Befund.
 | `audit space` | Im Verzeichnis sind mindestens 100 MiB frei. |
 | `audit chain` | Die Hash-Kette stimmt. Die Prüfung liest die Datei nur. |
 | `backend` | Zustand des Backends, soweit der Daemon ihn meldet: `ok`, `locked` oder `unreachable`. Für 1Password heißt `locked`: 1Password lehnt das Token ab. |
-| `1password token` | Nur macOS. Läuft der Daemon mit dem Fake-Backend, entfällt die Prüfung. Sonst prüft sie die Quelle aus `token_source`, ohne das Token zu lesen. Quelle `keychain`: Der Eintrag existiert; die Zeile nennt Datum und vertraute Programme. Ein vertrautes Programm außer diesem `a38` ist ein Befund. Ein Eintrag eines anderen Builds ergibt eine Zeile `NOTE`. Die Signatur von `a38` ohne Developer ID ergibt eine Zeile `NOTE` ({{ ref("G5") }}). Eine übrige Token-Datei ist ein Befund. Quelle `file`: Die Datei existiert, ist eine reguläre Datei des Benutzers und hat den Modus `0600`. Ein fehlender Eintrag oder eine fehlende Datei ist nur ein Befund, wenn der Daemon mit `--backend 1password` läuft. |
+| `1password token` | Nur macOS. Läuft der Daemon mit dem Fake-Backend, entfällt die Prüfung. Sonst prüft sie je Konto die Quelle aus `token_source`, ohne ein Token zu lesen ({{ ref("D74") }}). Jede Zeile nennt das Konto und seine Vaults. Ein Konto ohne Vault ergibt eine Zeile `NOTE`. Der alte Eintrag `a38.onepassword/service-account` und die alte Token-Datei `onepassword-token` sind Befunde mit dem nächsten Schritt ({{ ref("D75") }}). Die Signatur zeigt die Prüfung einmal. Quelle `keychain`: Der Eintrag existiert; die Zeile nennt Datum und vertraute Programme. Ein vertrautes Programm außer diesem `a38` ist ein Befund. Ein Eintrag eines anderen Builds ergibt eine Zeile `NOTE`. Die Signatur von `a38` ohne Developer ID ergibt eine Zeile `NOTE` ({{ ref("G5") }}). Eine übrige Token-Datei ist ein Befund. Quelle `file`: Die Datei existiert, ist eine reguläre Datei des Benutzers und hat den Modus `0600`. Ein fehlender Eintrag oder eine fehlende Datei ist nur ein Befund, wenn der Daemon mit `--backend 1password` läuft. |
 | `approval UI` | Zustand der Freigabe-App, soweit der Daemon ihn meldet. Im Modus `app` prüft die Prüfung die Datei der App wie der Daemon vor dem Start. |
 
 Mit `--json` gibt der Befehl ein Objekt mit `ok` und der Liste `results` aus.
@@ -435,5 +475,5 @@ Der Hook prüft nur das Werkzeug `Bash`. Er blockiert drei Fälle:
 | Regel | Fall |
 |---|---|
 | `op-cli` | Ein Befehl startet `op`, auch über einen Pfad, hinter `sudo`, `env`, `command`, `exec`, `nohup`, `time`, `nice`, `timeout`, `xargs`, `find -exec`, in Pipeline, Liste, Subshell, Befehlsersetzung oder in der Zeichenkette von `bash -c`, `sh -c`, `zsh -c`, `eval` und `env -S` (bis zur Tiefe 3). |
-| `a38-token-file` | Ein Befehl nennt einen Pfad auf `/onepassword-token` als Argument oder als Eingabe (`<`). `ls`, `stat`, `test`, `[`, `echo`, `printf` und `a38` lesen die Datei nicht und passieren. |
-| `a38-keychain-token` | `security find-generic-password` mit `-w` oder `-g` für den Eintrag `a38.onepassword` oder sein Label. |
+| `a38-token-file` | Ein Befehl nennt einen Pfad auf `/onepassword-token` oder `/onepassword-token-<name>` als Argument oder als Eingabe (`<`). `ls`, `stat`, `test`, `[`, `echo`, `printf` und `a38` lesen die Datei nicht und passieren. |
+| `a38-keychain-token` | `security find-generic-password` mit `-w` oder `-g` für einen Eintrag `a38.onepassword` oder sein Label, auch das Label eines Kontos. |

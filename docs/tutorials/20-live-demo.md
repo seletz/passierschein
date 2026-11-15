@@ -64,6 +64,7 @@ cat ~/.config/a38/config.yaml
 vaults:
   - name: passierschein.dev
     environment: dev
+    account: demo
 
 projects:
   - name: demo-projekt
@@ -109,7 +110,7 @@ a38 serve --backend 1password --ui app
 ```text
 level=INFO msg="approval app chosen" path=/Users/…/Applications/Passierschein.app/Contents/MacOS/Passierschein
 level=INFO msg="daemon started" backend=1password ui=app …
-level=INFO msg="the 1password backend works" vaults_configured=1 vaults_visible=1
+level=INFO msg="the 1password account works" account=demo vaults_configured=1 vaults_visible=1
 ```
 
 Prüfe in Terminal 3 den Zustand:

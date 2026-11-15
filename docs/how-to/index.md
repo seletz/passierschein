@@ -17,6 +17,7 @@ Eine Anleitung löst eine bestimmte Aufgabe.
 - [Daemon als Dienst einrichten](28-daemon-als-dienst-einrichten.md)
 - [Freigaben auswerten](29-freigaben-auswerten.md)
 - [1Password-Backend einrichten](30-1password-backend-einrichten.md)
+- [Mehrere 1Password-Konten einrichten](31-mehrere-1password-konten.md)
 - [Freigabe-App lokal ausprobieren](40-freigabe-app-ausprobieren.md)
 - [Demo vorführen](50-demo-vorfuehren.md)
 - [Release signieren und prüfen](60-release-signieren-und-pruefen.md)

@@ -56,14 +56,14 @@ Der Dienst startet später nicht den Link, sondern die Datei im Bundle.
     a38 config validate
     ```
 
-2. Lege das Token des Service Accounts im Schlüsselbund ab:
+2. Lege das Token des Service Accounts jedes Kontos im Schlüsselbund ab:
 
     ```sh
-    a38 config onepassword-token set
+    a38 config onepassword-token set --account privat
     ```
 
     Führe den Befehl mit dem `a38` aus dem Bundle aus, also über den Link aus dem letzten Abschnitt.
-    Der Schlüsselbund vertraut dann genau diesem `a38`, und der Dienst liest das Token ohne Dialog ({{ ref("D51") }}).
+    Der Schlüsselbund vertraut dann genau diesem `a38`, und der Dienst liest das Token ohne Dialog ({{ ref("D72") }}).
 
 3. Prüfe die Konfiguration:
 
@@ -91,7 +91,7 @@ Der Befehl prüft vorher, ob der Daemon starten kann:
 
 - Die Konfiguration lädt.
 - Die Freigabe-App „Passierschein“ besteht die Prüfung der Datei.
-- Der Eintrag `a38.onepassword` im Schlüsselbund existiert. Der Befehl liest das Token nicht. Mit `token_source: file` prüft er nur Besitzer und Modus der Token-Datei.
+- Für jedes Konto mit Vault existiert der Eintrag im Schlüsselbund. Der Befehl liest kein Token. Mit `token_source: file` prüft er nur Besitzer und Modus der Token-Datei. Fehlt nur bei einem Teil der Konten das Token, ist das eine Warnung: Der Daemon startet und sperrt die Vaults dieser Konten ({{ ref("D73") }}). Fehlt es bei allen, ist es ein Befund.
 - Die Pfade der Sockets sind höchstens 103 Byte lang.
 - Kein anderer Daemon antwortet auf dem Admin-Socket. Läuft ein Daemon, den du von Hand gestartet hast, beende ihn zuerst mit Ctrl-C.
 - `a38` gehört dir oder `root`, und weder Gruppe noch andere dürfen die Datei oder ihr Verzeichnis schreiben.
@@ -102,8 +102,8 @@ Der Befehl richtet dann nichts ein und endet mit dem Exit-Code 1.
 Mit Befund nennt die Ausgabe zum Beispiel:
 
 ```text
-FINDING  the keychain has no token of the 1Password service account (token_source: keychain)
-         Next step: run a38 config onepassword-token set in this terminal, then run a38 service install again
+FINDING  account "privat": the keychain has no token of the 1Password service account (token_source: keychain)
+         Next step: run a38 config onepassword-token set --account privat in this terminal, then run a38 service install again
 a38 service install: refused: the daemon would not start; fix the findings first
 ```
 
@@ -150,7 +150,7 @@ Der Exit-Code ist 0, wenn der Dienst läuft und das Programm passt, sonst 1.
 - Bestätige keinen Dialog für `a38.onepassword`, den du nicht erwartest. Lege das Token stattdessen neu ab und starte neu:
 
     ```sh
-    a38 config onepassword-token set --replace
+    a38 config onepassword-token set --account privat --replace
     a38 service restart
     ```
 
@@ -175,7 +175,7 @@ Ist sie dir zu groß, leere sie:
 
 ## Nach einer Änderung neu starten
 
-Der Daemon liest Konfiguration und Token nur beim Start ({{ ref("D49") }}, {{ ref("D51") }}).
+Der Daemon liest Konfiguration und Tokens nur beim Start ({{ ref("D49") }}, {{ ref("D73") }}).
 Nach einer Änderung startest du ihn neu:
 
 ```sh
@@ -207,7 +207,7 @@ Der Neustart beendet alle Grants ({{ ref("D33") }}).
     ```
 
 Mit der Developer ID liest das neue `a38` das Token ohne Dialog.
-Ohne Developer ID braucht jeder neue Build einen Dialog ({{ ref("G5") }}); lege das Token dann mit `a38 config onepassword-token set --replace` neu ab.
+Ohne Developer ID braucht jeder neue Build einen Dialog ({{ ref("G5") }}); lege das Token dann mit `a38 config onepassword-token set --account <name> --replace` neu ab.
 
 ## Dienst entfernen
 

@@ -28,6 +28,7 @@ Es nutzt `vorhanden` dafür.
 ## Stand
 
 Von 41 Testfällen sind 29 umgesetzt, 3 teilweise und 9 zu bauen.
+Dazu kommen {{ ref("T43") }} bis {{ ref("T48") }} für mehrere 1Password-Konten ([Issue 88](https://github.com/seletz/passierschein/issues/88)): fünf umgesetzt, einer zu bauen; ihre Entscheidungen sind noch nicht bestätigt.
 Die zehn Testfälle {{ ref("T32") }} bis {{ ref("T41") }} gehören zum exec-Weg für `0.3.0` ([Issue 91](https://github.com/seletz/passierschein/issues/91)); ihre Entscheidungen sind noch nicht bestätigt.
 Das 1Password-Backend ({{ ref("T15") }}) ist belegt: Die Unit-Tests laufen in jeder CI, der Integrationstest läuft automatisch im macOS-Workflow mit dem Service Account der CI ([CI](55-ci.md)).
 Die Freigabe-App ({{ ref("T14") }}) ist teilweise belegt: Teil 1 ist automatisch und läuft in der CI. Teil 2 hat Stefan am 2026-11-12 am Bildschirm geprüft; offen sind Vollbild, Wechsel des Arbeitsbereichs, Zeitablauf und Meldungen ({{ ref("G33") }}).
@@ -86,6 +87,12 @@ Die Pakete stehen ohne den Präfix `internal/`.
 | {{ ref("T39") }} | zu-bauen | – | exec-Weg, Issue 91 |
 | {{ ref("T40") }} | zu-bauen | – | exec-Weg, Issue 91 |
 | {{ ref("T41") }} | zu-bauen | – | exec-Weg, Issue 91 |
+| {{ ref("T43") }} | umgesetzt | `config`: `TestAccounts`, `TestValidAccountName`, `TestEditTable` (Konto am Vault, `AddAccount`, `RemoveAccount`); `cmd/a38`: `TestConfigRoundTrip`, `TestConfigVaultAddErrors` | Mehrere Konten, Issue 88 |
+| {{ ref("T44") }} | umgesetzt | `cmd/a38`: `TestTokenAccounts`, `TestTokenSet`, `TestTokenStatus`, `TestTokenDelete`, `TestHookKeychainNames`; `keychain`: `TestForAccount`, `TestProductItemRefusedInTests`; `opguard`: `TestCheck` (Token-Datei und Eintrag eines Kontos) | Mehrere Konten, Issue 88 |
+| {{ ref("T45") }} | umgesetzt | `onepassword`: `TestAccountsRouteByVault`, `TestAccountsOptions` | Mehrere Konten, Issue 88; ohne echtes Konto |
+| {{ ref("T46") }} | umgesetzt | `cmd/a38`: `TestOpenAccounts`, `TestTokenSourceForAccount`, `TestServeKeychainSource`; `service`: `TestPreflightOneAccountWithoutToken` | Mehrere Konten, Issue 88 |
+| {{ ref("T47") }} | umgesetzt | `doctor`: `TestTokenSourceAccounts`, `TestTokenSourceLegacyFileInUse`, `TestTokenSourceCheckKeychain`, `TestTokenSourceCheckFile` | Mehrere Konten, Issue 88 |
+| {{ ref("T48") }} | zu-bauen | – | Anzeige des Kontos in Freigabeanfrage, Audit-Log und `a38 tui` ({{ ref("F26") }}) |
 
 ## Was die Lücken bedeuten
 
