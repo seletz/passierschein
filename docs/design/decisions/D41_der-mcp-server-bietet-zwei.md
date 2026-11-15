@@ -3,16 +3,18 @@ render_macros: true
 id: 'D41'
 titel: 'Der MCP-Server bietet zwei Werkzeuge: request_credentials und grant_status'
 bereich: 'Oberflächen'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-15'
 order: 3
 headless: true
-status: gueltig
+status: ersetzt
+ersetzt_durch: D61
 use_cases: [UC1, UC2]
 beleg:
-  wer: Stefan
-  datum: '2026-11-11'
-  notiz: Vorschlag des Designlaufs, von Stefan im Review am 2026-11-11 abgenommen
+  datum: '2026-11-15'
+  quelle: ['#91']
+  notiz: Vorschlag aus Issue 91, zu bestätigen durch Stefan
+  annahme: true
 ---
 # D41 — Der MCP-Server bietet zwei Werkzeuge: request_credentials und grant_status
 

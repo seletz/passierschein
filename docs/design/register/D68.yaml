@@ -1,0 +1,9 @@
+id: D68
+zustand: eingeloest
+titel: Der Skill nennt den exec-Weg als Regel für test und prod und als bevorzugten Weg in dev
+bezug: '#91'
+schluessel: '#91/skill-exec'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

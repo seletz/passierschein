@@ -1,0 +1,9 @@
+id: T38
+zustand: eingeloest
+titel: Freigabeanfrage und Audit-Log nennen das Kommando und enthalten nie einen Wert oder die Ausgabe
+bezug: '#91'
+schluessel: '#91/t-popup-audit'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

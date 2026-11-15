@@ -1,0 +1,9 @@
+id: T41
+zustand: eingeloest
+titel: Der Skill nennt run_with_credentials, exec_required und die Grenzen des exec-Wegs
+bezug: '#91'
+schluessel: '#91/t-skill'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

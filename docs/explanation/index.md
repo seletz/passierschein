@@ -10,4 +10,5 @@ Eine Erklärung beschreibt Hintergrund und Zusammenhänge.
 
 - [Konzept](konzept.md)
 - [Architektur](architektur.md)
+- [Lokaler Einsatz und VM](lokal-und-vm.md)
 - [Spikes](spikes/index.md)

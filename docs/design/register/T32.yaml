@@ -1,0 +1,9 @@
+id: T32
+zustand: eingeloest
+titel: run_with_credentials startet das Kommando mit dem Wert in der Umgebung und gibt nur Exit-Code und Ausgabe zurück
+bezug: '#91'
+schluessel: '#91/t-exec-ablauf'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

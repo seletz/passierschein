@@ -3,16 +3,18 @@ render_macros: true
 id: 'D32'
 titel: 'Ein Grant umfasst die angehakten Zugangsdaten, mit einer konfigurierbaren Laufzeit'
 bereich: 'Grants und Auslieferung'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-15'
 order: 6
 headless: true
-status: gueltig
+status: ersetzt
+ersetzt_durch: D63
 use_cases: [UC2, UC3]
 beleg:
-  wer: Stefan
-  datum: '2026-11-11'
-  notiz: Vorschlag des Designlaufs, von Stefan im Review am 2026-11-11 abgenommen
+  datum: '2026-11-15'
+  quelle: ['#91']
+  notiz: Vorschlag aus Issue 91, zu bestätigen durch Stefan
+  annahme: true
 ---
 # D32 — Ein Grant umfasst die angehakten Zugangsdaten, mit einer konfigurierbaren Laufzeit
 

@@ -3,12 +3,12 @@ render_macros: true
 id: 'D47'
 titel: 'Die Konfiguration nennt die Umgebung jedes Vaults'
 bereich: 'Backends'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-15'
 order: 4
 headless: true
 status: gueltig
-use_cases: [UC5, UC1]
+use_cases: [UC15, UC1]
 beleg:
   wer: Stefan
   datum: '2026-11-11'

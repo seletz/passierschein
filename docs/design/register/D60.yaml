@@ -1,0 +1,9 @@
+id: D60
+zustand: eingeloest
+titel: a38 unterscheidet den lokalen Einsatz und den Einsatz in der VM, und lokal deckt a38 ab, was Agenten heute mit op tun
+bezug: '#91'
+schluessel: '#91/einsatzfaelle'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

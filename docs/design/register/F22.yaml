@@ -1,0 +1,9 @@
+id: F22
+zustand: eingeloest
+titel: Auslieferungsweg, Laufzeit und Bindung des Grants je Umgebung im Daemon
+bezug: '#91'
+schluessel: '#91/policy-je-umgebung'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'
