@@ -137,6 +137,10 @@ func TestCheck(t *testing.T) {
 		{"token file in substitution", "export OP_SERVICE_ACCOUNT_TOKEN=$(cat " + token + ")", RuleTokenFile},
 		{"token file through sudo", "sudo head -c 10 " + token, RuleTokenFile},
 		{"token file other path", "cat /srv/a38/onepassword-token", RuleTokenFile},
+		// Issue 88, D72: the token file of an account.
+		{"token file of an account", "cat ~/.config/a38/onepassword-token-firma", RuleTokenFile},
+		{"token file of an account in a variable path", `base64 < "$XDG_CONFIG_HOME/a38/onepassword-token-privat"`, RuleTokenFile},
+		{"ls token file of an account", "ls -l ~/.config/a38/onepassword-token-firma", ""},
 		{"ls token file", "ls -l " + token, ""},
 		{"stat token file", "stat -f '%Lp' " + token, ""},
 		{"test token file", "test -f " + token + " && echo yes", ""},
@@ -148,6 +152,9 @@ func TestCheck(t *testing.T) {
 		{"security -w first", "security find-generic-password -w -s a38.onepassword -a service-account", RuleKeychainToken},
 		{"security combined flags", "security find-generic-password -ws a38.onepassword", RuleKeychainToken},
 		{"security -g", "security find-generic-password -g -s a38.onepassword", RuleKeychainToken},
+		// Issue 88, D72: the item of an account, also by its label.
+		{"security -w account item", "security find-generic-password -s a38.onepassword -a firma -w", RuleKeychainToken},
+		{"security -w account label", `security find-generic-password -l "a38: 1Password Service Account (firma)" -w`, RuleKeychainToken},
 		{"security by label", `security find-generic-password -w -l "a38: 1Password Service Account"`, RuleKeychainToken},
 		{"security in substitution", "T=$(security find-generic-password -s a38.onepassword -w)", RuleKeychainToken},
 		{"security metadata only", "security find-generic-password -s a38.onepassword", ""},

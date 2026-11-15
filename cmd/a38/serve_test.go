@@ -70,7 +70,7 @@ func writeConfig(t *testing.T) (path, socketDir, fakeFile string) {
 	path = filepath.Join(dir, "config.yaml")
 	data := fmt.Sprintf(`version: 1
 vaults:
-  - {name: beispiel.app.k8s-dev, environment: dev}
+  - {name: beispiel.app.k8s-dev, environment: dev, account: privat}
 projects:
   - name: beispielprojekt
     paths: [%q]
@@ -85,8 +85,10 @@ paths:
 # so that no test and no built binary touches the keychain (issue 59).
 backend:
   onepassword:
-    token_source: file
-    token_file: %s
+    accounts:
+      - name: privat
+        token_source: file
+        token_file: %s
 `, wd, socketDir, filepath.Join(dir, "audit.db"), filepath.Join(dir, "onepassword-token"))
 	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
 		t.Fatal(err)
@@ -320,8 +322,8 @@ func writeMode(t *testing.T, path string, mode os.FileMode) {
 }
 
 // TestServeKeychainSource: with the source keychain (the default) a
-// missing keychain item stops the start; the message names
-// "a38 config onepassword-token set" (D51, issue 59). The test uses a fake store; it never
+// missing keychain item of the only account stops the start; the message
+// names "a38 config onepassword-token set --account" (D72, D73). The test uses a fake store; it never
 // touches the keychain.
 func TestServeKeychainSource(t *testing.T) {
 	cfgFile, socketDir, _ := writeConfig(t)
@@ -330,8 +332,8 @@ func TestServeKeychainSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tt := range []struct{ name, from, to string }{
-		{"default source", "    token_source: file\n", ""},
-		{"source keychain", "    token_source: file\n", "    token_source: keychain\n"},
+		{"default source", "        token_source: file\n", ""},
+		{"source keychain", "        token_source: file\n", "        token_source: keychain\n"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := filepath.Join(filepath.Dir(cfgFile), "keychain.yaml")
@@ -340,7 +342,7 @@ func TestServeKeychainSource(t *testing.T) {
 			}
 			store := newFakeStore()
 			old := newTokenStore
-			newTokenStore = func() (token.Store, error) { return store, nil }
+			newTokenStore = func(string) (token.Store, error) { return store, nil }
 			t.Cleanup(func() { newTokenStore = old })
 
 			var stdout, stderr bytes.Buffer
@@ -348,7 +350,7 @@ func TestServeKeychainSource(t *testing.T) {
 			if code := serve(context.Background(), args, &stdout, &stderr); code != exitFailure {
 				t.Errorf("exit code = %d, want %d", code, exitFailure)
 			}
-			want := `store the token with "a38 config onepassword-token set"`
+			want := `store the token with "a38 config onepassword-token set --account privat"`
 			if runtime.GOOS != "darwin" {
 				want = "not available on this platform"
 			}

@@ -273,8 +273,8 @@ func (c backendCheck) Run(_ context.Context, st *State) []Result {
 		// rejects the token.
 		switch comp.State {
 		case StateLocked:
-			comp.Detail = "1Password rejects the token of the service account (revoked, expired or wrong)"
-			next = "create a new token for the service account, store it with a38 config onepassword-token set --replace (or in the token file with token_source: file) and restart the daemon"
+			comp.Detail = "1Password rejects the token of the service account of each account (revoked, expired or wrong); the daemon log names the account"
+			next = "create a new token for the service account, store it with a38 config onepassword-token set --account NAME --replace (or in the token file of the account with token_source: file) and restart the daemon"
 		case StateUnreachable:
 			comp.Detail = "1Password does not answer (network, rate limit or time limit); the daemon log names the class of the error"
 			next = "check the network connection; the daemon tries again by itself; each request ends with backend_unavailable until then"

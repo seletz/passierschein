@@ -24,11 +24,12 @@ type Rule string
 const (
 	// RuleOpCLI: the command runs the 1Password CLI "op" (D15).
 	RuleOpCLI Rule = "op-cli"
-	// RuleTokenFile: the command reads the token file of a38
-	// (".../onepassword-token", D51 file source).
+	// RuleTokenFile: the command reads a token file of a38
+	// (".../onepassword-token", D51 file source, or
+	// ".../onepassword-token-NAME", the file of an account, D72).
 	RuleTokenFile Rule = "a38-token-file"
-	// RuleKeychainToken: the command prints the keychain item of a38 with
-	// "security find-generic-password -w" or "-g" (D51).
+	// RuleKeychainToken: the command prints a keychain item of a38 with
+	// "security find-generic-password -w" or "-g" (D51, D72).
 	RuleKeychainToken Rule = "a38-keychain-token"
 )
 
@@ -322,7 +323,7 @@ func checkSecurity(args []string) Rule {
 		if strings.HasPrefix(a, "-") && !strings.HasPrefix(a, "--") && strings.ContainsAny(a[1:], "wg") {
 			prints = true
 		}
-		if strings.Contains(a, keychainService) || a == keychainLabel {
+		if strings.Contains(a, keychainService) || strings.HasPrefix(a, keychainLabel) {
 			a38Item = true
 		}
 	}
@@ -353,7 +354,16 @@ func checkTokenArgs(name string, args []string) Rule {
 }
 
 // isTokenPath reports whether a word is a path that ends with
-// "/onepassword-token".
+// "/onepassword-token" or with "/onepassword-token-NAME", the token file of
+// an account (D72, issue 88).
 func isTokenPath(s string) bool {
-	return strings.HasSuffix(s, "/"+tokenFileName)
+	if strings.HasSuffix(s, "/"+tokenFileName) {
+		return true
+	}
+	i := strings.LastIndex(s, "/"+tokenFileName+"-")
+	if i < 0 {
+		return false
+	}
+	name := s[i+len(tokenFileName)+2:]
+	return name != "" && !strings.ContainsAny(name, "/")
 }

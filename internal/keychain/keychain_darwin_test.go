@@ -208,9 +208,16 @@ func TestPutEmpty(t *testing.T) {
 }
 
 func TestProductItemRefusedInTests(t *testing.T) {
-	// Issue 59: a test never touches the item of the human.
-	p := Product()
-	if p.Service != ProductService || p.Account != ProductAccount || strings.HasPrefix(p.Service, TestPrefix) {
+	// Issue 59: a test never touches the item of the human. T44 (part):
+	// also not the item of an account (D72).
+	for _, p := range []Store{Legacy(), ForAccount("privat")} {
+		checkProductRefused(t, p)
+	}
+}
+
+func checkProductRefused(t *testing.T, p Store) {
+	t.Helper()
+	if p.Service != ProductService || strings.HasPrefix(p.Service, TestPrefix) {
 		t.Fatalf("product item = %+v", p)
 	}
 	if _, err := p.Token(); err == nil || !strings.Contains(err.Error(), "must not use the product item") {
