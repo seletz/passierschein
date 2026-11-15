@@ -74,14 +74,16 @@ public enum DisplayText {
     }
 }
 
-/// The lifetimes that the human can select (D32). The set is fixed: the
-/// proposal, half of the proposal and 15 minutes. Each value is at least
-/// one minute and never more than the proposal; the proposal itself is
-/// always in the set and is the first value.
+/// The lifetimes that the human can select (D32, D63). The set is fixed:
+/// the proposal, half of the proposal (rounded down to minutes), 15 minutes
+/// and 5 minutes. Each value other than the proposal is at least five
+/// minutes and shorter than the proposal; the proposal is always the first
+/// value. The daemon uses the same rule for a command
+/// (approval.ExecLifetimeChoices).
 public func lifetimeChoices(proposal: Int64) -> [Int64] {
     var values: [Int64] = [proposal]
     let half = (proposal / 2) / 60 * 60
-    for candidate in [half, Int64(15 * 60)] where candidate >= 60 && candidate < proposal {
+    for candidate in [half, Int64(15 * 60), Int64(5 * 60)] where candidate >= 5 * 60 && candidate < proposal {
         values.append(candidate)
     }
     return Array(Set(values)).sorted(by: >)

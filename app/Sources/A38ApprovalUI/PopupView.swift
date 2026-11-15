@@ -375,37 +375,23 @@ struct PopupView: View {
         }
     }
 
+    /// The fixed set of lifetimes, always visible (one way in both
+    /// windows). The proposal is the first and longest value and is
+    /// selected at the start; no value is longer (D32, D63).
     private var lifetimeControls: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Text(UIText.lifetimeLabel + ":").font(.callout)
-                Text(model.lifetimeText).font(.callout.bold())
-                if model.lifetimeChoices.count > 1 && !model.lifetimeChoiceOpen {
-                    Button(UIText.lifetimeShorter) { model.openLifetimeChoice() }
-                        .buttonStyle(.link)
-                        .focusable(false)
-                        .disabled(!model.canEditSelection)
-                }
-                Spacer()
-            }
-            if model.lifetimeChoiceOpen {
-                HStack(spacing: 8) {
-                    Picker(UIText.lifetimeLabel, selection: lifetimeBinding) {
-                        ForEach(model.lifetimeChoices, id: \.self) { seconds in
-                            Text(UIText.duration(seconds)).tag(seconds)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .focusable(false)
-                    .fixedSize()
-                    .disabled(!model.canEditSelection)
-                    Button(UIText.lifetimeKeep) { model.closeLifetimeChoice() }
-                        .buttonStyle(.link)
-                        .focusable(false)
-                    Spacer()
+        HStack(spacing: 8) {
+            Text(UIText.lifetimeLabel + ":").font(.callout)
+            Picker(UIText.lifetimeLabel, selection: lifetimeBinding) {
+                ForEach(model.lifetimeChoices, id: \.self) { seconds in
+                    Text(UIText.duration(seconds)).tag(seconds)
                 }
             }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .focusable(false)
+            .fixedSize()
+            .disabled(!model.canEditSelection)
+            Spacer()
         }
     }
 

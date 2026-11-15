@@ -88,7 +88,6 @@ public final class ApprovalViewModel {
 
     public private(set) var selected: Set<String> = []
     public private(set) var lifetime: Int64
-    public private(set) var lifetimeChoiceOpen = false
     public private(set) var armed = false
     public private(set) var secondsLeft: Int
     public private(set) var authInProgress = false
@@ -308,13 +307,6 @@ public final class ApprovalViewModel {
         selected.formUnion(group.items.map(\.id))
     }
 
-    public func openLifetimeChoice() {
-        guard canEditSelection, offersLifetimeChoice else { return }
-        lifetimeChoiceOpen = true
-    }
-
-    public func closeLifetimeChoice() { lifetimeChoiceOpen = false }
-
     /// Selects a lifetime. Only a value of the fixed set is possible; it is
     /// never longer than the proposal.
     public func selectLifetime(_ seconds: Int64) {
@@ -352,7 +344,6 @@ public final class ApprovalViewModel {
         // "Only this command" has no lifetime (D63: lifetime 0).
         let ttl: Int64? = request.exec?.approval.kind == .once ? nil : lifetime
         authInProgress = true
-        lifetimeChoiceOpen = false
         message = nil
         let project = DisplayText.clean(request.verified.project)
         let reason = request.exec.map {
@@ -384,9 +375,8 @@ public final class ApprovalViewModel {
 
     /// Test switch of a debug build: puts the popup in a state for a
     /// screenshot. A release build does not contain this function.
-    public func applyDemo(select ids: [String], lifetimeOpen: Bool) {
+    public func applyDemo(select ids: [String]) {
         for id in ids { setSelected(id, true) }
-        if lifetimeOpen { openLifetimeChoice() }
     }
     #endif
 

@@ -82,7 +82,7 @@ public enum AppMain {
         model.onFinish = { emit($0, request: request) }
         #if A38_TEST_SWITCHES
         let ids = options.demoSelect == ["all"] ? request.credentials.map(\.id) : options.demoSelect
-        model.applyDemo(select: ids, lifetimeOpen: options.demoLifetimeOpen)
+        model.applyDemo(select: ids)
         model.demoScrollToEnd = options.demoScrollEnd
         #endif
 

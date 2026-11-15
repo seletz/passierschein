@@ -270,6 +270,7 @@ struct ExecViewModelTests {
         m.selectLifetime(300)
         #expect(m.lifetime == 300)
         #expect(m.bindingText == UIText.bindingProgram)
+        #expect(m.lifetimeChoices == A38ApprovalCore.lifetimeChoices(proposal: 1800), "one rule for both windows")
     }
 
     @Test("T38 part (window): prod offers no lifetime and says \"only this command\"")
@@ -277,8 +278,6 @@ struct ExecViewModelTests {
         let (m, _) = try model("exec-prod")
         #expect(m.lifetimeChoices.isEmpty)
         #expect(!m.offersLifetimeChoice)
-        m.openLifetimeChoice()
-        #expect(!m.lifetimeChoiceOpen)
         #expect(m.approvalText == UIText.approvalOnce)
     }
 
