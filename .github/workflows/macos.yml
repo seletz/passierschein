@@ -8,6 +8,8 @@ name: macOS
 #   its wiring, the peer data of the socket),
 # - the approval app: build, Swift tests and the end-to-end run with real
 #   processes (fake authentication, no Touch ID),
+# - the a38 binary with hardened runtime runs the WebAssembly core of the
+#   1Password SDK (T30, issue 89),
 # - the release bundle Passierschein.app with a38 inside, ad-hoc signed
 #   (the Developer ID signature needs the secrets: release.yml,
 #   signed-snapshot.yml),
@@ -51,6 +53,8 @@ on:
       - "scripts/release-app-sign.sh"
       - "scripts/sbom-check.sh"
       - "scripts/onepassword-integration*.sh"
+      - "scripts/sdk-core-check.sh"
+      - "third_party/**"
       - ".github/workflows/macos.yml"
 
 permissions:
@@ -122,6 +126,11 @@ jobs:
 
       - name: Build a38
         run: mise run build
+
+      # T30: a38 with hardened runtime (ad-hoc, no entitlements) runs the
+      # WebAssembly core of the 1Password SDK. No token, no network.
+      - name: SDK core with hardened runtime (T30)
+        run: mise run test:sdk-core
 
       # All Go tests on macOS with the race detector; this covers the
       # files with a darwin build constraint.

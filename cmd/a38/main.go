@@ -46,6 +46,7 @@ var commands = []command{
 	{"config", "Manage the configuration file (path, show, init, validate, vault, project) and the 1Password token", runConfig},
 	{"service", "Install, remove, restart and show the daemon as a LaunchAgent (macOS)", runService},
 	{"doctor", "Check the state of a38 and name the next step for each finding", runDoctor},
+	{"selftest", "Check this binary: sdk-core runs the core of the 1Password SDK once (macOS)", runSelftest},
 	{"llm", "Print the instructions for agents (--skill)", runLLM},
 	{"hook", "Hooks for agent tools: op-guard blocks a direct call of op", runHook},
 	{"version", "Print the version", runVersion},

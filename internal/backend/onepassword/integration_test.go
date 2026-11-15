@@ -109,7 +109,11 @@ func newIntegrationBackend(t *testing.T, tok token.Token) (*Backend, *vaultGuard
 	t.Helper()
 	g := &vaultGuard{t: t}
 	connect := func(ctx context.Context, tok token.Token, version string) (api, error) {
+		start := time.Now()
 		a, err := connectSDK(ctx, tok, version)
+		// D59: the core runs in the interpreter of wazero. The time shows
+		// the cost of the interpreter for the sign-in; it is no value.
+		t.Logf("connect (WebAssembly core in the interpreter and sign-in): %.2f s", time.Since(start).Seconds())
 		if err != nil {
 			return nil, err
 		}

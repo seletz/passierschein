@@ -28,6 +28,16 @@ func connectSDK(ctx context.Context, token token.Token, version string) (api, er
 	return sdkAPI{c: c}, nil
 }
 
+// selfTestConnect builds a client of the SDK with the invalid token of
+// [SelfTest]. This loads and runs the WebAssembly core of the SDK.
+func selfTestConnect(ctx context.Context) error {
+	_, err := sdk.NewClient(ctx,
+		sdk.WithServiceAccountToken(selfTestToken),
+		sdk.WithIntegrationInfo(integrationName, "selftest"),
+	)
+	return err
+}
+
 // sdkAPI is the adapter from the SDK to [api].
 type sdkAPI struct{ c *sdk.Client }
 

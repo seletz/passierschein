@@ -9,10 +9,12 @@
 #     -> "Apple Root CA", and the same team ID for both,
 #   - both are universal (x86_64 arm64),
 #   - Gatekeeper accepts the bundle as notarized (spctl -t exec),
-#   - the stapled ticket is valid (stapler validate).
+#   - the stapled ticket is valid (stapler validate),
+#   - a38 runs the WebAssembly core of the 1Password SDK under its hardened
+#     runtime and has no entitlement for code in memory (T30, D59).
 # APP_CHECK=adhoc (pull requests, develop, local tests): the same layout,
 #   identifier and hardened runtime checks, an ad-hoc signature, no
-#   Gatekeeper, no ticket.
+#   Gatekeeper, no ticket; the SDK core check runs in both modes.
 #
 # The check prints flags, identifiers, the team ID and the verdicts, not
 # the subject of the certificate.
@@ -90,6 +92,10 @@ if [ "$MODE" = developer-id ]; then
   echo "$verdict" | grep -qx 'source=Notarized Developer ID' || fail "Gatekeeper does not see a notarization (want source=Notarized Developer ID)"
   xcrun stapler validate "$TARGET" || fail "the stapled ticket is missing or not valid"
 fi
+
+# T30: the signed a38 runs the WebAssembly core of the 1Password SDK under
+# its hardened runtime, and has no entitlement for code in memory (D59).
+bash "$(dirname "$0")/sdk-core-check.sh" "$TARGET/Contents/MacOS/a38" || fail "a38 in the bundle cannot run the 1Password SDK core"
 
 if [ "$status" = 0 ]; then
   echo "release-app-check: $TARGET passes ($MODE)"
