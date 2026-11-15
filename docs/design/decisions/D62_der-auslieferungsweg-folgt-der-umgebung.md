@@ -10,8 +10,9 @@ headless: true
 status: gueltig
 use_cases: [UC15]
 beleg:
-  notiz: Vorschlag aus Issue 91, zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-15'
+  quelle: ['#94']
 ---
 # D62 — Der Auslieferungsweg folgt der Umgebung des Vaults: außerhalb von dev nur über den exec-Weg, nie als MCP-Antwort
 

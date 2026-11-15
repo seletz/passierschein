@@ -10,8 +10,9 @@ headless: true
 status: gueltig
 use_cases: [UC16]
 beleg:
-  notiz: Vorschlag aus Issue 91, zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-15'
+  quelle: ['#94']
 ---
 # D67 — Mit dem exec-Weg gilt der Hook op-guard für alle Projekte, und der Schalter --strict blockiert auch im Zweifel
 

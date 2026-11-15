@@ -9,7 +9,11 @@ order: 8
 headless: true
 type: Gap
 kind: design
-status: offen
+status: geschlossen
+beleg:
+  datum: '2026-11-15'
+  durch: [D62, D63, D64]
+  quelle: ['#102']
 register:
   owner: Stefan
 ---

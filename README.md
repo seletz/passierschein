@@ -5,11 +5,13 @@ Kommandozeilenwerkzeug heißt `a38`.
 
 ## Stand
 
-**Das erste Release `v0.1.0` ist veröffentlicht (2026-11-12).** Es liefert
+**Das aktuelle Release ist `v0.2.0` (2026-11-15).** Es liefert
 `Passierschein.app` mit `a38` im Bundle als ZIP für macOS, signiert mit der
 Developer ID, notarisiert und mit angeheftetem Ticket. Dazu kommen tar-Archive
-mit dem einzelnen `a38` für macOS und Linux, SBOMs und Prüfsummen. Der Praxistest
-des Release auf dem Mac von Stefan ist offen. Die Anleitung
+mit dem einzelnen `a38` für macOS und Linux, SBOMs und Prüfsummen. Das erste Release
+`v0.1.0` (2026-11-12) arbeitet nicht mit 1Password: Die gehärtete Laufzeit
+(Hardened Runtime) blockiert das 1Password-SDK. `v0.2.0` behebt das. Nutze
+`v0.1.0` nicht. Die Anleitung
 [a38 aus dem Release installieren](docs/how-to/15-a38-aus-dem-release-installieren.md)
 zeigt den Weg. Die Doku steht unter <https://seletz.github.io/passierschein/>
 und zeigt den Stand von `develop`.

@@ -10,8 +10,9 @@ headless: true
 status: gueltig
 use_cases: [UC16]
 beleg:
-  notiz: Vorschlag aus Issue 91, zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-15'
+  quelle: ['#94']
 ---
 # D66 — Die Konfiguration nennt Auslieferungswege, Laufzeit und Bindung je Umgebung und die Grenzen des exec-Wegs
 

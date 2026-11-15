@@ -1,0 +1,9 @@
+id: G39
+zustand: eingeloest
+titel: Das Design nennt keine Antwort des Daemons auf exec_result und keine Meldung eines gescheiterten Starts
+bezug: '#95'
+schluessel: '#95/exec-result-antwort'
+lauf: '2.0'
+branch: feat/95-exec-protokoll
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

@@ -58,6 +58,30 @@ a38 config project list
 
 Ein Vault, den noch ein Projekt nutzt, lässt sich nicht entfernen. Die Fehlermeldung nennt die Projekte.
 
+## Einem Projekt einen Pfad hinzufügen
+
+Ein Projekt hat oft mehr als ein Verzeichnis.
+Ein Beispiel sind die Worktrees, die neben dem Repository liegen.
+Eine Sitzung gehört zu einem Projekt, wenn ihr Arbeitsverzeichnis ein Pfad des Projekts ist oder darunter liegt.
+Ein Worktree neben dem Repository liegt nicht unter dem Repository.
+Darum braucht das Projekt das Verzeichnis der Worktrees als zweiten Pfad.
+
+```sh
+a38 config project add-path beispielprojekt --path ~/develop/beispielprojekt__worktrees
+a38 config project list
+```
+
+- Der Befehl hängt den Pfad an die Liste des Projekts an. Er ändert nichts anderes in der Datei.
+- Du kannst `--path` mehrfach angeben.
+- Ein Pfad ist absolut oder beginnt mit `~/`. Ein relativer Pfad ist ein Fehler.
+- Ein Pfad, den das Projekt schon hat, ist ein Fehler. Ein Pfad eines anderen Projekts auch.
+- Ein Pfad, der nicht existiert, ist erlaubt. Der Befehl nennt ihn als Hinweis.
+- Das Projekt muss in der Liste stehen. Sonst lege es mit `a38 config project add` an.
+
+Ein Worktree-Werkzeug wie `wt` legt die Worktrees in das Verzeichnis `<Repository>__worktrees`.
+Trage genau dieses Verzeichnis ein.
+Der Daemon liest die Datei nur beim Start. Starte ihn danach neu (Schritt 7).
+
 ## Schritt 5: Token ablegen
 
 ```sh
@@ -93,4 +117,5 @@ Beende `a38 serve` und starte es neu. Läuft der Daemon als Dienst, startet `a38
 | „the lock file … exists“ | Eine andere Änderung läuft. Läuft keine, lösche die Sperrdatei `config.yaml.lock`. |
 | „the file changed while a38 edited it“ | Ein anderes Programm schrieb gleichzeitig. Es wurde nichts geschrieben; wiederhole den Befehl. |
 | „cannot create a temporary file“ | Das Verzeichnis ist nicht beschreibbar. Prüfe die Rechte. |
+| „paths.ui_app names a file that does not exist“ | Der Pfad der Freigabe-App ist falsch. Korrigiere `paths.ui_app` in der Datei oder entferne den Schlüssel. |
 | „the file is not valid“ | a38 ändert keine fehlerhafte Datei. Behebe sie mit `a38 config validate`. |

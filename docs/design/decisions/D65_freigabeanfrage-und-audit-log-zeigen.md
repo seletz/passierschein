@@ -10,8 +10,9 @@ headless: true
 status: gueltig
 use_cases: [UC15]
 beleg:
-  notiz: Vorschlag aus Issue 91, zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-15'
+  quelle: ['#94']
 ---
 # D65 — Freigabeanfrage und Audit-Log zeigen beim exec-Weg das Kommando, nie einen Wert und nie die Ausgabe
 

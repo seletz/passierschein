@@ -317,6 +317,8 @@ Die Version ist `1`.
 | `hello` | `welcome` | Erste Nachricht einer Verbindung. Sie nennt den Namen der Sitzung und den Namen des Agent-Werkzeugs. Beide sind Angaben des Agents. Die Antwort nennt die Kennung der Sitzung und das Projekt. |
 | `request_credentials` | `credentials` | Die Anfrage nennt Referenzen, Aufgabe und Begründung. Die Antwort hat je Referenz einen Wert oder einen Fehler. |
 | `grant_status` | `grants` | Grants der eigenen Sitzung ohne Werte |
+| `request_exec` | `exec_credentials` | exec-Weg ({{ ref("D61") }}): Die Anfrage nennt Programm, Argumente, Arbeitsverzeichnis, Variablen mit Referenzen, Zeitgrenze, Aufgabe und Begründung. Die Antwort trägt die Werte und die Grenzen des Kommandos. |
+| `exec_result` | `exec_recorded` | exec-Weg: Ergebnis des Kommandos ohne Ausgabe und ohne Wert. Die Antwort bestätigt den Empfang ({{ ref("G39") }}). |
 
 ### Nachrichten des Admin-Sockets
 
@@ -339,9 +341,58 @@ Scheitert eine Anfrage als Ganzes, ist die Antwort auf beiden Sockets die Nachri
 - Ein Steuerzeichen im Namen der Sitzung ist immer ungültig. Die Länge und die erlaubten Zeichen prüft der Daemon mit `config.SessionNameRules.Check`.
 - Der Daemon sendet den Code `daemon_unavailable` nie. Nur `a38 mcp` erzeugt ihn, wenn der Socket nicht erreichbar ist.
 
+### Nachrichten des exec-Wegs
+
+Die Nachrichten setzen {{ ref("D61") }} und {{ ref("D64") }} um.
+Bis Issue 99 lehnt der Daemon `request_exec` und `exec_result` mit `not_allowed` ab.
+Er liefert dann nichts aus.
+
+`request_exec` (`protocol.RequestExec`, von `a38 mcp` an den Daemon):
+
+| Feld | Pflicht | Regel |
+|---|---|---|
+| `id` | ja | Kennung der Anfrage |
+| `program` | ja | absoluter, bereinigter Pfad, höchstens 1024 Bytes, ohne Steuerzeichen |
+| `args` | nein | höchstens 256 Argumente und 16 KiB zusammen; Zeilenumbruch und Tabulator erlaubt, andere Steuerzeichen nicht |
+| `cwd` | ja | absoluter, bereinigter Pfad wie `program` |
+| `env` | ja | Liste von Paaren `{"name", "reference"}`, 1 bis 100 Einträge, jeder Name einmal |
+| `timeout_seconds` | nein | 0 bis 3600; 0 oder fehlend heißt Standard der Konfiguration |
+| `task` | ja | Angabe des Agents, höchstens 2000 Zeichen |
+| `reason` | ja | Angabe des Agents, höchstens 2000 Zeichen |
+
+Ein Schlüssel einer Nachricht hat nur Kleinbuchstaben.
+`env` ist deshalb auf dem Socket eine Liste und kein JSON-Objekt.
+Ein Name folgt dem Muster `[A-Z_][A-Z0-9_]*`.
+`protocol.CheckEnvName` prüft das Muster und die verbotenen Namen aus {{ ref("D64") }}.
+Die Grenzen der Konfiguration (`bundle.max_entries`, `exec.max_timeout`) und das Projekt des Arbeitsverzeichnisses prüft der Daemon.
+
+`exec_credentials` (`protocol.ExecCredentials`, Antwort auf `request_exec`):
+
+| Feld | Regel |
+|---|---|
+| `id` | Kennung der Anfrage |
+| `values` | Liste von Paaren `{"name", "value"}`, je Eintrag von `env` einer, in derselben Reihenfolge |
+| `timeout_seconds` | geltende Zeitgrenze, 1 bis 3600 |
+| `output_limit` | Grenze der Ausgabe je Strom in Bytes, 1024 bis 1048576 |
+
+`exec_result` (`protocol.ExecResult`, von `a38 mcp` an den Daemon):
+
+| Feld | Regel |
+|---|---|
+| `id` | Kennung dieser Nachricht |
+| `request_id` | Kennung der Anfrage `request_exec` |
+| `exit_code` | 0 bis 255; −1 genau dann, wenn `signal` gesetzt ist |
+| `signal` | leer oder Name wie `SIGTERM` |
+| `timed_out`, `stdout_truncated`, `stderr_truncated` | Wahrheitswerte |
+| `duration_ms`, `stdout_bytes`, `stderr_bytes`, `masked` | Zahlen ab 0 |
+| `error` | nur bei einem gescheiterten Start, Code `exec_failed`; alle anderen Felder sind dann leer ({{ ref("G39") }}) |
+
+`exec_result` trägt nie die Ausgabe und nie einen Wert.
+`exec_recorded` trägt nur `id`.
+
 ### Fehlercodes
 
-Die Codes aus {{ ref("D35") }} sind Konstanten vom Typ `protocol.Code`.
+Die Codes aus {{ ref("D35") }} und die Codes `exec_required` und `exec_failed` aus {{ ref("D61") }} sind Konstanten vom Typ `protocol.Code`.
 `protocol.Codes()` liefert die vollständige Liste.
 Der Test für die Anleitung der Agents nutzt diese Liste ({{ ref("T20") }}).
 `protocol.Error` ist zugleich der Go-Fehler und das Fehlerobjekt auf dem Socket.
@@ -357,7 +408,7 @@ Die geprüften Namen liefert `Backend.Resolve`.
 `protocol.Secret` hält einen Secret-Wert.
 Die Pakete `fmt` und `log/slog` und `json.Marshal` geben statt des Werts `[redacted]` aus.
 Nur `Secret.Reveal` liefert den Wert.
-Nur `protocol.Encode` schreibt den Wert, und nur in die Nachricht `credentials` ({{ ref("D34") }}, {{ ref("T8") }}).
+Nur `protocol.Encode` schreibt den Wert, und nur in die Nachrichten `credentials` und `exec_credentials` ({{ ref("D34") }}, {{ ref("T8") }}).
 
 ## Freigabe-Schnittstelle
 
