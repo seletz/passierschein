@@ -83,3 +83,5 @@ The codes:
 - `session_name_conflict`: two sessions have the same name. Stop and tell the human.
 - `not_found`: an item or a field does not exist. Check the reference for typing errors only if the human gave you the exact names. Otherwise stop and tell the human.
 - `invalid_request`: the request is not valid, for example a wrong reference. Fix the request once if the error is clear. Otherwise stop and tell the human.
+- `exec_required`: the vault gives its values only to a command, not as an answer. Ask once again for the same task with the tool `run_with_credentials`. If `a38 mcp` has no such tool, stop and tell the human.
+- `exec_failed`: `a38 mcp` did not start the command after the delivery. Stop and tell the human the code.

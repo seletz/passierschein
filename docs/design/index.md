@@ -42,7 +42,7 @@ neue Entscheidung. Die alte Entscheidung erhält den Status „ersetzt“.
 | D | {{ ref("D1") }}–{{ ref("D68") }} |
 | F | {{ ref("F1") }}–{{ ref("F24") }} |
 | T | {{ ref("T1") }}–{{ ref("T41") }} |
-| G | {{ ref("G1") }}–{{ ref("G38") }} |
+| G | {{ ref("G1") }}–{{ ref("G39") }} |
 | RI | {{ ref("RI1") }}–{{ ref("RI14") }} |
 
 ## Bestätigt und angenommen

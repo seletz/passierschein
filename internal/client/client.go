@@ -108,6 +108,20 @@ func (c *Conn) RequestCredentials(ctx context.Context, req *protocol.RequestCred
 	return roundTrip[*protocol.Credentials](ctx, c, req, &req.ID)
 }
 
+// RequestExec asks for the values of credentials for one command (D61).
+// The client sets the correlation ID. The answer holds the values and the
+// limits of the command. Keep the values only until the end of the command.
+func (c *Conn) RequestExec(ctx context.Context, req *protocol.RequestExec) (*protocol.ExecCredentials, error) {
+	return roundTrip[*protocol.ExecCredentials](ctx, c, req, &req.ID)
+}
+
+// ExecResult reports the result of a command to the daemon (D61, D65).
+// The client sets the correlation ID; the caller sets RequestID to the ID
+// of the request_exec.
+func (c *Conn) ExecResult(ctx context.Context, res *protocol.ExecResult) (*protocol.ExecRecorded, error) {
+	return roundTrip[*protocol.ExecRecorded](ctx, c, res, &res.ID)
+}
+
 // GrantStatus asks for the grants of the own session.
 func (c *Conn) GrantStatus(ctx context.Context) (*protocol.Grants, error) {
 	req := &protocol.GrantStatus{}
@@ -281,6 +295,10 @@ func responseID(m protocol.Message) string {
 	case *protocol.StatusResult:
 		return m.ID
 	case *protocol.FaultClearResult:
+		return m.ID
+	case *protocol.ExecCredentials:
+		return m.ID
+	case *protocol.ExecRecorded:
 		return m.ID
 	}
 	return ""
