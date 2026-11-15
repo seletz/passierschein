@@ -62,8 +62,19 @@ Gemessen auf einem Mac mit Apple Silicon, je drei Läufe:
 | Rechenlast: Potenz modulo einer Zahl mit 2048 Bit | 21 ms | 2,6 s |
 | Rechenlast: AES-GCM über 1 MiB | 54 ms | 4,3 s |
 
-Die Rechenlast stammt aus einem eigenen Modul (`bench/`, Go nach `wasip1`). Den Kern des SDK kann der Spike ohne Token nicht rechnen lassen. Die Anmeldung eines Service Accounts nutzt SRP und RSA. Die Schätzung für die Anmeldung im Interpreter: einige Sekunden, einmal je Start des Daemons. Ein Item ist klein; das Entschlüsseln kostet Millisekunden. Die echte Zeit misst der Integrationstest {{ ref("T15") }}: Er protokolliert die Dauer der Anmeldung.
+Die Rechenlast stammt aus einem eigenen Modul (`bench/`, Go nach `wasip1`). Den Kern des SDK kann der Spike ohne Token nicht rechnen lassen.
+
+Die echte Anmeldung hat der Integrationstest {{ ref("T15") }} im macOS-Job der CI gemessen, mit dem Service Account der CI. Für die Messung lag die Zeitgrenze bei 15 Minuten statt 60 Sekunden.
+
+| Schritt von {{ ref("T15") }} | Compiler (Lauf 43700005590) | Interpreter (Lauf 43725336630) |
+|---|---|---|
+| Anmeldung (`connect`) | – | 63,9 s |
+| Vault sichtbar, mit Anmeldung | 4,8 s | 65,5 s |
+| drei Referenzen auflösen | 1,8 s | 9,7 s |
+| drei Werte lesen | 0,7 s | 4,2 s |
+
+Mit der normalen Zeitgrenze von 60 Sekunden scheiterte der Test im Interpreter.
 
 ## Empfehlung
 
-Der Interpreter von wazero, über eine geprüfte Kopie von `extism/go-sdk` mit einer geänderten Zeile. a38 bleibt ohne Entitlement. Die Entscheidung ist {{ ref("D59") }}. Die Prüfung ist {{ ref("T30") }}. Ist die Anmeldung zu langsam, bleibt das Entitlement `allow-unsigned-executable-memory` für a38 allein.
+Das Entitlement `com.apple.security.cs.allow-unsigned-executable-memory` für a38 allein. Der Compiler bleibt. Die Anmeldung im Interpreter dauert über eine Minute; das ist für den Daemon nicht nutzbar. Die Entscheidung ist {{ ref("D59") }}. Die Prüfung ist {{ ref("T30") }}.

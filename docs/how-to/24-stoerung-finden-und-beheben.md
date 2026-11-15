@@ -1,6 +1,7 @@
 ---
 title: Störung finden und beheben
 description: "Mit a38 doctor den Zustand prüfen, die Sperre der Auslieferung lesen und aufheben, typische Befunde beheben."
+render_macros: true
 ---
 # Störung finden und beheben
 
@@ -75,7 +76,8 @@ Das Log des Daemons endet ohne Fehlerzeile.
 
 Die Ursache: Die Signatur von `a38` hat die Hardened Runtime.
 Die Hardened Runtime verbietet Code, den ein Prozess im Speicher erzeugt.
-Ein `a38` vor der Korrektur von [Issue 89](https://github.com/seletz/passierschein/issues/89) übersetzt den Kern des 1Password-SDK in solchen Code.
+Das 1Password-SDK übersetzt seinen Kern in solchen Code.
+Ein `a38` vor der Korrektur von [Issue 89](https://github.com/seletz/passierschein/issues/89) hat das nötige Entitlement nicht ({{ ref("D59") }}).
 Das betrifft das Release `v0.1.0`.
 Ein lokaler Build ohne Signatur zeigt den Fehler nicht.
 

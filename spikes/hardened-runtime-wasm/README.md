@@ -21,8 +21,9 @@ cp bin/hrspike-compiler bin/hrspike-uem
 codesign --force --sign - --options runtime --entitlements ent-allow-unsigned-executable-memory.plist bin/hrspike-uem
 ./bin/hrspike-uem           # runs
 
-# interpreter: a copy of extism/go-sdk v1.7.1 with the patch of
-# third_party/extism-go-sdk.patch in ./extism-interp (not committed)
+# interpreter: a copy of extism/go-sdk v1.7.1 in ./extism-interp (not
+# committed) where plugin.go calls wazero.NewRuntimeConfigInterpreter()
+# instead of wazero.NewRuntimeConfig()
 go mod edit -replace github.com/extism/go-sdk=./extism-interp
 CGO_ENABLED=0 go build -o bin/hrspike-interp .
 go mod edit -dropreplace github.com/extism/go-sdk

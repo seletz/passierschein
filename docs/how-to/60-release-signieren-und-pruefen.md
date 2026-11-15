@@ -142,7 +142,7 @@ Lade das ZIP der App und die Prüfsummendatei des Release in ein Verzeichnis.
     ```
 
     Erwartet: Die erste Zeile endet mit `runs in this a38` und dem Exit-Code 0.
-    Der zweite Befehl zeigt keine Entitlements ({{ ref("D59") }}).
+    Der zweite Befehl zeigt genau ein Entitlement: `com.apple.security.cs.allow-unsigned-executable-memory` ({{ ref("D59") }}).
     `Killed: 9` heißt: Die Hardened Runtime verbietet den Code des Kerns.
     Dann darf das Release nicht erscheinen.
 
@@ -189,34 +189,17 @@ macOS holt das Ticket beim ersten Start bei Apple.
 - Ad-hoc signiert oder unsigniert: macOS blockiert die App ebenfalls.
 - Ohne Quarantäne-Attribut, also nach `curl` oder `gh release download`, prüft Gatekeeper beim Start nicht.
 
-## Kopie von extism aktualisieren
+## Entitlement von a38
 
-a38 trägt keine Entitlements ({{ ref("D59") }}).
-Dafür führt a38 den Kern des 1Password-SDK im Interpreter von wazero aus.
-Den Interpreter wählt eine Kopie von `extism/go-sdk` unter `third_party/extism-go-sdk` mit einer geänderten Zeile.
-`mise run deps:extism:check` prüft die Kopie in jeder CI.
-Verlangt ein neues SDK eine neue Version von extism, schlägt der Task fehl.
-Dann aktualisierst du die Kopie:
+`a38` trägt genau ein Entitlement: `com.apple.security.cs.allow-unsigned-executable-memory` ({{ ref("D59") }}).
+Die Datei `scripts/a38.entitlements` legt es fest.
+`release:app:sign` und die Signatur mit quill in `.goreleaser.yml` nutzen dieselbe Datei.
+Die App „Passierschein“ trägt kein Entitlement.
 
-1. Version und Verzeichnis der neuen Version lesen. Der erste Befehl nennt die Version vor `=>`:
-
-    ```sh
-    go list -m github.com/extism/go-sdk
-    (cd "$(mktemp -d)" && go mod download -json github.com/extism/go-sdk@<version>)
-    ```
-
-2. Die Dateien aus der Liste `FILES` von `scripts/extism-fork-check.sh` aus `Dir` nach `third_party/extism-go-sdk/` kopieren und schreibbar machen.
-3. Den Patch anwenden:
-
-    ```sh
-    (cd third_party/extism-go-sdk && patch -p1) < third_party/extism-go-sdk.patch
-    ```
-
-4. Die Zeile mit der neuen Version und dem Wert `Sum` aus Schritt 1 in `third_party/extism-go-sdk.sum` eintragen.
-5. `mise run deps:extism:check` und auf dem Mac `mise run test:sdk-core` starten.
-
-Wendet sich der Patch nicht an, hat extism die Wahl der Laufzeit geändert.
-Dann prüfst du den neuen Code und passt den Patch an.
+Das 1Password-SDK übersetzt seinen WebAssembly-Kern zur Laufzeit in Maschinencode.
+Ohne das Entitlement beendet macOS `a38` beim ersten Zugriff auf 1Password ([Issue 89](https://github.com/seletz/passierschein/issues/89)).
+`mise run test:sdk-core` zeigt beides: Mit dem Entitlement läuft der Kern, ohne das Entitlement stirbt `a38`.
+Stirbt `a38` ohne das Entitlement nicht mehr, ist es vielleicht überflüssig. Dann prüfst du {{ ref("D59") }} neu.
 
 ## App installieren
 

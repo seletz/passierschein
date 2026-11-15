@@ -26,7 +26,6 @@ Aufruf: `mise run <task>`.
 | `secrets` | Durchsucht die Git-Historie mit gitleaks nach Secrets. |
 | `secrets:staged` | Durchsucht die vorgemerkten Änderungen nach Secrets. |
 | `deps:linux:check` | Prüft, dass der linux-Build kein Paket für 1Password enthält. Der Selbsttest zeigt mit dem darwin-Build, dass die Prüfung das Backend und das SDK findet. |
-| `deps:extism:check` | Prüft, dass `third_party/extism-go-sdk` das Modul `extism/go-sdk` der verlangten Version mit der aufgezeichneten Prüfsumme ist, plus dem Patch für den Interpreter von wazero, und sonst nichts ({{ ref("D59") }}). |
 | `tools:check` | Prüft die Werkzeugversionen und die Form der Workflows. |
 | `check` | Führt alle Checks der CI aus. |
 | `hooks:install` | Richtet den Git-Hook `pre-commit` ein. |
@@ -48,7 +47,7 @@ Die Einzelheiten stehen in der [Referenz der Freigabe-App](85-freigabe-app.md).
 
 | Task | Zweck |
 |---|---|
-| `test:sdk-core` | Nur macOS, nicht Teil von `check`. Baut `a38`, signiert es ad hoc mit Hardened Runtime und ohne Entitlements und startet `a38 selftest sdk-core` ({{ ref("T30") }}). Braucht kein Token und kein Netz. Läuft im Workflow `macos.yml`. |
+| `test:sdk-core` | Nur macOS, nicht Teil von `check`. Baut `a38`, signiert es ad hoc mit Hardened Runtime und dem Entitlement aus `scripts/a38.entitlements` und startet `a38 selftest sdk-core` ({{ ref("T30") }}). Eine Kopie ohne Entitlement muss sterben. Braucht kein Token und kein Netz. Läuft im Workflow `macos.yml`. |
 | `test:onepassword:ci` | Nur in der CI (Workflow `macos.yml`). Schreibt das Token aus `OP_SERVICE_ACCOUNT_TOKEN` in eine temporäre Datei mit `0600` und führt denselben Test aus. Scheitert, wenn das Secret fehlt ([CI](55-ci.md)). |
 | `test:onepassword` | Nur macOS, nur von Hand, nicht Teil von `check`. Führt den Integrationstest des 1Password-Backends gegen den Vault `passierschein.dev` aus. Der Test liest nur. Er braucht `A38_OP_TOKEN_FILE` ([1Password-Backend einrichten](../how-to/30-1password-backend-einrichten.md#integrationstest)). |
 
