@@ -27,7 +27,7 @@ Es nutzt `vorhanden` dafür.
 
 ## Stand
 
-Von 41 Testfällen sind 28 umgesetzt, 3 teilweise und 10 zu bauen.
+Von 41 Testfällen sind 29 umgesetzt, 3 teilweise und 9 zu bauen.
 Die zehn Testfälle {{ ref("T32") }} bis {{ ref("T41") }} gehören zum exec-Weg für `0.3.0` ([Issue 91](https://github.com/seletz/passierschein/issues/91)); ihre Entscheidungen sind noch nicht bestätigt.
 Das 1Password-Backend ({{ ref("T15") }}) ist belegt: Die Unit-Tests laufen in jeder CI, der Integrationstest läuft automatisch im macOS-Workflow mit dem Service Account der CI ([CI](55-ci.md)).
 Die Freigabe-App ({{ ref("T14") }}) ist teilweise belegt: Teil 1 ist automatisch und läuft in der CI. Teil 2 hat Stefan am 2026-11-12 am Bildschirm geprüft; offen sind Vollbild, Wechsel des Arbeitsbereichs, Zeitablauf und Meldungen ({{ ref("G33") }}).
@@ -81,7 +81,7 @@ Die Pakete stehen ohne den Präfix `internal/`.
 | {{ ref("T34") }} | zu-bauen | – | exec-Weg, Issue 91 |
 | {{ ref("T35") }} | zu-bauen | – | exec-Weg, Issue 91 |
 | {{ ref("T36") }} | zu-bauen | – | exec-Weg, Issue 91 |
-| {{ ref("T37") }} | zu-bauen | – | exec-Weg, Issue 91 |
+| {{ ref("T37") }} | umgesetzt | `config`: `TestEnvironmentDefaults` (Zeile 1), `TestEnvironmentRejects` (Zeilen 2 bis 6, 8 und 9 und weitere verbotene Werte), `TestGrantLifetimeTransition` (Zeile 7), `TestEnvironmentAccepts`, `TestEnvironmentAccessors`; `doctor`: `TestConfigCheckDeprecation`; `cmd/a38`: `TestConfigValidateDeprecatedLifetime` (Zeile 7), `TestConfigValidateBothLifetimes` (Zeile 6), `TestConfigShowEnvironments`, `TestConfigShowDeprecatedLifetime`, `TestConfigInitTemplateHasNewKeys` | – |
 | {{ ref("T38") }} | zu-bauen | – | exec-Weg, Issue 91 |
 | {{ ref("T39") }} | zu-bauen | – | exec-Weg, Issue 91 |
 | {{ ref("T40") }} | zu-bauen | – | exec-Weg, Issue 91 |

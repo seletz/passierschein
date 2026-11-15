@@ -38,10 +38,33 @@ vaults: []
 # Add one with: a38 config project add NAME --path DIR --vault VAULT
 projects: []
 
-# How long an approval lasts. The human can choose a shorter time in the
-# popup, never a longer one.
-grant:
-  lifetime: 4h
+# The delivery ways, the lifetime of a grant and the binding of a grant for
+# each environment. The human can choose a shorter lifetime in the popup,
+# never a longer one. The fixed rules: mcp only for dev; prod only with the
+# lifetime 0s and the binding command; test never with the binding none.
+# Binding: none (any command), program (same program), command (same
+# program, arguments and working directory).
+environments:
+  dev:
+    delivery: [mcp, exec]
+    grant_lifetime: 4h
+    binding: none
+  test:
+    delivery: [exec]
+    grant_lifetime: 30m
+    binding: program
+  prod:
+    # prod is off. Set "delivery: [exec]" to allow it. Each command in
+    # prod needs its own approval.
+    delivery: []
+    grant_lifetime: 0s
+    binding: command
+
+# The limits of the exec way. output_limit is for each stream.
+exec:
+  default_timeout: 2m
+  max_timeout: 10m
+  output_limit: 64KiB
 
 # Requests of one session within the window go into one popup.
 bundle:

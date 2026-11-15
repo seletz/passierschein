@@ -31,6 +31,11 @@ func (c configCheck) Run(_ context.Context, st *State) []Result {
 		out = append(out, finding("project "+p.Name, fmt.Sprintf("the configuration of the project %q is invalid", p.Name), p.Invalid,
 			"fix the project in the configuration file and restart the daemon (a38 serve)"))
 	}
+	// A deprecated key still loads. The note names the key and the new key
+	// (D66); it does not change the exit code.
+	for _, d := range cfg.Deprecations {
+		out = append(out, note(c.Name(), "%s", d.String()))
+	}
 	// A path that does not exist is not an invalid project: the project
 	// stays valid, but no session can match the path (issue 44).
 	for _, p := range cfg.Projects {
