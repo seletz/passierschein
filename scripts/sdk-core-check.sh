@@ -19,9 +19,15 @@
 #
 # The check fails if a38 has no hardened runtime, if its entitlements are
 # not exactly those of scripts/a38.entitlements, or if the self-test does
-# not pass. The copy without entitlements shows that the entitlement is
-# still necessary; when the SDK stops compiling into memory, that part
-# fails, and D59 can drop the entitlement.
+# not pass.
+#
+# The copy without entitlements is the counter-check. On a Mac that
+# enforces the hardened runtime, macOS kills it (137); this shows that the
+# entitlement is still necessary. Some machines do not enforce it, for
+# example the macOS runners of GitHub Actions (seen 2026-11-15, PR 90): the
+# copy runs. Then the script prints a warning, because on that machine the
+# check cannot tell a missing entitlement from a present one. It fails only
+# if the copy ends in another way.
 set -euo pipefail
 
 [ "$(uname -s)" = Darwin ] || {
@@ -87,11 +93,17 @@ if [ "$own" = 1 ]; then
   cp "$tmp/a38.unsigned" "$tmp/a38-plain"
   codesign --force --sign - --options runtime --identifier io.github.seletz.passierschein.a38 "$tmp/a38-plain"
   code=$(selftest "$tmp/a38-plain" 2>/dev/null)
-  if [ "$code" = 137 ]; then
-    echo "sdk-core-check: without the entitlement macOS kills a38 (exit status 137), as expected"
-  else
-    fail "without the entitlement a38 selftest sdk-core ended with $code, want 137: the entitlement may be unnecessary now; check D59"
-  fi
+  case "$code" in
+    137) echo "sdk-core-check: without the entitlement macOS kills a38 (exit status 137), as expected" ;;
+    0)
+      echo "::warning::sdk-core-check: enforcement not active here: a38 without the entitlement runs too, so this machine does not enforce the hardened runtime for code in memory. The self-test above proves nothing about the hardened runtime here; the reliable check is the entitlement set (release:app:check, release:signatures:check). On a Mac that enforces it, the counter-check proves that the entitlement is necessary (D59)."
+      echo "sdk-core-check: machine: arch=$(uname -m) product=$(sw_vers -productVersion 2>/dev/null || echo ?) model=$(sysctl -n hw.model 2>/dev/null || echo ?)"
+      echo "sdk-core-check: SIP: $(csrutil status 2>/dev/null | tr -d '\n' || echo unknown)"
+      bootargs=$(nvram boot-args 2>/dev/null | cut -f2- || true)
+      echo "sdk-core-check: boot-args: ${bootargs:-none}"
+      ;;
+    *) fail "without the entitlement a38 selftest sdk-core ended with exit status $code, want 137 or 0" ;;
+  esac
 fi
 
 if [ "$status" = 0 ]; then

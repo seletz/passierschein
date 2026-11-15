@@ -129,6 +129,9 @@ jobs:
 
       # T30: a38 with hardened runtime and its one entitlement (ad-hoc) runs
       # the WebAssembly core of the 1Password SDK. No token, no network.
+      # The runner does not enforce the hardened runtime for code in memory;
+      # the counter-check then warns "enforcement not active here". The
+      # reliable check is the entitlement set in release:app:check.
       - name: SDK core with hardened runtime (T30)
         run: mise run test:sdk-core
 
