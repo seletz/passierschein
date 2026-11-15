@@ -5,6 +5,7 @@ import (
 	"context"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -103,8 +104,8 @@ vaults:
 `
 
 // configYAML returns the configuration of the tests with the grant
-// lifetime and the bundle maximum.
-func configYAML(lifetime string, maxEntries string) string {
+// lifetime, the bundle maximum and extra top-level sections.
+func configYAML(lifetime string, maxEntries string, extra ...string) string {
 	return `
 version: 1
 vaults:
@@ -132,7 +133,7 @@ bundle:
 paths:
   socket_dir: /tmp/a38-test/run
   audit_file: /tmp/a38-test/audit.db
-`
+` + strings.Join(extra, "\n")
 }
 
 // grantSection returns the grant section of the configuration. An empty
@@ -196,6 +197,7 @@ type hopt struct {
 	lock       fault.Lock
 	realLock   bool
 	mode       approval.Mode
+	extra      []string
 }
 
 type harnessOption func(*hopt)
@@ -210,6 +212,12 @@ func withLockOpt(l fault.Lock) harnessOption {
 // fault store, with the recorder as UI for the notices.
 func withRealLock() harnessOption { return func(o *hopt) { o.realLock = true } }
 
+// withConfig adds top-level sections to the configuration, for example
+// "environments".
+func withConfig(section string) harnessOption {
+	return func(o *hopt) { o.extra = append(o.extra, section) }
+}
+
 func withMode(m approval.Mode) harnessOption { return func(o *hopt) { o.mode = m } }
 func withUI(f func(*fakeui.Recorder, *clock.Fake) approval.UI) harnessOption {
 	return func(o *hopt) { o.ui = f }
@@ -221,7 +229,7 @@ func newHarness(t *testing.T, opts ...harnessOption) *harness {
 	for _, f := range opts {
 		f(&o)
 	}
-	cfg, err := config.Parse([]byte(configYAML(o.lifetime, o.maxEntries)))
+	cfg, err := config.Parse([]byte(configYAML(o.lifetime, o.maxEntries, o.extra...)))
 	if err != nil {
 		t.Fatalf("config: %v", err)
 	}
@@ -258,6 +266,9 @@ func newHarness(t *testing.T, opts ...harnessOption) *harness {
 		bopts = append(bopts, WithLock(o.lock))
 	}
 	h.b = New(cfg, be, ui, h.store, h.clk, logger, bopts...)
+	// The project paths of the tests do not exist: the check of the
+	// working directory uses the path as it is.
+	h.b.realPath = func(p string) (string, error) { return p, nil }
 	return h
 }
 
@@ -266,6 +277,7 @@ func newHarness(t *testing.T, opts ...harnessOption) *harness {
 func (h *harness) restart() {
 	logger := slog.New(slog.NewTextHandler(h.logs, nil))
 	h.b = New(h.cfg, h.be, queue.New(h.rec, h.clk, 0), h.store, h.clk, logger, WithUIMode(approval.ModeScript))
+	h.b.realPath = func(p string) (string, error) { return p, nil }
 }
 
 // restartWithLock returns a new broker with a new global lock on the same
@@ -276,6 +288,7 @@ func (h *harness) restartWithLock() {
 	h.lock = fault.New(fault.Options{Store: h.store, UI: h.rec, Clock: h.clk, Logger: logger})
 	_ = h.lock.SelfCheck(context.Background())
 	h.b = New(h.cfg, h.be, queue.New(h.rec, h.clk, 0), h.store, h.clk, logger, WithUIMode(approval.ModeScript), WithLock(h.lock))
+	h.b.realPath = func(p string) (string, error) { return p, nil }
 }
 
 // notices returns the notices of the UI after each sent notice arrived.

@@ -20,6 +20,7 @@ import (
 // testBroker implements daemon.AgentHandler and daemon.AdminHandler with
 // fixed answers.
 type testBroker struct {
+	daemon.Faulted
 	mu      sync.Mutex
 	grants  []protocol.Grant
 	fault   *protocol.Fault

@@ -45,6 +45,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -144,6 +145,13 @@ type Broker struct {
 	// check after that time.
 	ended    map[session.ID]time.Time
 	notified map[string]bool
+	// execs holds the deliveries of the exec way that wait for their
+	// exec_result, for each session (G39).
+	execs map[session.ID][]*execRecord
+
+	// realPath resolves the symbolic links of a working directory (D64).
+	// Tests replace it.
+	realPath func(string) (string, error)
 }
 
 // tombstoneTTL is the time for which the broker keeps the tombstone of an
@@ -192,6 +200,8 @@ func New(cfg *config.Config, be backend.Backend, ui approval.UI, store audit.Sto
 		sessions:     map[session.ID]*sessionState{},
 		ended:        map[session.ID]time.Time{},
 		notified:     map[string]bool{},
+		execs:        map[session.ID][]*execRecord{},
+		realPath:     filepath.EvalSymlinks,
 	}
 	for _, o := range opts {
 		o(b)
