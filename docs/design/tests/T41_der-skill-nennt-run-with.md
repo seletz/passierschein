@@ -8,7 +8,7 @@ stand: '2026-11-15'
 order: 4
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F24, D68]
 ---
 # T41 — Der Skill nennt run_with_credentials, exec_required und die Grenzen des exec-Wegs
