@@ -37,9 +37,9 @@ neue Entscheidung. Die alte Entscheidung erhält den Status „ersetzt“.
 | Familie | Bereich |
 |---|---|
 | UC | {{ ref("UC1") }}–{{ ref("UC16") }} |
-| D | {{ ref("D1") }}–{{ ref("D68") }} |
+| D | {{ ref("D1") }}–{{ ref("D69") }} |
 | F | {{ ref("F1") }}–{{ ref("F24") }} |
-| T | {{ ref("T1") }}–{{ ref("T41") }} |
+| T | {{ ref("T1") }}–{{ ref("T42") }} |
 | G | {{ ref("G1") }}–{{ ref("G38") }} |
 | RI | {{ ref("RI1") }}–{{ ref("RI14") }} |
 
@@ -65,6 +65,8 @@ Eine Entscheidung hat eine von zwei Herkünften:
   (exec-Weg und Auslieferung je Umgebung für `0.3.0`). Sie ersetzen nach
   der Bestätigung {{ ref("D10") }}, {{ ref("D24") }}, {{ ref("D32") }} und
   {{ ref("D41") }}.
+- **Vorschlag in Lauf 2, offen:** {{ ref("D69") }} (App-Icon, Wahl des
+  Entwurfs durch Stefan in Issue 104).
 
 Drei Entscheidungen ruhen auf Spikes: {{ ref("D39") }} (1Password-SDK),
 {{ ref("D31") }} und {{ ref("D45") }} (Freigabe-UI), {{ ref("D46") }}

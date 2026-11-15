@@ -8,6 +8,8 @@
 #     "Developer ID Application" -> "Developer ID Certification Authority"
 #     -> "Apple Root CA", and the same team ID for both,
 #   - both are universal (x86_64 arm64),
+#   - Info.plist names AppIcon and Contents/Resources/AppIcon.icns has all
+#     ten sizes (T42, scripts/app-icon-check.sh),
 #   - Gatekeeper accepts the bundle as notarized (spctl -t exec),
 #   - the stapled ticket is valid (stapler validate),
 #   - a38 runs the WebAssembly core of the 1Password SDK under its hardened
@@ -43,6 +45,8 @@ for kv in "CFBundleIdentifier=$BUNDLE_ID" CFBundleExecutable=Passierschein CFBun
 done
 extra=$(cd "$TARGET/Contents/MacOS" && ls | grep -v -x -e Passierschein -e a38 || true)
 [ -z "$extra" ] || fail "Contents/MacOS has extra files: $extra"
+# T42: the app icon (D69), sealed by the signature of the bundle.
+bash "$(dirname "$0")/app-icon-check.sh" "$TARGET" || fail "the app icon of $TARGET is missing or incomplete"
 
 teams=()
 for f in Passierschein a38; do
