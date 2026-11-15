@@ -111,9 +111,9 @@ func newIntegrationBackend(t *testing.T, tok token.Token) (*Backend, *vaultGuard
 	connect := func(ctx context.Context, tok token.Token, version string) (api, error) {
 		start := time.Now()
 		a, err := connectSDK(ctx, tok, version)
-		// D59: the core runs in the interpreter of wazero. The time shows
-		// the cost of the interpreter for the sign-in; it is no value.
-		t.Logf("connect (WebAssembly core in the interpreter and sign-in): %.2f s", time.Since(start).Seconds())
+		// D59: the time of the sign-in shows the cost of the WebAssembly
+		// core; it is no value.
+		t.Logf("connect (WebAssembly core and sign-in): %.2f s", time.Since(start).Seconds())
 		if err != nil {
 			return nil, err
 		}
@@ -122,7 +122,7 @@ func newIntegrationBackend(t *testing.T, tok token.Token) (*Backend, *vaultGuard
 	}
 	// 60 seconds: the first call builds the client of the SDK (WebAssembly
 	// core and sign-in); on a CI runner this took more than 30 seconds once.
-	be, err := newBackend(Options{Vaults: []string{testVault}, Token: tok, Version: "integration-test", CallTimeout: 15 * time.Minute}, connect) // MEASURE: temporary limit for issue 89
+	be, err := newBackend(Options{Vaults: []string{testVault}, Token: tok, Version: "integration-test", CallTimeout: 60 * time.Second}, connect)
 	if err != nil {
 		t.Fatalf("FAIL: build the backend: %v", err)
 	}

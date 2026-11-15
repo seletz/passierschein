@@ -82,12 +82,8 @@ bash scripts/linux-deps-check.sh --self-test
 bash scripts/linux-deps-check.sh
 """
 
-[tasks."deps:extism:check"]
-description = "Check that third_party/extism-go-sdk is the upstream extism module plus the patch that selects the wazero interpreter (D59)"
-run = "bash scripts/extism-fork-check.sh"
-
 [tasks."test:sdk-core"]
-description = "macOS only, not part of check: build a38, sign it ad-hoc with hardened runtime, check that it runs the 1Password SDK core (T30); no token, no network"
+description = "macOS only, not part of check: build a38, sign it ad-hoc with hardened runtime and scripts/a38.entitlements, check that it runs the 1Password SDK core and is killed without the entitlement (T30); no token, no network"
 run = "bash scripts/sdk-core-check.sh"
 
 [tasks."test:onepassword"]
@@ -99,8 +95,8 @@ description = "CI only (macOS workflow): integration test T15 with the CI servic
 run = "bash scripts/onepassword-integration-ci.sh"
 
 [tasks.check]
-description = "All checks of CI: fmt, vet, lint, test, vuln, secrets, tools:check, deps:linux:check, deps:extism:check"
-depends = ["fmt", "vet", "lint", "test", "vuln", "secrets", "tools:check", "deps:linux:check", "deps:extism:check"]
+description = "All checks of CI: fmt, vet, lint, test, vuln, secrets, tools:check, deps:linux:check"
+depends = ["fmt", "vet", "lint", "test", "vuln", "secrets", "tools:check", "deps:linux:check"]
 
 [tasks."design:check"]
 description = "Check the design set (docs/design) with dg-register; local only, needs the globally installed dg-register (mise global)"

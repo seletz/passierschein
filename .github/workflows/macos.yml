@@ -54,7 +54,7 @@ on:
       - "scripts/sbom-check.sh"
       - "scripts/onepassword-integration*.sh"
       - "scripts/sdk-core-check.sh"
-      - "third_party/**"
+      - "scripts/a38.entitlements"
       - ".github/workflows/macos.yml"
 
 permissions:
@@ -127,8 +127,8 @@ jobs:
       - name: Build a38
         run: mise run build
 
-      # T30: a38 with hardened runtime (ad-hoc, no entitlements) runs the
-      # WebAssembly core of the 1Password SDK. No token, no network.
+      # T30: a38 with hardened runtime and its one entitlement (ad-hoc) runs
+      # the WebAssembly core of the 1Password SDK. No token, no network.
       - name: SDK core with hardened runtime (T30)
         run: mise run test:sdk-core
 

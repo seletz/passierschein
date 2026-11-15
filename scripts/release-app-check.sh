@@ -11,7 +11,8 @@
 #   - Gatekeeper accepts the bundle as notarized (spctl -t exec),
 #   - the stapled ticket is valid (stapler validate),
 #   - a38 runs the WebAssembly core of the 1Password SDK under its hardened
-#     runtime and has no entitlement for code in memory (T30, D59).
+#     runtime and has exactly the entitlements of scripts/a38.entitlements;
+#     the app has no entitlements (T30, D59).
 # APP_CHECK=adhoc (pull requests, develop, local tests): the same layout,
 #   identifier and hardened runtime checks, an ad-hoc signature, no
 #   Gatekeeper, no ticket; the SDK core check runs in both modes.
@@ -61,6 +62,8 @@ for f in Passierschein a38; do
   [ "$archs" = "x86_64 arm64" ] || fail "$f: architectures $archs, want x86_64 arm64"
   case ",$flags," in *,runtime,*) ;; *) fail "$f: no hardened runtime flag" ;; esac
   case "$ents" in *get-task-allow*) fail "$f: has the entitlement get-task-allow" ;; esac
+  # D59: only a38 has an entitlement (sdk-core-check.sh checks its set).
+  if [ "$f" = Passierschein ] && echo "$ents" | grep -q '<key>'; then fail "$f: has entitlements; the app needs none (D59)"; fi
   if [ "$MODE" = adhoc ]; then
     case ",$flags," in *,adhoc,*) ;; *) fail "$f: not ad-hoc signed in adhoc mode" ;; esac
     continue
@@ -94,7 +97,7 @@ if [ "$MODE" = developer-id ]; then
 fi
 
 # T30: the signed a38 runs the WebAssembly core of the 1Password SDK under
-# its hardened runtime, and has no entitlement for code in memory (D59).
+# its hardened runtime with exactly the entitlements of a38.entitlements (D59).
 bash "$(dirname "$0")/sdk-core-check.sh" "$TARGET/Contents/MacOS/a38" || fail "a38 in the bundle cannot run the 1Password SDK core"
 
 if [ "$status" = 0 ]; then

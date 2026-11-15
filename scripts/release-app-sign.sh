@@ -13,8 +13,10 @@
 #
 # Order: nested code first, then the bundle (Apple: sign inside out; no
 # --deep for signing). Both with the hardened runtime, a secure timestamp
-# and a fixed identifier. No entitlements: the app and a38 need none, and
-# get-task-allow is never set.
+# and a fixed identifier. The app has no entitlements. a38 has exactly the
+# entitlements of scripts/a38.entitlements (allow-unsigned-executable-memory,
+# D59, issue 89): the 1Password SDK compiles its WebAssembly core into
+# memory. get-task-allow is never set.
 #
 # The script prints no secret: no set -x, the values go only through
 # environment variables and files with mode 0600. It prints the team ID and
@@ -91,7 +93,7 @@ fi
 # signs the main executable and seals Info.plist and the nested code. a38
 # gets a new signature here, also when quill signed it before (one tool,
 # one identifier, both slices of the universal binary).
-codesign --force "${sign_args[@]}" --options runtime --identifier "$A38_ID" "$BUNDLE/Contents/MacOS/a38"
+codesign --force "${sign_args[@]}" --options runtime --entitlements "$(dirname "$0")/a38.entitlements" --identifier "$A38_ID" "$BUNDLE/Contents/MacOS/a38"
 codesign --force "${sign_args[@]}" --options runtime --identifier "$BUNDLE_ID" "$BUNDLE"
 codesign --verify --deep --strict --verbose=2 "$BUNDLE"
 echo "release-app-sign: $BUNDLE signed"
