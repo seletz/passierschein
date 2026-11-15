@@ -40,6 +40,15 @@ func (c configCheck) Run(_ context.Context, st *State) []Result {
 				"create the directory or fix the path in the configuration file, then restart the daemon (a38 serve)"))
 		}
 	}
+	// paths.ui_app is optional. If it is set, it must name a file: a typo
+	// makes "a38 serve --ui app" fail at the start (issue 92).
+	if cfg.Paths.UIApp != "" {
+		if _, err := c.env.Lstat(cfg.Paths.UIApp); err != nil {
+			out = append(out, finding("paths.ui_app", "paths.ui_app names a file that does not exist",
+				cfg.Paths.UIApp,
+				"fix paths.ui_app in the configuration file (the file inside the app: Passierschein.app/Contents/MacOS/Passierschein), or remove the key; then restart the daemon (a38 serve)"))
+		}
+	}
 	return out
 }
 

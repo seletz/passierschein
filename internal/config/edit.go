@@ -119,6 +119,59 @@ func AddProject(data []byte, name string, paths, vaults []string) (Edit, error) 
 	return out, nil
 }
 
+// AddProjectPath adds paths at the end of the path list of an existing
+// project, for example the directory of the worktrees next to the
+// repository. Each path must be absolute or start with "~/". A path that
+// the project has already, or that another project has, is refused. A
+// path that does not exist is a note, not a failure.
+func AddProjectPath(data []byte, name string, paths []string) (Edit, error) {
+	cfg, err := loadForEdit(data)
+	if err != nil {
+		return Edit{}, err
+	}
+	idx := slices.IndexFunc(cfg.Projects, func(p Project) bool { return p.Name == name })
+	if idx < 0 {
+		return Edit{}, fmt.Errorf("the project %q is not in the list; add it first (a38 config project add)", name)
+	}
+	if len(paths) == 0 {
+		return Edit{}, errors.New("give at least one path (--path)")
+	}
+	proj := cfg.Projects[idx]
+	var added []string
+	for _, p := range paths {
+		abs, err := absPath(p)
+		if err != nil {
+			return Edit{}, fmt.Errorf("the path %q %v", p, err)
+		}
+		if slices.Contains(added, abs) {
+			return Edit{}, fmt.Errorf("the path %q is in the call twice", p)
+		}
+		if slices.Contains(proj.Paths, abs) {
+			return Edit{}, fmt.Errorf("the path %q is already a path of the project %q", p, name)
+		}
+		added = append(added, abs)
+	}
+	out, err := splice(data, func(e *splicer) error { return e.appendPaths(idx, paths) })
+	if err != nil {
+		return Edit{}, err
+	}
+	// Parse(out) succeeded in splice, so it succeeds here.
+	if changed, err := Parse(out.Data); err == nil {
+		if p, ok := changed.Project(name); ok {
+			var missing []string
+			for _, m := range p.MissingPaths {
+				if slices.Contains(added, m) {
+					missing = append(missing, m)
+				}
+			}
+			if len(missing) > 0 {
+				out.Notes = append(out.Notes, "these paths do not exist yet: "+strings.Join(missing, ", "))
+			}
+		}
+	}
+	return out, nil
+}
+
 // RemoveProject removes a project from the project list.
 func RemoveProject(data []byte, name string) (Edit, error) {
 	cfg, err := loadForEdit(data)
@@ -273,6 +326,36 @@ func (s *splicer) appendItem(key string, item []string) error {
 	default:
 		return fmt.Errorf(errStyle, key)
 	}
+	return nil
+}
+
+// appendPaths adds the paths at the end of the path list of the project
+// with the index.
+func (s *splicer) appendPaths(idx int, paths []string) error {
+	_, projects := s.entry("projects")
+	if projects == nil || projects.Kind != yaml.SequenceNode || projects.Style&yaml.FlowStyle != 0 || idx >= len(projects.Content) {
+		return fmt.Errorf(errStyle, "projects")
+	}
+	item := projects.Content[idx]
+	var list *yaml.Node
+	for i := 0; i+1 < len(item.Content); i += 2 {
+		if item.Content[i].Value == "paths" {
+			list = item.Content[i+1]
+		}
+	}
+	if list == nil || list.Kind != yaml.SequenceNode || list.Style&yaml.FlowStyle != 0 || len(list.Content) == 0 {
+		return fmt.Errorf(errStyle, "paths")
+	}
+	first := list.Content[0]
+	dash := first.Column - 1 - 2
+	if dash < 0 || !strings.HasPrefix(strings.TrimLeft(s.lines[first.Line-1], " "), "- ") {
+		return fmt.Errorf(errStyle, "paths")
+	}
+	lines := make([]string, len(paths))
+	for i, p := range paths {
+		lines[i] = strings.Repeat(" ", dash) + "- " + quote(p)
+	}
+	s.insertAfter(lastLine(list.Content[len(list.Content)-1]), lines)
 	return nil
 }
 

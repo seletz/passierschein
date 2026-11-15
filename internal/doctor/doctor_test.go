@@ -3,6 +3,7 @@ package doctor
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -382,3 +383,55 @@ func writeFile(t *testing.T, path, content string, mode os.FileMode) {
 		t.Fatal(err)
 	}
 }
+
+func TestConfigCheckUIApp(t *testing.T) {
+	// T27 (part), issue 92: the configuration check names a paths.ui_app
+	// that does not exist, with the cause and the next step. An empty
+	// value is no finding: a38 serve searches next to its own binary.
+	dir := shortDir(t)
+	present := filepath.Join(dir, "Passierschein")
+	if err := os.WriteFile(present, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	missing := filepath.Join(dir, "gibt-es-nicht")
+	tests := []struct {
+		name    string
+		uiApp   string
+		wantBad bool
+	}{
+		{"not set", "", false},
+		{"present", present, false},
+		{"missing", missing, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := fakeConfigEnv{cfg: &config.Config{Paths: config.Paths{UIApp: tt.uiApp}}}
+			res := configCheck{env}.Run(context.Background(), &State{})
+			var bad []Result
+			for _, r := range res {
+				if !r.OK {
+					bad = append(bad, r)
+				}
+			}
+			if !tt.wantBad {
+				if len(bad) != 0 {
+					t.Fatalf("findings = %+v", bad)
+				}
+				return
+			}
+			if len(bad) != 1 || !strings.Contains(bad[0].Finding, "paths.ui_app") || !strings.Contains(bad[0].Cause, missing) || bad[0].NextStep == "" {
+				t.Errorf("findings = %+v", bad)
+			}
+		})
+	}
+}
+
+// fakeConfigEnv gives the configuration check a loaded configuration and
+// the real Lstat; the other methods stay nil and must not be called.
+type fakeConfigEnv struct {
+	Env
+	cfg *config.Config
+}
+
+func (e fakeConfigEnv) LoadConfig() (*config.Config, error)  { return e.cfg, nil }
+func (fakeConfigEnv) Lstat(path string) (fs.FileInfo, error) { return os.Lstat(path) }

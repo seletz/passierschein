@@ -56,9 +56,12 @@ notarize:
         wait: true
         timeout: 20m
 
+# The names use v{{ .Version }}, not {{ .Tag }}: a release has the same names
+# (the tag is v<version>), but a snapshot names its own version
+# (v<tag version>-SNAPSHOT-<commit>) and not the last tag (issue 92).
 archives:
   - formats: [tar.gz]
-    name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+    name_template: "{{ .ProjectName }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
     files:
       - LICENSE
       - README.md
@@ -71,7 +74,7 @@ sboms:
   - id: binary
     artifacts: binary
     documents:
-      - "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}.cdx.json"
+      - "{{ .ProjectName }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}.cdx.json"
     cmd: cyclonedx-gomod
     args:
       - bin
@@ -83,7 +86,7 @@ sboms:
       - $artifact
 
 checksum:
-  name_template: "checksums-{{ .Tag }}.txt"
+  name_template: "checksums-v{{ .Version }}.txt"
 
 # The release notes come from the Conventional Commits since the last tag.
 changelog:
