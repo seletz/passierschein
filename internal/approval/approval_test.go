@@ -159,7 +159,7 @@ func TestAppSamples(t *testing.T) {
 	if err != nil || len(samples) < 6 {
 		t.Fatalf("app/Samples: %d files, err %v", len(samples), err)
 	}
-	var requests, notices int
+	var requests, notices, execs int
 	for _, path := range samples {
 		t.Run(filepath.Base(path), func(t *testing.T) {
 			data, err := os.ReadFile(path)
@@ -192,8 +192,16 @@ func TestAppSamples(t *testing.T) {
 			case *Request:
 				if m.Version != Version || m.RequestID == "" || len(m.Credentials) == 0 ||
 					m.TimeoutSeconds < MinTimeoutSeconds || m.TimeoutSeconds > MaxTimeoutSeconds ||
-					m.Grant.TTLSeconds <= 0 || len(m.Credentials) > config.MaxBundleEntries {
+					(m.Grant.TTLSeconds <= 0 && m.Exec == nil) || len(m.Credentials) > config.MaxBundleEntries {
 					t.Errorf("the request lost or breaks fields: %+v", m)
+				}
+				// T38 (part, approval request): each sample follows the
+				// rules of the exec way.
+				if err := m.Validate(); err != nil {
+					t.Errorf("Validate: %v", err)
+				}
+				if m.Exec != nil {
+					execs++
 				}
 			case *Notice:
 				if m.Version != Version || m.NoticeID == "" || m.Kind == "" || m.Code == "" || m.Message == "" || m.OccurredAt.IsZero() {
@@ -216,8 +224,8 @@ func TestAppSamples(t *testing.T) {
 			}
 		})
 	}
-	if requests < 4 || notices < 2 {
-		t.Errorf("samples: %d requests, %d notices", requests, notices)
+	if requests < 4 || notices < 2 || execs < 4 {
+		t.Errorf("samples: %d requests, %d notices, %d of the exec way", requests, notices, execs)
 	}
 }
 
