@@ -344,8 +344,49 @@ Scheitert eine Anfrage als Ganzes, ist die Antwort auf beiden Sockets die Nachri
 ### Nachrichten des exec-Wegs
 
 Die Nachrichten setzen {{ ref("D61") }} und {{ ref("D64") }} um.
-Bis Issue 99 lehnt der Daemon `request_exec` und `exec_result` mit `not_allowed` ab.
-Er liefert dann nichts aus.
+Der Broker setzt den exec-Weg nach {{ ref("D62") }}, {{ ref("D63") }} und {{ ref("D65") }} um (`internal/broker/exec.go`).
+
+Ablauf von `request_exec` im Daemon:
+
+1. Der Broker schreibt das Ereignis Anfrage mit dem Kommando.
+2. Mehr Variablen als `bundle.max_entries` enden mit `bundle_too_large`. Eine Zeitgrenze über `exec.max_timeout` endet mit `invalid_request`.
+3. `policy.CheckWay` prüft jede Referenz für den Weg `exec`. Das Arbeitsverzeichnis muss nach dem Auflösen der Links im Projekt der Sitzung liegen. Sonst endet die Anfrage mit `not_allowed`.
+4. Der Broker bestimmt die strengste Umgebung, die kürzeste Laufzeit und die strengste Bindung. Bei einem Programm ohne Aussage wird `program` zu `command`.
+5. Decken Grants der Sitzung das Kommando nach ihrer Bindung, entfällt die Freigabe. Sonst fragt der Broker den Menschen. Die Anfrage bildet ein eigenes Bündel ohne Fenster.
+6. Der Broker liest die Werte und prüft Argumente und Arbeitsverzeichnis. Danach schreibt er die Auslieferung und antwortet mit den Werten und den Grenzen.
+7. Ein Grant mit Laufzeit 0 steht nicht im Speicher der Grants. Er endet mit der Auslieferung (Ereignis Ablauf, `single_delivery`). `grant_status` zeigt ihn nie.
+
+`request_credentials` für einen Vault außerhalb von dev endet vor dem Backend mit `exec_required`. Ist der exec-Weg für die Umgebung ausgeschaltet, endet sie mit `not_allowed`.
+`exec_result` schreibt das Ereignis Ausführung (`execution`). Seine Felder sind Angaben von `a38 mcp` und stehen getrennt von den geprüften Fakten.
+
+```mermaid
+sequenceDiagram
+    participant M as a38 mcp
+    participant S as Daemon
+    participant U as Freigabe-App
+    participant B as Backend
+    M->>S: request_exec
+    Note over S: Audit: Anfrage
+    S->>S: Policy, Grenzen, Arbeitsverzeichnis
+    S->>B: Namen auflösen
+    alt kein passender Grant
+        S->>U: Freigabeanfrage mit exec
+        U-->>S: Entscheidung
+        Note over S: Audit: Entscheidung, Grant
+    end
+    S->>B: Werte lesen
+    S->>S: Wert im Kommando?
+    Note over S: Audit: Auslieferung
+    S-->>M: exec_credentials
+    M->>M: Kommando starten
+    M->>S: exec_result
+    Note over S: Audit: Ausführung
+    S-->>M: exec_recorded
+```
+
+Das Audit-Log trägt beim exec-Weg das Objekt `command` (Weg, Programm, Argumente bis 4 KiB mit Vermerk, Arbeitsverzeichnis, Variablen mit Referenzen, Zeitgrenze, Bindung) und beim Ereignis Ausführung das Objekt `execution`.
+Ein Eintrag mit einem der Objekte nutzt die kanonische Form `a38-audit-v2`; ältere Einträge behalten `a38-audit-v1`.
+`sqlite.Open` ergänzt die zwei Spalten in einer älteren Audit-Datei; die Hashes der alten Einträge bleiben gültig.
 
 `request_exec` (`protocol.RequestExec`, von `a38 mcp` an den Daemon):
 
@@ -364,7 +405,7 @@ Ein Schlüssel einer Nachricht hat nur Kleinbuchstaben.
 `env` ist deshalb auf dem Socket eine Liste und kein JSON-Objekt.
 Ein Name folgt dem Muster `[A-Z_][A-Z0-9_]*`.
 `protocol.CheckEnvName` prüft das Muster und die verbotenen Namen aus {{ ref("D64") }}.
-Die Grenzen der Konfiguration (`bundle.max_entries`, `exec.max_timeout`) und das Projekt des Arbeitsverzeichnisses prüft der Daemon.
+Die Grenzen der Konfiguration (`bundle.max_entries`, `exec.max_timeout`) und das Projekt des Arbeitsverzeichnisses prüft der Daemon (siehe oben).
 
 `exec_credentials` (`protocol.ExecCredentials`, Antwort auf `request_exec`):
 

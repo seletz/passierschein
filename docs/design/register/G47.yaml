@@ -1,0 +1,9 @@
+id: G47
+zustand: eingeloest
+titel: Eine Laufzeit 0 in dev oder test lässt sich nicht freigeben
+bezug: '#99'
+schluessel: '#99/laufzeit-null'
+lauf: '2.0'
+branch: feat/99-broker-exec
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

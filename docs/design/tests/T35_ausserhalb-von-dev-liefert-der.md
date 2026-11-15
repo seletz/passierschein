@@ -8,7 +8,7 @@ stand: '2026-11-15'
 order: 11
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F22, D62, UC15]
 ---
 # T35 — Außerhalb von dev liefert der Daemon nur über den exec-Weg und nie als MCP-Antwort

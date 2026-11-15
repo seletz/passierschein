@@ -8,7 +8,7 @@ stand: '2026-11-15'
 order: 12
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F22, D63]
 ---
 # T36 — Ein Grant in test gilt nur für das freigegebene Programm, und in prod braucht jedes Kommando eine Freigabe

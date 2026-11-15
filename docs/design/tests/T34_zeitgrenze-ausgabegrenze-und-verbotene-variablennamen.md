@@ -8,7 +8,7 @@ stand: '2026-11-15'
 order: 10
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F21, D64]
 ---
 # T34 — Zeitgrenze, Ausgabegrenze und verbotene Variablennamen begrenzen das Kommando

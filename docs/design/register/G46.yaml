@@ -1,0 +1,9 @@
+id: G46
+zustand: eingeloest
+titel: Entscheidung und Grant nennen ein Kommando mit einem Wert, bevor der Daemon die Werte prüft
+bezug: '#99'
+schluessel: '#99/wert-vor-pruefung'
+lauf: '2.0'
+branch: feat/99-broker-exec
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'
