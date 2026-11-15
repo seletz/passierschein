@@ -14,6 +14,6 @@ func connectSDK(context.Context, token.Token, string) (api, error) {
 }
 
 // selfTestConnect fails: the SDK is part of the macOS build only (D42).
-func selfTestConnect(context.Context) error {
+func selfTestConnect(context.Context, string) error {
 	return errNotAvailable
 }

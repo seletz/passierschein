@@ -11,7 +11,9 @@ import (
 var errSelfTest = errors.New("the WebAssembly core of the 1Password SDK did not reject the invalid token as expected")
 
 // SelfTest loads the WebAssembly core of the 1Password SDK in this
-// process and gives it an invalid token (T30, D59). It reads no token, no
+// process and gives it an invalid token (T30, D59). It sends the version
+// as the backend does, mapped by integrationVersion, so the SDK also checks
+// the integration version (issue 89). It reads no token, no
 // file and no keychain item, and it calls no network: the core rejects
 // the token first. It returns nil if the core ran and rejected the token.
 //
@@ -20,8 +22,8 @@ var errSelfTest = errors.New("the WebAssembly core of the 1Password SDK did not 
 // return. So run it in a separate process: "a38 selftest sdk-core".
 //
 // On a platform without the SDK it returns an error.
-func SelfTest(ctx context.Context) error {
-	err := selfTestConnect(ctx)
+func SelfTest(ctx context.Context, version string) error {
+	err := selfTestConnect(ctx, integrationVersion(version))
 	if errors.Is(err, errNotAvailable) {
 		return err
 	}

@@ -14,7 +14,7 @@ const selftestUsage = `Usage:
   a38 selftest sdk-core   Run the WebAssembly core of the 1Password SDK once (macOS)
 
 sdk-core loads the core of the 1Password SDK in this process and gives it an
-invalid token. It reads no token, no file and no keychain item, and it calls
+invalid token and the version of this a38, as the daemon does. It reads no token, no file and no keychain item, and it calls
 no network. Exit code 0: the core runs in this a38. If the code signature of
 this a38 forbids the core, macOS kills the process (SIGKILL, code signing),
 and the exit status is 137 in a shell.
