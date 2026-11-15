@@ -36,12 +36,12 @@ neue Entscheidung. Die alte Entscheidung erhält den Status „ersetzt“.
 
 | Familie | Bereich |
 |---|---|
-| UC | {{ ref("UC1") }}–{{ ref("UC14") }} |
-| D | {{ ref("D1") }}–{{ ref("D59") }} |
-| F | {{ ref("F1") }}–{{ ref("F20") }} |
-| T | {{ ref("T1") }}–{{ ref("T31") }} |
-| G | {{ ref("G1") }}–{{ ref("G34") }} |
-| RI | {{ ref("RI1") }}–{{ ref("RI12") }} |
+| UC | {{ ref("UC1") }}–{{ ref("UC16") }} |
+| D | {{ ref("D1") }}–{{ ref("D68") }} |
+| F | {{ ref("F1") }}–{{ ref("F24") }} |
+| T | {{ ref("T1") }}–{{ ref("T41") }} |
+| G | {{ ref("G1") }}–{{ ref("G38") }} |
+| RI | {{ ref("RI1") }}–{{ ref("RI14") }} |
 
 ## Bestätigt und angenommen
 
@@ -61,6 +61,10 @@ Eine Entscheidung hat eine von zwei Herkünften:
   vergleicht keine Namensmuster.
 - **Aus der Projektnotiz, wieder offen:** {{ ref("D3") }} (Transport in die
   VM).
+- **Vorschlag in Lauf 2, offen:** {{ ref("D60") }} bis {{ ref("D68") }}
+  (exec-Weg und Auslieferung je Umgebung für `0.3.0`). Sie ersetzen nach
+  der Bestätigung {{ ref("D10") }}, {{ ref("D24") }}, {{ ref("D32") }} und
+  {{ ref("D41") }}.
 
 Drei Entscheidungen ruhen auf Spikes: {{ ref("D39") }} (1Password-SDK),
 {{ ref("D31") }} und {{ ref("D45") }} (Freigabe-UI), {{ ref("D46") }}

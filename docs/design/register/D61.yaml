@@ -1,0 +1,9 @@
+id: D61
+zustand: eingeloest
+titel: a38 mcp startet ein Kommando mit Zugangsdaten in dessen Umgebung über das Werkzeug run_with_credentials
+bezug: '#91'
+schluessel: '#91/exec-werkzeug'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

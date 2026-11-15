@@ -1,0 +1,9 @@
+id: F23
+zustand: eingeloest
+titel: Freigabeanfrage und Audit-Log für den exec-Weg
+bezug: '#91'
+schluessel: '#91/popup-kommando'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

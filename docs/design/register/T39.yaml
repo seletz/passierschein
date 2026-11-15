@@ -1,0 +1,9 @@
+id: T39
+zustand: eingeloest
+titel: Der Daemon liefert nicht aus, wenn das Kommando einen der Werte enthält
+bezug: '#91'
+schluessel: '#91/t-wert-im-kommando'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

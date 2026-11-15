@@ -1,0 +1,9 @@
+id: G36
+zustand: eingeloest
+titel: Die Zeitgrenze der MCP-Clients für lange Werkzeugaufrufe ist nicht geprüft
+bezug: '#91'
+schluessel: '#91/mcp-zeitgrenze'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

@@ -1,0 +1,9 @@
+id: UC15
+zustand: eingeloest
+titel: Ein Agent führt ein Kommando mit Zugangsdaten aus, ohne den Wert zu sehen
+bezug: '#91'
+schluessel: '#91/exec-ablauf'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

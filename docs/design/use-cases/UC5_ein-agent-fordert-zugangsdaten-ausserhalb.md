@@ -3,12 +3,16 @@ render_macros: true
 id: 'UC5'
 titel: 'Ein Agent fordert Zugangsdaten außerhalb von dev an'
 bereich: 'Grants und Auslieferung'
-lauf: '1.0'
-stand: '2026-11-11'
+lauf: '2.0'
+stand: '2026-11-15'
 order: 2
 headless: true
-status: aktiv
+status: verworfen
 stufe: 5
+beleg:
+  datum: '2026-11-15'
+  notiz: aufgegangen in UC15 (Issue 91), zu bestätigen durch Stefan
+  annahme: true
 ---
 # UC5 — Ein Agent fordert Zugangsdaten außerhalb von dev an
 

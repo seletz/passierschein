@@ -1,0 +1,9 @@
+id: D66
+zustand: eingeloest
+titel: Die Konfiguration nennt Auslieferungswege, Laufzeit und Bindung je Umgebung und die Grenzen des exec-Wegs
+bezug: '#91'
+schluessel: '#91/konfiguration'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

@@ -1,0 +1,9 @@
+id: UC16
+zustand: eingeloest
+titel: Der Mensch legt die Auslieferung je Umgebung fest und schaltet den Hook für alle Projekte ein
+bezug: '#91'
+schluessel: '#91/einrichtung-je-umgebung'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

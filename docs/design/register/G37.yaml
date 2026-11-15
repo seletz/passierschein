@@ -1,0 +1,9 @@
+id: G37
+zustand: eingeloest
+titel: Ein Kommando mit Eingabe über stdin oder ein interaktives Kommando ist nicht entworfen
+bezug: '#91'
+schluessel: '#91/stdin'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

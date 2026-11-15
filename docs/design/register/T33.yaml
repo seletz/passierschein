@@ -1,0 +1,9 @@
+id: T33
+zustand: eingeloest
+titel: a38 mcp ersetzt jedes exakte Vorkommen eines Werts in der Ausgabe, auch an der Schnittkante
+bezug: '#91'
+schluessel: '#91/t-maskierung'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

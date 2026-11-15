@@ -1,0 +1,9 @@
+id: T35
+zustand: eingeloest
+titel: Außerhalb von dev liefert der Daemon nur über den exec-Weg und nie als MCP-Antwort
+bezug: '#91'
+schluessel: '#91/t-weg-je-umgebung'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

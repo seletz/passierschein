@@ -1,0 +1,9 @@
+id: G38
+zustand: eingeloest
+titel: Die Security Boundaries nennen den exec-Weg und die Auslieferung außerhalb von dev nicht
+bezug: '#91'
+schluessel: '#91/security-boundaries'
+lauf: '2.0'
+branch: docs/91-exec-weg-design
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

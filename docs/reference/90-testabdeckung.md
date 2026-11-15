@@ -7,7 +7,7 @@ render_macros: true
 ---
 # Testabdeckung
 
-Diese Seite ordnet jeden Testfall des Designs ({{ ref("T1") }} bis {{ ref("T31") }}) den Tests zu.
+Diese Seite ordnet jeden Testfall des Designs ({{ ref("T1") }} bis {{ ref("T41") }}) den Tests zu.
 Sie gilt für die Stufen 1 bis 3 und den Stand nach dem Release `v0.1.0` (2026-11-12).
 Die Tests sind Go-Tests, Swift-Tests der App und Prüfungen der CI.
 Die Zuordnung stammt aus dem Code, nicht aus den Texten der Pull Requests.
@@ -27,7 +27,8 @@ Es nutzt `vorhanden` dafür.
 
 ## Stand
 
-Von 31 Testfällen sind 28 umgesetzt und 3 teilweise.
+Von 41 Testfällen sind 28 umgesetzt, 3 teilweise und 10 zu bauen.
+Die zehn Testfälle {{ ref("T32") }} bis {{ ref("T41") }} gehören zum exec-Weg für `0.3.0` ([Issue 91](https://github.com/seletz/passierschein/issues/91)); ihre Entscheidungen sind noch nicht bestätigt.
 Das 1Password-Backend ({{ ref("T15") }}) ist belegt: Die Unit-Tests laufen in jeder CI, der Integrationstest läuft automatisch im macOS-Workflow mit dem Service Account der CI ([CI](55-ci.md)).
 Die Freigabe-App ({{ ref("T14") }}) ist teilweise belegt: Teil 1 ist automatisch und läuft in der CI. Teil 2 hat Stefan am 2026-11-12 am Bildschirm geprüft; offen sind Vollbild, Wechsel des Arbeitsbereichs, Zeitablauf und Meldungen ({{ ref("G33") }}).
 Die Signatur ({{ ref("T18") }}) ist mit der echten Developer ID im Release `v0.1.0` belegt; offen ist der Praxistest des Release auf dem Mac ({{ ref("G5") }}).
@@ -75,6 +76,16 @@ Die Pakete stehen ohne den Präfix `internal/`.
 | {{ ref("T29") }} | umgesetzt | `opguard`: `TestCheck` (Tabelle mit 126 Fällen: `op` als Wort, Pfad, in Anführungszeichen und mit Backslash, hinter `sudo`, `env`, `command`, `exec`, `nohup`, `time`, `nice`, `timeout`, `xargs`, `find -exec`, in Listen, Pipelines, Subshells, Befehlsersetzung, Backticks, `bash -c`, `eval`; Wörter, die nur „op“ enthalten, Argumente, Kommentare, Here-Documents; Token-Datei und Schlüsselbund), `TestCheckDepth`, `TestCheckParsed`, `TestDecideSamples` (Eingaben in der Form von Claude Code unter `testdata/`), `TestDecideFailOpen` (kein JSON, falsche Form, über 1 MiB, anderes Ereignis, anderes Werkzeug), `TestDecideReadsAtMostTheLimit`, `TestDecideReadError`, `TestMessage` (nennt `request_credentials`, nennt keinen anderen Weg), `TestLinuxBuild`, `FuzzDecide`, `FuzzCheck`; `cmd/a38`: `TestHookOpGuardContract` (stdin, stdout, stderr, Exit-Code), `TestHookOpGuardProcess` (echtes Binary mit Pipe), `TestHookPrintConfig`, `TestHookHelp`, `TestHookTokenFileName`, `TestHookKeychainNames` (nur macOS) | Kein Test führt einen geprüften Befehl aus. Schritt 1: `TestCheck`, `TestDecideSamples`, `TestMessage`, `TestHookOpGuardContract`, `TestHookOpGuardProcess`. Schritt 2: `TestCheck`, `TestDecideSamples`, `TestDecideFailOpen` (anderes Werkzeug), `TestHookOpGuardContract`. Schritt 3: `TestDecideFailOpen`, `TestHookOpGuardContract` (kein JSON). Der Praxistest in Claude Code gehört nicht zum Testfall; er folgt nach der Implementierung (Akt 8 der [Demo](../how-to/50-demo-vorfuehren.md)). |
 | {{ ref("T30") }} | umgesetzt | Statisch (verlässlich): `mise run release:app:check` (Entitlements von `a38` und App im Bundle) und `mise run release:signatures:check` (Entitlements der quill-signierten Binarys); zur Laufzeit: Task `mise run test:sdk-core` (Skript `scripts/sdk-core-check.sh`: `a38` ad hoc mit Hardened Runtime und dem Entitlement aus `scripts/a38.entitlements`, `a38 selftest sdk-core`, Gegenprobe ohne Entitlement mit `SIGKILL`; macOS-Workflow); `mise run release:signatures:check` (Entitlements der quill-signierten Binarys); `mise run release:app:check` (dasselbe mit dem `a38` des Bundles: ad hoc im macOS-Workflow, Developer ID im Release und im signierten Snapshot); `onepassword`: `TestSelfTest`, `TestCheckSelfTestAnswer`; `cmd/a38`: `TestSelftestCommand` | Die Form ist eine Prüfung der CI. Die Go-Tests laufen ohne Hardened Runtime und finden den Fehler von Issue 89 nicht; das signierte Binary findet ihn. Die macOS-Runner von GitHub setzen die Hardened Runtime für Code im Speicher nicht durch: Dort läuft auch `a38` ohne Entitlement, und das Skript meldet „enforcement not active here“. Auf dem Runner beweist die Prüfung zur Laufzeit deshalb nichts über die Hardened Runtime; verlässlich ist dort die statische Prüfung. Auf dem Mac der Entwicklung starb die Gegenprobe am 2026-11-15 mit 137 ({{ ref("D59") }}). |
 | {{ ref("T31") }} | umgesetzt | `service`: `TestParsePrint` (echte Ausgabe von `launchctl print` mit `OS_REASON_CODESIGNING`, Grund mit Exit-Code, Grund mit Signal), `TestExplain`, `TestExitCodeSigning`; `doctor`: `TestServiceCheck` (Fall „killed for the code signature“); `cmd/a38`: `TestServiceStatusNamesExitReason` (gefälschtes `launchctl`: Signatur und anderer Grund, Ausgabe von `a38 service status` und Zustand für `a38 doctor`) | Kein Test fragt das echte launchd. Die Ausgabe in `testdata/print-codesigning.txt` stammt aus einem echten Lauf mit eigenem Label. |
+| {{ ref("T32") }} | zu-bauen | – | exec-Weg, Issue 91 |
+| {{ ref("T33") }} | zu-bauen | – | exec-Weg, Issue 91 |
+| {{ ref("T34") }} | zu-bauen | – | exec-Weg, Issue 91 |
+| {{ ref("T35") }} | zu-bauen | – | exec-Weg, Issue 91 |
+| {{ ref("T36") }} | zu-bauen | – | exec-Weg, Issue 91 |
+| {{ ref("T37") }} | zu-bauen | – | exec-Weg, Issue 91 |
+| {{ ref("T38") }} | zu-bauen | – | exec-Weg, Issue 91 |
+| {{ ref("T39") }} | zu-bauen | – | exec-Weg, Issue 91 |
+| {{ ref("T40") }} | zu-bauen | – | exec-Weg, Issue 91 |
+| {{ ref("T41") }} | zu-bauen | – | exec-Weg, Issue 91 |
 
 ## Was die Lücken bedeuten
 
