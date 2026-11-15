@@ -198,8 +198,10 @@ Die App „Passierschein“ trägt kein Entitlement.
 
 Das 1Password-SDK übersetzt seinen WebAssembly-Kern zur Laufzeit in Maschinencode.
 Ohne das Entitlement beendet macOS `a38` beim ersten Zugriff auf 1Password ([Issue 89](https://github.com/seletz/passierschein/issues/89)).
-`mise run test:sdk-core` zeigt beides: Mit dem Entitlement läuft der Kern, ohne das Entitlement stirbt `a38`.
-Stirbt `a38` ohne das Entitlement nicht mehr, ist es vielleicht überflüssig. Dann prüfst du {{ ref("D59") }} neu.
+`mise run test:sdk-core` zeigt auf dem Mac beides: Mit dem Entitlement läuft der Kern, ohne das Entitlement stirbt `a38`.
+Stirbt `a38` ohne das Entitlement auf dem Mac nicht mehr, ist es vielleicht überflüssig. Dann prüfst du {{ ref("D59") }} neu.
+Die macOS-Runner von GitHub setzen die Regel nicht durch; dort meldet der Task „enforcement not active here“.
+Verlässlich ist in der CI die Prüfung der Entitlements in `release:app:check` und `release:signatures:check`.
 
 ## App installieren
 

@@ -47,7 +47,7 @@ Die Einzelheiten stehen in der [Referenz der Freigabe-App](85-freigabe-app.md).
 
 | Task | Zweck |
 |---|---|
-| `test:sdk-core` | Nur macOS, nicht Teil von `check`. Baut `a38`, signiert es ad hoc mit Hardened Runtime und dem Entitlement aus `scripts/a38.entitlements` und startet `a38 selftest sdk-core` ({{ ref("T30") }}). Eine Kopie ohne Entitlement muss sterben. Braucht kein Token und kein Netz. Läuft im Workflow `macos.yml`. |
+| `test:sdk-core` | Nur macOS, nicht Teil von `check`. Baut `a38`, signiert es ad hoc mit Hardened Runtime und dem Entitlement aus `scripts/a38.entitlements` und startet `a38 selftest sdk-core` ({{ ref("T30") }}). Gegenprobe: Eine Kopie ohne Entitlement stirbt auf einem Mac, der die Hardened Runtime durchsetzt; sonst meldet der Task „enforcement not active here“ als Warnung (so auf den Runnern von GitHub). Braucht kein Token und kein Netz. Läuft im Workflow `macos.yml`. |
 | `test:onepassword:ci` | Nur in der CI (Workflow `macos.yml`). Schreibt das Token aus `OP_SERVICE_ACCOUNT_TOKEN` in eine temporäre Datei mit `0600` und führt denselben Test aus. Scheitert, wenn das Secret fehlt ([CI](55-ci.md)). |
 | `test:onepassword` | Nur macOS, nur von Hand, nicht Teil von `check`. Führt den Integrationstest des 1Password-Backends gegen den Vault `passierschein.dev` aus. Der Test liest nur. Er braucht `A38_OP_TOKEN_FILE` ([1Password-Backend einrichten](../how-to/30-1password-backend-einrichten.md#integrationstest)). |
 
