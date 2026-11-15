@@ -10,8 +10,9 @@ headless: true
 status: gueltig
 use_cases: [UC15, UC16]
 beleg:
-  notiz: Vorschlag aus Issue 91, zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-15'
+  quelle: ['#94']
 ---
 # D68 — Der Skill nennt den exec-Weg als Regel für test und prod und als bevorzugten Weg in dev
 

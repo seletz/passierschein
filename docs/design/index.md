@@ -23,7 +23,9 @@ neue Entscheidung. Die alte Entscheidung erhält den Status „ersetzt“.
 ## Lesereihenfolge
 
 1. [Security Boundaries](50-security-boundaries.md): Zonen, Grenzen und
-   Maßnahmen. Diese Seite ist das Bedrohungsmodell.
+   Maßnahmen. Diese Seite ist das Bedrohungsmodell. Der
+   [Nachtrag Lauf 2](51-security-boundaries-nachtrag-lauf-2.md) nennt den
+   exec-Weg und die Auslieferung außerhalb von dev.
 2. [Use Cases](use-cases/index.md): Ablauf je Akteur. Der Hauptablauf ist
    {{ ref("UC1") }}.
 3. [Entscheidungen](decisions/index.md)
@@ -61,10 +63,11 @@ Eine Entscheidung hat eine von zwei Herkünften:
   vergleicht keine Namensmuster.
 - **Aus der Projektnotiz, wieder offen:** {{ ref("D3") }} (Transport in die
   VM).
-- **Vorschlag in Lauf 2, offen:** {{ ref("D60") }} bis {{ ref("D68") }}
-  (exec-Weg und Auslieferung je Umgebung für `0.3.0`). Sie ersetzen nach
-  der Bestätigung {{ ref("D10") }}, {{ ref("D24") }}, {{ ref("D32") }} und
-  {{ ref("D41") }}.
+- **In Lauf 2 bestätigt:** {{ ref("D60") }} bis {{ ref("D68") }} (exec-Weg
+  und Auslieferung je Umgebung für `0.3.0`). Stefan hat sie am 2026-11-15
+  mit dem [Pull Request 94](https://github.com/seletz/passierschein/pull/94)
+  bestätigt. Sie ersetzen {{ ref("D10") }}, {{ ref("D24") }}, {{ ref("D32") }}
+  und {{ ref("D41") }}.
 
 Drei Entscheidungen ruhen auf Spikes: {{ ref("D39") }} (1Password-SDK),
 {{ ref("D31") }} und {{ ref("D45") }} (Freigabe-UI), {{ ref("D46") }}

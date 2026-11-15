@@ -132,6 +132,7 @@ full_output = "llms-full.txt"
 "Design-Set" = [
     "design/index.md",
     "design/50-security-boundaries.md",
+    "design/51-security-boundaries-nachtrag-lauf-2.md",
     "design/decisions/*.md",
     "design/features/*.md",
     "design/use-cases/*.md",
