@@ -1,0 +1,9 @@
+id: G45
+zustand: eingeloest
+titel: Der Status des Daemons nennt den Zustand des 1Password-Backends nicht je Konto
+bezug: '#88'
+schluessel: '#88/g-status-je-konto'
+lauf: '2.0'
+branch: feat/88-mehrere-konten
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

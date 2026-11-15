@@ -1,0 +1,9 @@
+id: G42
+zustand: eingeloest
+titel: D39 und die Security Boundaries nennen nur einen Service Account
+bezug: '#88'
+schluessel: '#88/g-d39-ein-konto'
+lauf: '2.0'
+branch: feat/88-mehrere-konten
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

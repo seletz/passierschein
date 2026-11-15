@@ -4,15 +4,17 @@ id: 'D51'
 titel: 'Das Token liegt im Schlüsselbund, eine Datei mit Modus 0600 ist der Ausweichweg'
 bereich: 'Backends'
 lauf: '2.0'
-stand: '2026-11-12'
+stand: '2026-11-15'
 order: 5
 headless: true
-status: gueltig
+status: ersetzt
+ersetzt_durch: D72
 use_cases: [UC11]
 beleg:
-  wer: Stefan
-  datum: '2026-11-12'
-  notiz: 'Abgenommen in PR 61: keychain als Standard, nur Terminal, nur Metadaten, a38 config onepassword-token, Eintrag a38.onepassword/service-account, --replace; Datei für Entwicklung und CI'
+  datum: '2026-11-15'
+  quelle: ['#88', '#61']
+  notiz: Von Stefan am 2026-11-12 in PR 61 abgenommen. Ersetzt durch D72 (Token je Konto, Issue 88); die Ersetzung bestätigt Stefan.
+  annahme: true
 ---
 # D51 — Das Token liegt im Schlüsselbund, eine Datei mit Modus 0600 ist der Ausweichweg
 

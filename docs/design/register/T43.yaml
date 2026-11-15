@@ -1,0 +1,9 @@
+id: T43
+zustand: eingeloest
+titel: Die Konfiguration lädt nur mit einem Konto an jedem Vault und nennt beim alten Format den Umbau
+bezug: '#88'
+schluessel: '#88/t-konfiguration'
+lauf: '2.0'
+branch: feat/88-mehrere-konten
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'
