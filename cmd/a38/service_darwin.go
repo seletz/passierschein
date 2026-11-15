@@ -158,7 +158,7 @@ func doctorState(s service.Status) *doctor.ServiceState {
 		PlistPath: s.PlistPath, Installed: s.Installed, Foreign: s.Foreign,
 		Program: s.Program, ProgramMissing: s.ProgramMissing, Current: s.Current, ProgramDiffers: s.ProgramDiffers,
 		Loaded: s.Loaded, Disabled: s.Disabled, Running: s.Running, PID: s.PID,
-		LastExit: s.LastExitMeaning, LogPath: s.LogPath, Error: s.LaunchctlError,
+		LastExit: s.LastExitMeaning, CodeSigning: s.LastExit != nil && s.LastExit.CodeSigning(), LogPath: s.LogPath, Error: s.LaunchctlError,
 	}
 }
 

@@ -12,7 +12,20 @@ type Exit struct {
 	// Signal is the number of the signal that ended the process; 0 if the
 	// process exited by itself.
 	Signal int
+	// Reason is the line "last exit reason" of launchctl print, for
+	// example OS_REASON_CODESIGNING; empty if launchd names none. A kill
+	// by the kernel can have a reason without a code and a signal.
+	Reason string
 }
+
+// ReasonCodeSigning is the exit reason of launchd when the kernel killed
+// the process for its code signature, for example because the hardened
+// runtime forbids code in memory (issue 89).
+const ReasonCodeSigning = "OS_REASON_CODESIGNING"
+
+// CodeSigning reports whether the kernel killed the process for its code
+// signature.
+func (e Exit) CodeSigning() bool { return e.Reason == ReasonCodeSigning }
 
 // Crash reports whether a signal ended the process that launchd counts as
 // a crash (SIGILL, SIGTRAP, SIGABRT, SIGFPE, SIGBUS, SIGSEGV, SIGSYS).
@@ -44,6 +57,19 @@ var ExitCodes = []ExitMeaning{
 // Explain returns the meaning of an exit for the output of status and
 // doctor.
 func Explain(e Exit) string {
+	switch {
+	case e.CodeSigning():
+		return "macOS killed the daemon for its code signature (" + ReasonCodeSigning + "): the signature of this a38 does not allow code that a38 runs, for example the WebAssembly core of the 1Password SDK; check it with a38 selftest sdk-core"
+	case e.Reason != "" && e.Code == 0 && e.Signal == 0:
+		return "launchd reports the exit reason " + e.Reason + "; the log may name the cause"
+	case e.Reason != "":
+		return explainStatus(e) + " (exit reason " + e.Reason + ")"
+	}
+	return explainStatus(e)
+}
+
+// explainStatus explains the exit code or the signal of e.
+func explainStatus(e Exit) string {
 	if e.Signal != 0 {
 		if e.Crash() {
 			return fmt.Sprintf("signal %d: the daemon crashed; the log may name the cause", e.Signal)
