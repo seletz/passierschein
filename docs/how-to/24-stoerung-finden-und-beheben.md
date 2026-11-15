@@ -64,7 +64,38 @@ Ein Skript kann damit auf die Sperre prüfen.
 | Die Auslieferung ist gesperrt | Ursache beheben, dann `a38 fault clear`. |
 | Die Audit-Datei fehlt oder ist nicht schreibbar | Rechte der Datei und des Verzeichnisses korrigieren. Ohne Audit-Log sperrt der Daemon die Auslieferung. |
 | Wenig Platz im Verzeichnis der Audit-Datei | Platz schaffen. Die Schwelle ist 100 MiB. |
+| macOS hat den Daemon wegen der Signatur beendet (`OS_REASON_CODESIGNING`) | `a38 selftest sdk-core` mit dem `a38` des Dienstes, siehe [Daemon wegen der Signatur beendet](#daemon-wegen-der-signatur-beendet). |
 | Die Hash-Kette des Audit-Logs ist beschädigt | Die Datei als Beweis aufbewahren und mit `a38 audit list` ansehen. Dann aus einer Sicherung wiederherstellen oder die Datei wegschieben, damit der Daemon ein neues Log beginnt. |
+
+## Daemon wegen der Signatur beendet
+
+`a38 service status` meldet `macOS killed the daemon for its code signature (OS_REASON_CODESIGNING)`.
+`a38 doctor` meldet in der Prüfung `service` denselben Grund.
+Das Log des Daemons endet ohne Fehlerzeile.
+
+Die Ursache: Die Signatur von `a38` hat die Hardened Runtime.
+Die Hardened Runtime verbietet Code, den ein Prozess im Speicher erzeugt.
+Ein `a38` vor der Korrektur von [Issue 89](https://github.com/seletz/passierschein/issues/89) übersetzt den Kern des 1Password-SDK in solchen Code.
+Das betrifft das Release `v0.1.0`.
+Ein lokaler Build ohne Signatur zeigt den Fehler nicht.
+
+1. Prüfe das `a38` des Dienstes. Den Pfad nennt die Zeile `Program` von `a38 service status`.
+
+    ```sh
+    /Applications/Passierschein.app/Contents/MacOS/a38 selftest sdk-core
+    ```
+
+    Der Befehl braucht kein Token und kein Netz.
+
+2. Endet der Befehl mit `Killed: 9` (Exit-Status 137), installiere ein Release mit der Korrektur ([a38 aus dem Release installieren](15-a38-aus-dem-release-installieren.md)).
+3. Prüfe das neue `a38` wieder mit Schritt 1.
+4. Starte den Dienst neu:
+
+    ```sh
+    a38 service restart
+    ```
+
+Der Absturzbericht unter `~/Library/Logs/DiagnosticReports/` nennt in diesem Fall `SIGKILL (Code Signature Invalid)`, `CODESIGNING` und `Invalid Page`.
 
 ## Grenzen
 

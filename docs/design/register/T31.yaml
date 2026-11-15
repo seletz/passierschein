@@ -1,0 +1,9 @@
+id: T31
+zustand: eingeloest
+titel: a38 service status und a38 doctor nennen den Abbruch des Daemons wegen der Signatur
+bezug: '#89'
+schluessel: '#89/status-signatur'
+lauf: '2.0'
+branch: fix/89-hardened-runtime-wasm
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'
