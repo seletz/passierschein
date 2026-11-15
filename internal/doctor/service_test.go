@@ -27,6 +27,11 @@ func TestServiceCheck(t *testing.T) {
 		{"not running", func(s *ServiceState) {
 			s.Running, s.PID, s.LastExit = false, 0, "exit code 1: the daemon did not start"
 		}, false, "exit code 1", "serve.log"},
+		// T31: the kill for the code signature is a finding of its own.
+		{"killed for the code signature", func(s *ServiceState) {
+			s.Running, s.PID, s.CodeSigning = false, 0, true
+			s.LastExit = "macOS killed the daemon for its code signature (OS_REASON_CODESIGNING)"
+		}, false, "OS_REASON_CODESIGNING", "a38 selftest sdk-core"},
 		{"not loaded", func(s *ServiceState) { s.Loaded, s.Running = false, false }, false, "exists", "a38 service restart"},
 		{"disabled", func(s *ServiceState) { s.Disabled, s.Loaded, s.Running = true, false, false }, false, "Login Items", "Login Items"},
 		{"program missing", func(s *ServiceState) { s.ProgramMissing = true }, false, "does not exist", "a38 service install"},

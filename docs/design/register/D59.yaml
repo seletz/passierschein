@@ -1,0 +1,9 @@
+id: D59
+zustand: eingeloest
+titel: a38 führt den WebAssembly-Kern des 1Password-SDK im Interpreter von wazero aus und bleibt ohne Entitlement
+bezug: '#89'
+schluessel: '#89/wasm-laufzeit'
+lauf: '2.0'
+branch: fix/89-hardened-runtime-wasm
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

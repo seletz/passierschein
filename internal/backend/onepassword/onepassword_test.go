@@ -162,13 +162,15 @@ type harness struct {
 	connects int
 	now      time.Time
 	connErr  error
+	version  string
 	mu       sync.Mutex
 }
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
 	h := &harness{api: newFakeAPI(), log: &bytes.Buffer{}, now: time.Date(2026, 11, 12, 8, 0, 0, 0, time.UTC)}
-	connect := func(_ context.Context, tok token.Token, _ string) (api, error) {
+	connect := func(_ context.Context, tok token.Token, version string) (api, error) {
+		h.version = version
 		h.mu.Lock()
 		defer h.mu.Unlock()
 		h.connects++
@@ -578,4 +580,106 @@ func TestBackendNeverPrintsToken(t *testing.T) {
 	var buf bytes.Buffer
 	slog.New(slog.NewTextHandler(&buf, nil)).Info("x", "backend", h.be)
 	noLeak(t, fmt.Sprint(h.be), fmt.Sprintf("%#v", h.be), buf.String())
+}
+
+func TestIntegrationVersion(t *testing.T) {
+	// Issue 89: the SDK accepts an integration version of 1 to 20
+	// characters from letters, digits, space, "-", "." and "_" (measured
+	// with the SDK v0.4.1, spike hardened-runtime-wasm). A longer version
+	// of a snapshot made each connect fail.
+	tests := []struct {
+		name, in, want string
+	}{
+		{"release", "0.1.0", "0.1.0"},
+		{"release with patch", "12.34.56", "12.34.56"},
+		{"git describe", "0.1.0-42-gb79fc9c", "0.1.0-42-gb79fc9c"},
+		{"snapshot", "0.1.0-SNAPSHOT-322e7ba", "0.1.0-snap-322e7ba"},
+		{"dirty git describe", "0.1.0-42-gb79fc9c-dirty", "0.1.0-42-gb79fc9c-di"},
+		{"build metadata", "1.2.3+build.7", "1.2.3_build.7"},
+		{"slash and unicode", "dev/ü", "dev__"},
+		{"empty", "", "dev"},
+		{"only forbidden", "+++", "___"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := integrationVersion(tt.in)
+			if got != tt.want {
+				t.Errorf("integrationVersion(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+			if len(got) < 1 || len(got) > maxIntegrationVersion {
+				t.Errorf("length %d out of 1..%d", len(got), maxIntegrationVersion)
+			}
+			for _, r := range got {
+				if !allowedIntegrationRune(r) {
+					t.Errorf("%q contains %q", got, r)
+				}
+			}
+		})
+	}
+}
+
+func TestConnectGetsIntegrationVersion(t *testing.T) {
+	// Issue 89: the backend passes the mapped version to the SDK.
+	h := newHarness(t)
+	be, err := newBackend(Options{Vaults: []string{devVault}, Token: testToken(t), Version: "0.1.0-SNAPSHOT-322e7ba", Now: func() time.Time { return h.now }}, func(ctx context.Context, tok token.Token, v string) (api, error) {
+		h.version = v
+		return h.api, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := be.Vaults(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if h.version != "0.1.0-snap-322e7ba" {
+		t.Errorf("version for the SDK = %q", h.version)
+	}
+}
+
+func TestClassifyConnectErrors(t *testing.T) {
+	// Issue 89: the messages of the SDK core at connect (recorded with
+	// invalid tokens) get their own class; the text of the SDK never
+	// reaches the error.
+	tests := []struct {
+		name  string
+		err   error
+		class string
+		want  protocol.Code
+	}{
+		{"version too long", errors.New("error initializing client: invalid user input: encountered the following errors: integration version was too long. Max allowed: 20 chars " + markerSDKMsg), classIntegration, protocol.CodeBackendUnavailable},
+		{"version char", errors.New("error initializing client: invalid user input: encountered the following errors: integration version contained unallowed char: '+' " + markerSDKMsg), classIntegration, protocol.CodeBackendUnavailable},
+		{"name missing", errors.New("error initializing client: invalid user input: encountered the following errors: integration name was not specified " + markerSDKMsg), classIntegration, protocol.CodeBackendUnavailable},
+		{"token format", errors.New("error initializing client: invalid user input: encountered the following errors: service account token had invalid format " + markerSDKMsg), classAuth, protocol.CodeBackendLocked},
+		{"token base64", errors.New("error initializing client: invalid service account token, please make sure you provide a valid service account token as parameter:  service account token base64 decoding failed " + markerSDKMsg), classAuth, protocol.CodeBackendLocked},
+		{"other input", errors.New("error initializing client: invalid user input: encountered the following errors: something new " + markerSDKMsg), classInput, protocol.CodeBackendUnavailable},
+		{"unknown", errors.New("something strange " + markerSDKMsg), classUnknown, protocol.CodeBackendUnavailable},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := classify("connect", tt.err)
+			if e.Class != tt.class || backend.Code(e) != tt.want {
+				t.Errorf("classify = %s/%s, want %s/%s", e.Class, backend.Code(e), tt.class, tt.want)
+			}
+			noLeak(t, e.Error(), fmt.Sprintf("%+v", e))
+		})
+	}
+}
+
+func TestFailLogsSafeHint(t *testing.T) {
+	// Issue 89: a failure of class unknown or input logs a hint from a
+	// fixed list of words of the SDK message; never the token, a value or
+	// another word of the message.
+	h := newHarness(t)
+	h.connErr = errors.New("error initializing client: invalid user input: encountered the following errors: region " + markerSDKMsg + " " + markerValue + " was not specified")
+	_, err := h.be.Vaults(context.Background())
+	if backend.Code(err) != protocol.CodeBackendUnavailable {
+		t.Fatalf("error = %v", err)
+	}
+	log := h.log.String()
+	for _, want := range []string{"class=input", "hint=", "invalid user input", "not specified", "region"} {
+		if !strings.Contains(log, want) {
+			t.Errorf("log lacks %q: %s", want, log)
+		}
+	}
+	noLeak(t, log)
 }

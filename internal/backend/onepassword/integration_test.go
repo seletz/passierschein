@@ -109,7 +109,11 @@ func newIntegrationBackend(t *testing.T, tok token.Token) (*Backend, *vaultGuard
 	t.Helper()
 	g := &vaultGuard{t: t}
 	connect := func(ctx context.Context, tok token.Token, version string) (api, error) {
+		start := time.Now()
 		a, err := connectSDK(ctx, tok, version)
+		// D59: the time of the sign-in shows the cost of the WebAssembly
+		// core; it is no value.
+		t.Logf("connect (WebAssembly core and sign-in): %.2f s", time.Since(start).Seconds())
 		if err != nil {
 			return nil, err
 		}

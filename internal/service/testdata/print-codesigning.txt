@@ -1,0 +1,61 @@
+gui/501/io.github.seletz.passierschein.daemon = {
+	active count = 0
+	path = /Users/beispiel/Library/LaunchAgents/io.github.seletz.passierschein.daemon.plist
+	type = LaunchAgent
+	state = not running
+
+	program = /Applications/Passierschein.app/Contents/MacOS/a38
+	arguments = {
+		/Applications/Passierschein.app/Contents/MacOS/a38
+		serve
+	}
+
+	stdout path = /Users/beispiel/Library/Logs/a38/serve.log
+	stderr path = /Users/beispiel/Library/Logs/a38/serve.log
+	inherited environment = {
+		SSH_AUTH_SOCK => /var/run/com.apple.launchd.beispiel/Listeners
+	}
+
+	default environment = {
+		PATH => /usr/bin:/bin:/usr/sbin:/sbin
+	}
+
+	environment = {
+		OSLogRateLimit => 64
+		XPC_SERVICE_NAME => io.github.seletz.passierschein.daemon
+	}
+
+	domain = gui/501 [100015]
+	asid = 100015
+	minimum runtime = 10
+	exit timeout = 5
+	runs = 1
+	last exit reason = OS_REASON_CODESIGNING
+
+	resource coalition = {
+		ID = 24871
+		type = resource
+		state = active
+		active count = 1
+		name = io.github.seletz.passierschein.daemon
+	}
+
+	jetsam coalition = {
+		ID = 24872
+		type = jetsam
+		state = active
+		active count = 1
+		name = io.github.seletz.passierschein.daemon
+	}
+
+	spawn type = daemon (3)
+	jetsam priority = 40
+	jetsam memory limit (active) = (unlimited)
+	jetsam memory limit (inactive) = (unlimited)
+	jetsamproperties category = daemon
+	jetsam thread limit = 32
+	cpumon = default
+	sanitizer flags = 0x0
+
+	properties = runatload | inferred program
+}

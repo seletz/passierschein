@@ -1,8 +1,38 @@
 package service
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 )
+
+// printCodeSigning is the output of launchctl print on macOS 27 after the
+// kernel killed a program for its code signature (issue 89): no exit code,
+// no signal, only the line "last exit reason". Recorded with a test label;
+// label and paths replaced.
+func printCodeSigning(t *testing.T) string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("testdata", "print-codesigning.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
+}
+
+const printReasonWithCode = `gui/501/io.github.seletz.passierschein.daemon = {
+	state = not running
+	last exit code = 1
+	last exit reason = OS_REASON_EXEC
+}
+`
+
+const printReasonWithSignal = `gui/501/io.github.seletz.passierschein.daemon = {
+	state = not running
+	last exit code = (never exited)
+	last terminating signal = Killed: 9
+	last exit reason = OS_REASON_CODESIGNING
+}
+`
 
 const printRunning = `gui/501/io.github.seletz.passierschein.daemon = {
 	active count = 1
@@ -56,6 +86,10 @@ func TestParsePrint(t *testing.T) {
 		{"stopped with exit code 1", printStopped, false, 0, &Exit{Code: 1}, "/Applications/Passierschein.app/Contents/MacOS/a38"},
 		{"crash", printSignal, false, 0, &Exit{Signal: 11}, ""},
 		{"unknown form", "something else\n", false, 0, nil, ""},
+		// T31: launchd names only the reason of the exit.
+		{"code signing", printCodeSigning(t), false, 0, &Exit{Reason: "OS_REASON_CODESIGNING"}, "/Applications/Passierschein.app/Contents/MacOS/a38"},
+		{"reason with exit code", printReasonWithCode, false, 0, &Exit{Code: 1, Reason: "OS_REASON_EXEC"}, ""},
+		{"reason with signal", printReasonWithSignal, false, 0, &Exit{Signal: 9, Reason: "OS_REASON_CODESIGNING"}, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -1,0 +1,9 @@
+id: T30
+zustand: eingeloest
+titel: Das signierte a38 mit Hardened Runtime führt den Kern des 1Password-SDK aus
+bezug: '#89'
+schluessel: '#89/sdk-kern-signiert'
+lauf: '2.0'
+branch: fix/89-hardened-runtime-wasm
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

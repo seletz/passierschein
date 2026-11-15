@@ -266,6 +266,47 @@ func TestServiceStatusWithFailedStart(t *testing.T) {
 	}
 }
 
+// T31: a kill for the code signature (launchd: OS_REASON_CODESIGNING,
+// no exit code, no signal) is named in a38 service status and in the
+// state for a38 doctor, with the self-test as the next step.
+func TestServiceStatusNamesExitReason(t *testing.T) {
+	tests := []struct {
+		name        string
+		reason      string
+		want        []string
+		codeSigning bool
+	}{
+		{"code signing", "OS_REASON_CODESIGNING", []string{"not running", "macOS killed the daemon for its code signature (OS_REASON_CODESIGNING)", "a38 selftest sdk-core"}, true},
+		{"other reason", "OS_REASON_JETSAM", []string{"not running", "launchd reports the exit reason OS_REASON_JETSAM"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := newServiceWorld(t)
+			w.lc.StartKilledReason = tt.reason
+			if code, out, errOut := w.run(t, "install", "--config", w.cfgPath); code != exitOK {
+				t.Fatalf("install: %d\n%s%s", code, out, errOut)
+			}
+			code, out, _ := w.run(t, "status")
+			if code != exitFailure || strings.Contains(out, "no exit known") {
+				t.Errorf("status: %d\n%s", code, out)
+			}
+			for _, want := range tt.want {
+				if !strings.Contains(out, want) {
+					t.Errorf("status lacks %q:\n%s", want, out)
+				}
+			}
+			m, err := w.deps().manager()
+			if err != nil {
+				t.Fatal(err)
+			}
+			st := doctorState(m.Status(context.Background()))
+			if st.CodeSigning != tt.codeSigning || !strings.Contains(st.LastExit, tt.reason) {
+				t.Errorf("doctor state = %+v", st)
+			}
+		})
+	}
+}
+
 func TestServeExitCodesDoNotRestart(t *testing.T) {
 	// F15, D48: the exit codes of a38 serve under the plist of the
 	// service. A configuration error ends with 1, a wrong command line

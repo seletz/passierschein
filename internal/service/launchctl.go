@@ -115,6 +115,12 @@ func ParsePrint(out string) Job {
 			j.LastExit = &Exit{Code: n}
 		}
 	}
+	if r := j.Raw["last exit reason"]; r != "" {
+		if j.LastExit == nil {
+			j.LastExit = &Exit{}
+		}
+		j.LastExit.Reason = r
+	}
 	return j
 }
 

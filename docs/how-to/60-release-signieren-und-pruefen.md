@@ -11,7 +11,7 @@ Diese Anleitung richtet die Signatur mit der Developer ID und die Notarisierung 
 Sie zeigt auch, wie du ein heruntergeladenes Release prüfst.
 Die Installation für Anwender beschreibt [a38 aus dem Release installieren](15-a38-aus-dem-release-installieren.md).
 Den Ablauf des Release beschreibt die Referenz [Release](../reference/50-release.md).
-Die Entscheidungen stehen in {{ ref("D18") }}, {{ ref("D46") }} und {{ ref("D54") }}.
+Die Entscheidungen stehen in {{ ref("D18") }}, {{ ref("D46") }}, {{ ref("D54") }} und {{ ref("D59") }}.
 
 ## Secrets für Signatur und Notarisierung einrichten
 
@@ -80,7 +80,7 @@ Er legt keinen Tag und kein Release an.
     gh run watch --repo seletz/passierschein "$(gh run list --repo seletz/passierschein --workflow signed-snapshot.yml --limit 1 --json databaseId --jq '.[0].databaseId')"
     ```
 
-3. Das Ergebnis lesen. Der Schritt „Check Passierschein.app“ zeigt je Programm Bezeichner, Flags, Team-ID und die Kette der Zertifikate. Er endet mit `passes (developer-id)`.
+3. Das Ergebnis lesen. Der Schritt „Check Passierschein.app“ zeigt je Programm Bezeichner, Flags, Team-ID und die Kette der Zertifikate. Er startet `a38 selftest sdk-core` mit dem signierten `a38` ({{ ref("T30") }}). Er endet mit `passes (developer-id)`.
 
 Der erste Lauf am 2026-11-12 dauerte elf Minuten, davon etwa vier auf dem macOS-Runner.
 Der Notardienst antwortete für die App nach 25 Sekunden; er kann deutlich länger brauchen.
@@ -134,7 +134,19 @@ Lade das ZIP der App und die Prüfsummendatei des Release in ein Verzeichnis.
 
     Erwartet: `Identifier=io.github.seletz.passierschein.a38`, dieselben `Authority`-Zeilen, dieselbe Team-ID, `flags=0x10000(runtime)` und ein `Timestamp`.
 
-5. Bundle vollständig prüfen:
+5. Kern des 1Password-SDK unter der Hardened Runtime prüfen ({{ ref("T30") }}):
+
+    ```sh
+    Passierschein.app/Contents/MacOS/a38 selftest sdk-core
+    codesign -d --entitlements - Passierschein.app/Contents/MacOS/a38
+    ```
+
+    Erwartet: Die erste Zeile endet mit `runs in this a38` und dem Exit-Code 0.
+    Der zweite Befehl zeigt genau ein Entitlement: `com.apple.security.cs.allow-unsigned-executable-memory` ({{ ref("D59") }}).
+    `Killed: 9` heißt: Die Hardened Runtime verbietet den Code des Kerns.
+    Dann darf das Release nicht erscheinen.
+
+6. Bundle vollständig prüfen:
 
     ```sh
     codesign --verify --deep --strict --verbose=2 Passierschein.app
@@ -142,7 +154,7 @@ Lade das ZIP der App und die Prüfsummendatei des Release in ein Verzeichnis.
 
     Erwartet: `valid on disk` und `satisfies its Designated Requirement`.
 
-6. Urteil von Gatekeeper für das Bundle:
+7. Urteil von Gatekeeper für das Bundle:
 
     ```sh
     spctl -a -vv -t exec Passierschein.app
@@ -150,7 +162,7 @@ Lade das ZIP der App und die Prüfsummendatei des Release in ein Verzeichnis.
 
     Erwartet: `accepted` und `source=Notarized Developer ID`.
 
-7. Angeheftetes Ticket prüfen:
+8. Angeheftetes Ticket prüfen:
 
     ```sh
     xcrun stapler validate Passierschein.app
@@ -176,6 +188,20 @@ macOS holt das Ticket beim ersten Start bei Apple.
 - Nur signiert, nicht notarisiert: macOS blockiert die App und meldet, dass Apple sie nicht auf Schadsoftware prüfen konnte.
 - Ad-hoc signiert oder unsigniert: macOS blockiert die App ebenfalls.
 - Ohne Quarantäne-Attribut, also nach `curl` oder `gh release download`, prüft Gatekeeper beim Start nicht.
+
+## Entitlement von a38
+
+`a38` trägt genau ein Entitlement: `com.apple.security.cs.allow-unsigned-executable-memory` ({{ ref("D59") }}).
+Die Datei `scripts/a38.entitlements` legt es fest.
+`release:app:sign` und die Signatur mit quill in `.goreleaser.yml` nutzen dieselbe Datei.
+Die App „Passierschein“ trägt kein Entitlement.
+
+Das 1Password-SDK übersetzt seinen WebAssembly-Kern zur Laufzeit in Maschinencode.
+Ohne das Entitlement beendet macOS `a38` beim ersten Zugriff auf 1Password ([Issue 89](https://github.com/seletz/passierschein/issues/89)).
+`mise run test:sdk-core` zeigt auf dem Mac beides: Mit dem Entitlement läuft der Kern, ohne das Entitlement stirbt `a38`.
+Stirbt `a38` ohne das Entitlement auf dem Mac nicht mehr, ist es vielleicht überflüssig. Dann prüfst du {{ ref("D59") }} neu.
+Die macOS-Runner von GitHub setzen die Regel nicht durch; dort meldet der Task „enforcement not active here“.
+Verlässlich ist in der CI die Prüfung der Entitlements in `release:app:check` und `release:signatures:check`.
 
 ## App installieren
 

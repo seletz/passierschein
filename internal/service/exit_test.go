@@ -75,10 +75,38 @@ func TestExplain(t *testing.T) {
 		{Exit{Code: 42}, "unknown"},
 		{Exit{Signal: 11}, "crashed"},
 		{Exit{Signal: 9}, "from outside"},
+		// T31: the kill for the code signature names the cause and the
+		// check of the binary.
+		{Exit{Reason: "OS_REASON_CODESIGNING"}, "macOS killed the daemon for its code signature (OS_REASON_CODESIGNING)"},
+		{Exit{Reason: "OS_REASON_CODESIGNING"}, "a38 selftest sdk-core"},
+		{Exit{Signal: 9, Reason: "OS_REASON_CODESIGNING"}, "code signature"},
+		{Exit{Reason: "OS_REASON_JETSAM"}, "launchd reports the exit reason OS_REASON_JETSAM"},
+		{Exit{Code: 1, Reason: "OS_REASON_EXEC"}, "exit code 1: the daemon did not start"},
+		{Exit{Code: 1, Reason: "OS_REASON_EXEC"}, "(exit reason OS_REASON_EXEC)"},
 	}
 	for _, tt := range tests {
 		if got := Explain(tt.e); !strings.Contains(got, tt.want) {
 			t.Errorf("Explain(%+v) = %q, want %q", tt.e, got, tt.want)
+		}
+	}
+}
+
+func TestExitCodeSigning(t *testing.T) {
+	// T31: only the reason OS_REASON_CODESIGNING is a kill for the code
+	// signature.
+	tests := []struct {
+		e    Exit
+		want bool
+	}{
+		{Exit{Reason: "OS_REASON_CODESIGNING"}, true},
+		{Exit{Signal: 9, Reason: "OS_REASON_CODESIGNING"}, true},
+		{Exit{Signal: 9}, false},
+		{Exit{Reason: "OS_REASON_JETSAM"}, false},
+		{Exit{Code: 1}, false},
+	}
+	for _, tt := range tests {
+		if got := tt.e.CodeSigning(); got != tt.want {
+			t.Errorf("CodeSigning(%+v) = %v, want %v", tt.e, got, tt.want)
 		}
 	}
 }

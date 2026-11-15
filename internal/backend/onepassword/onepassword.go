@@ -42,8 +42,10 @@
 // [backend.ErrNotFound]. A rejected token is locked: the human must act. A
 // network error, a rate limit, a time limit and each unknown error are
 // unavailable (fail closed). No error and no log line contains a value,
-// the token or the text of an SDK error; the log names the class of the
-// error only.
+// the token or the text of an SDK error. The log names the class of the
+// error. For the classes unknown, input and integration_info it adds a
+// hint: the words of the SDK message that are on the fixed list
+// hintWords, never another part of the message (issue 89).
 //
 // # Connection
 //
@@ -171,9 +173,7 @@ func newBackend(opts Options, connect connectFunc) (*Backend, error) {
 	if b.now == nil {
 		b.now = time.Now
 	}
-	if b.version == "" {
-		b.version = "dev"
-	}
+	b.version = integrationVersion(b.version)
 	return b, nil
 }
 
@@ -189,6 +189,9 @@ type Error struct {
 	// Kind is backend.ErrLocked, backend.ErrUnavailable or
 	// backend.ErrNotFound.
 	Kind error
+	// hint holds the words of the SDK message that are on the list of
+	// hintWords, for the log; never another part of the message.
+	hint string
 }
 
 func (e *Error) Error() string {
@@ -210,7 +213,73 @@ const (
 	classChanged   = "changed"
 	classScope     = "out_of_scope"
 	classPlatform  = "platform"
+	// classIntegration: the SDK rejects the integration name or version
+	// that a38 sends (issue 89). This is a fault of a38, not of the human.
+	classIntegration = "integration_info"
+	// classInput: the SDK reports other invalid input of a38.
+	classInput = "input"
 )
+
+// maxIntegrationVersion is the longest integration version that the SDK
+// accepts (SDK v0.4.1: "integration version was too long. Max allowed: 20
+// chars").
+const maxIntegrationVersion = 20
+
+// allowedIntegrationRune reports whether the SDK accepts r in an
+// integration version: letters, digits, space, "-", "." and "_" (measured
+// with SDK v0.4.1 for each printable ASCII character).
+func allowedIntegrationRune(r rune) bool {
+	switch {
+	case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+		return true
+	}
+	return r == ' ' || r == '-' || r == '.' || r == '_'
+}
+
+// integrationVersion maps the version of a38 to an integration version
+// that the SDK accepts. "SNAPSHOT" becomes "snap", each other character
+// becomes "_", and the result is cut to maxIntegrationVersion. An empty
+// version becomes "dev". The version only names a38 to 1Password; the
+// daemon logs and the audit log keep the full version.
+func integrationVersion(v string) string {
+	v = strings.ReplaceAll(v, "SNAPSHOT", "snap")
+	v = strings.Map(func(r rune) rune {
+		if allowedIntegrationRune(r) {
+			return r
+		}
+		return '_'
+	}, v)
+	if v == "" {
+		return "dev"
+	}
+	if r := []rune(v); len(r) > maxIntegrationVersion {
+		v = string(r[:maxIntegrationVersion])
+	}
+	return v
+}
+
+// hintWords are the words of an SDK message that the log may show for an
+// error of class unknown or input. Each is a fixed word of the SDK, never
+// a name, an ID or a value. The hint shows them in this order.
+var hintWords = []string{
+	"invalid user input", "integration name", "integration version", "too long", "unallowed char",
+	"not specified", "service account token", "invalid format", "base64", "region", "account",
+	"vault", "item", "field", "permission", "plugin", "wasm", "memory", "serializ", "unsupported",
+	"internal error", "rate limit", "version",
+}
+
+// hintOf returns the words of hintWords that msg contains, separated by
+// ", "; empty if none.
+func hintOf(msg string) string {
+	msg = strings.ToLower(msg)
+	var found []string
+	for _, w := range hintWords {
+		if strings.Contains(msg, w) {
+			found = append(found, w)
+		}
+	}
+	return strings.Join(found, ", ")
+}
 
 func notFound(op, text string) error {
 	return &Error{Op: op, Class: classNotFound, Text: text, Kind: backend.ErrNotFound}
@@ -240,20 +309,28 @@ func classify(op string, err error) *Error {
 		return false
 	}
 	switch {
-	case has("unauthorized", "unauthenticated", "authenticat", "invalid service account token", "invalid token",
+	case has("integration name", "integration version"):
+		return &Error{Op: op, Class: classIntegration, Text: "the 1Password SDK rejects the integration name or version that a38 sends; this is a fault of a38, report it", Kind: backend.ErrUnavailable, hint: hintOf(msg)}
+	case has("unauthorized", "unauthenticated", "authenticat", "service account token", "invalid token",
 		"token is invalid", "expired", "revoked", "forbidden", "invalid user authorization", "sign in", "signin"):
 		return &Error{Op: op, Class: classAuth, Text: "1Password rejects the token of the service account; replace the token file and restart the daemon", Kind: backend.ErrLocked}
+	case has("invalid user input"):
+		return &Error{Op: op, Class: classInput, Text: "the 1Password SDK rejects input of a38; the log names the words of the SDK message", Kind: backend.ErrUnavailable, hint: hintOf(msg)}
 	case has("not found", "does not exist", "doesn't exist", "no such item", "no such vault") && !has("no such host"):
 		return &Error{Op: op, Class: classNotFound, Text: "the entry does not exist in 1Password", Kind: backend.ErrNotFound}
 	case has("no such host", "connection refused", "connection reset", "network", "dial tcp", "timeout", "timed out", "tls", "eof", "unreachable"):
 		return &Error{Op: op, Class: classNetwork, Text: "1Password cannot be reached", Kind: backend.ErrUnavailable}
 	}
-	return &Error{Op: op, Class: classUnknown, Text: "the call of the 1Password SDK failed", Kind: backend.ErrUnavailable}
+	return &Error{Op: op, Class: classUnknown, Text: "the call of the 1Password SDK failed", Kind: backend.ErrUnavailable, hint: hintOf(msg)}
 }
 
 // fail logs the class of a failed call and returns the error.
 func (b *Backend) fail(e *Error) error {
-	b.log.Warn("the 1password backend failed", "op", e.Op, "class", e.Class, "code", string(backend.Code(e)))
+	attrs := []any{"op", e.Op, "class", e.Class, "code", string(backend.Code(e))}
+	if e.hint != "" {
+		attrs = append(attrs, "hint", e.hint)
+	}
+	b.log.Warn("the 1password backend failed", attrs...)
 	return e
 }
 

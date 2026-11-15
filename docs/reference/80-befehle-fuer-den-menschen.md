@@ -129,7 +129,7 @@ Die Schritte stehen in [Daemon als Dienst einrichten](../how-to/28-daemon-als-di
 | `a38 service install` | Prüft, ob der Daemon starten kann, schreibt die plist und lädt den Dienst (`launchctl enable`, `launchctl bootstrap gui/<uid>`). Ein zweiter Aufruf mit denselben Angaben ändert nichts. |
 | `a38 service uninstall [--force]` | Beendet den Daemon (`launchctl bootout`) und entfernt die plist. Das Log bleibt. |
 | `a38 service restart` | Startet den Daemon neu (`launchctl kickstart -k`). Ist der Dienst nicht geladen, lädt der Befehl ihn. |
-| `a38 service status [--config <datei>] [--json]` | Zeigt plist, Programm, Zustand bei launchd, letzten Exit-Code, Log und die Antwort des Daemons. Exit-Code 0, wenn der Dienst läuft und das Programm passt, sonst 1. |
+| `a38 service status [--config <datei>] [--json]` | Zeigt plist, Programm, Zustand bei launchd, letzten Exit-Code, letzten Grund des Abbruchs, Log und die Antwort des Daemons. Exit-Code 0, wenn der Dienst läuft und das Programm passt, sonst 1. |
 
 Schalter von `install`:
 
@@ -172,6 +172,13 @@ Exit-Codes von `a38 serve` unter launchd:
 | 1 | Fehler beim Start oder im Betrieb: Konfiguration, Quelle des Tokens, Verzeichnis der Sockets, Audit-Log; das Log nennt die Ursache | nein |
 | 2 | falscher Aufruf in der plist oder Absturz der Go-Laufzeit | nein |
 | Signal | Absturz oder Ende von außen | nein |
+
+Nennt launchd einen Grund des Abbruchs (`last exit reason` in `launchctl print`), zeigt `a38 service status` ihn mit an.
+Mit `--json` steht er im Feld `last_exit.Reason`.
+Ein Abbruch durch den Kernel hat oft nur den Grund, keinen Exit-Code und kein Signal.
+Der Grund `OS_REASON_CODESIGNING` heißt: macOS hat den Daemon wegen seiner Signatur beendet.
+Die Hardened Runtime der Signatur verbietet Code, den `a38` ausführt ({{ ref("D59") }}).
+Der nächste Schritt ist `a38 selftest sdk-core` mit dem `a38` des Dienstes ([Störung finden und beheben](../how-to/24-stoerung-finden-und-beheben.md#daemon-wegen-der-signatur-beendet)).
 
 ## a38 grants
 
@@ -285,7 +292,7 @@ Der Exit-Code ist 0 ohne Befund.
 |---|---|
 | `configuration` | Die Konfiguration lädt. Je ungültigem Projekt folgt ein Befund mit dem Namen des Projekts. |
 | `socket modes` | Das Verzeichnis hat den Modus 0700, die Sockets 0600. |
-| `service` | Nur macOS. Der LaunchAgent: nicht eingerichtet (Zeile `OK`, kein Befund), eingerichtet und läuft, eingerichtet und läuft nicht (Befund mit letztem Exit-Code und Log), plist nennt ein fehlendes oder ein anderes `a38` (Befund), plist nicht von `a38` (Befund), abgeschaltet (Befund). |
+| `service` | Nur macOS. Der LaunchAgent: nicht eingerichtet (Zeile `OK`, kein Befund), eingerichtet und läuft, eingerichtet und läuft nicht (Befund mit letztem Exit-Code, Grund des Abbruchs und Log), von macOS wegen der Signatur beendet (`OS_REASON_CODESIGNING`, eigener Befund mit `a38 selftest sdk-core` als nächstem Schritt), plist nennt ein fehlendes oder ein anderes `a38` (Befund), plist nicht von `a38` (Befund), abgeschaltet (Befund). |
 | `daemon` | Der Daemon antwortet auf dem Admin-Socket. Die Zeile nennt Version, Sitzungen und Grants. |
 | `delivery lock` | Zustand der Sperre mit Ursache und Beginn. Nächster Schritt: `a38 fault clear`. |
 | `audit file` | Die Datei existiert und ist schreibbar, das Verzeichnis ebenfalls. |
@@ -335,6 +342,22 @@ Eine fehlende oder unlesbare Datei endet vor dem Start der Ansicht mit 1.
 Ein falscher Schalter endet mit 2.
 `NO_COLOR` schaltet die Farben ab; Fettdruck, Klammern und Marken bleiben.
 Die Tasten stehen in der Anleitung [Freigaben auswerten](../how-to/29-freigaben-auswerten.md#tasten).
+
+## a38 selftest
+
+`a38 selftest sdk-core` prüft das laufende Binary ({{ ref("D59") }}, {{ ref("T30") }}).
+Der Befehl lädt den WebAssembly-Kern des 1Password-SDK und gibt ihm ein ungültiges Token und die Version von `a38`, wie der Daemon.
+Das SDK prüft dabei auch die Version (höchstens 20 Zeichen; Buchstaben, Ziffern, Leerzeichen, `-`, `.`, `_`).
+`a38` kürzt und ersetzt die Version vorher; aus `SNAPSHOT` wird `snap`.
+Er liest kein Token, keine Datei und keinen Eintrag im Schlüsselbund.
+Er ruft kein Netz: Der Kern lehnt das Token vorher ab.
+
+| Ergebnis | Bedeutung |
+|---|---|
+| Exit-Code 0 | Der Kern läuft in diesem `a38`. Die Zeile nennt die Dauer. |
+| Exit-Status 137 in der Shell (`Killed: 9`) | macOS hat `a38` wegen der Signatur beendet. Die Hardened Runtime verbietet den Code des Kerns. Dieses `a38` kann das 1Password-Backend nicht nutzen. |
+| Exit-Code 1 | Der Kern hat nicht wie erwartet geantwortet, oder die Plattform hat kein SDK (Linux). |
+| Exit-Code 2 | Falscher Aufruf. |
 
 ## a38 hook
 

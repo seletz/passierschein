@@ -34,6 +34,9 @@ type ServiceState struct {
 	PID int
 	// LastExit explains the last exit; empty if unknown.
 	LastExit string
+	// CodeSigning is true if the kernel killed the daemon for its code
+	// signature (launchd: OS_REASON_CODESIGNING, issue 89).
+	CodeSigning bool
 	// LogPath is the log file of the daemon.
 	LogPath string
 	// Error says why launchd did not answer.
@@ -96,6 +99,9 @@ func (c serviceCheck) Run(ctx context.Context, _ *State) []Result {
 		return []Result{finding(name, "the LaunchAgent is installed but not loaded",
 			s.PlistPath+" exists; launchd loads it at the next login",
 			"run a38 service restart, or log out and in")}
+	case !s.Running && s.CodeSigning:
+		return []Result{finding(name, "the daemon does not run: macOS killed it for its code signature", s.LastExit,
+			"run "+selftestCommand(s.Program)+"; if it fails, install an a38 that passes it (a release with the fix of issue 89), then run a38 service restart")}
 	case !s.Running:
 		cause := "the daemon of the LaunchAgent does not run"
 		if s.LastExit != "" {
@@ -105,4 +111,13 @@ func (c serviceCheck) Run(ctx context.Context, _ *State) []Result {
 			"read the log "+s.LogPath+", fix the cause, then run a38 service restart")}
 	}
 	return []Result{ok(name, "installed, running with pid %d, log %s", s.PID, s.LogPath)}
+}
+
+// selftestCommand returns the self-test command for the program of the
+// LaunchAgent; the plain command if the program is unknown.
+func selftestCommand(program string) string {
+	if program == "" {
+		return "a38 selftest sdk-core"
+	}
+	return program + " selftest sdk-core"
 }

@@ -31,6 +31,13 @@ type Fake struct {
 	// StartFails makes the daemon end at once with exit code 1 after a
 	// bootstrap, as with a configuration error.
 	StartFails bool
+	// StartKilledReason makes the daemon end at once after a bootstrap
+	// without an exit code, as when the kernel kills it; print then
+	// reports this "last exit reason", for example OS_REASON_CODESIGNING.
+	StartKilledReason string
+	// ExitReason is the text of the line "last exit reason"; empty for
+	// none.
+	ExitReason string
 	// Program is the program that print reports.
 	Program string
 	nextPID int
@@ -90,6 +97,10 @@ func (f *Fake) Run(_ context.Context, args ...string) (service.Result, error) {
 }
 
 func (f *Fake) start() {
+	if f.StartKilledReason != "" {
+		f.PID, f.LastExit, f.ExitReason = 0, "", f.StartKilledReason
+		return
+	}
 	if f.StartFails {
 		f.PID, f.LastExit = 0, "1"
 		return
@@ -117,7 +128,11 @@ func (f *Fake) print(target string) string {
 	b.WriteString("\targuments = {\n\t\t" + program + "\n\t\tserve\n\t}\n\n")
 	b.WriteString("\tstdout path = /Users/beispiel/Library/Logs/a38/serve.log\n\tinherited environment = {\n\t\tSSH_AUTH_SOCK => /private/tmp/x\n\t}\n\n")
 	b.WriteString("\tdomain = gui/501 [100005]\n\truns = 1\n" + pid + "\timmediate reason = speculative\n")
-	b.WriteString("\tlast exit code = " + last + "\n\n\tspawn type = interactive (4)\n\tproperties = runatload | inferred program\n}\n")
+	b.WriteString("\tlast exit code = " + last + "\n")
+	if f.ExitReason != "" {
+		b.WriteString("\tlast exit reason = " + f.ExitReason + "\n")
+	}
+	b.WriteString("\n\tspawn type = interactive (4)\n\tproperties = runatload | inferred program\n}\n")
 	return b.String()
 }
 

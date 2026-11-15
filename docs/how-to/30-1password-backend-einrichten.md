@@ -168,6 +168,21 @@ Das Log meldet kurz nach dem Start den Zustand:
 - `the 1password backend does not work yet` mit `code=backend_locked`: 1Password lehnt das Token ab.
 - `the 1password backend does not work yet` mit `code=backend_unavailable`: 1Password antwortet nicht, zum Beispiel ohne Netz.
 
+Die Zeile davor (`the 1password backend failed`) nennt die Klasse des Fehlers (`class=`):
+
+| Klasse | Bedeutung |
+|---|---|
+| `authentication` | 1Password lehnt das Token ab. |
+| `network`, `timeout` | 1Password antwortet nicht. |
+| `rate_limit` | 1Password begrenzt die Zahl der Anfragen. |
+| `integration_info` | Das SDK lehnt Namen oder Version ab, die `a38` sendet. Das ist ein Fehler von `a38` ([Issue 89](https://github.com/seletz/passierschein/issues/89)). |
+| `input` | Das SDK lehnt eine andere Eingabe von `a38` ab. |
+| `unknown` | Eine Meldung, die `a38` nicht kennt. |
+
+Bei `integration_info`, `input` und `unknown` nennt das Feld `hint` die Wörter der Meldung des SDK, die auf einer festen Liste stehen.
+Es nennt nie das Token, einen Wert oder ein anderes Wort der Meldung.
+Mit diesen Wörtern meldest du den Fehler.
+
 Bei einem ungültigen Token oder ohne Netz läuft der Daemon weiter.
 Jede Anfrage endet dann mit `backend_locked` oder `backend_unavailable`.
 Der Daemon versucht es frühestens nach 30 Sekunden erneut.
