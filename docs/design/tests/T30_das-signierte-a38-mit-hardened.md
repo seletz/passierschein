@@ -33,6 +33,6 @@ beweist: [F12, F19, D59, UC11]
 
 **Scheitert, wenn:** a38 keine Hardened Runtime hat, andere Entitlements als in Schritt 1 trägt, die App ein Entitlement trägt, `a38 selftest sdk-core` nicht mit Exit-Code 0 endet, oder die Kopie anders als mit 0 oder 137 endet.
 
-**Grenze:** Die macOS-Runner von GitHub setzen die Hardened Runtime für Code im Speicher nicht durch. Dort läuft auch a38 ohne Entitlement (Lauf 43726064113, 2026-11-15). Schritte 2 und 3 beweisen auf dem Runner deshalb nichts über die Hardened Runtime. Verlässlich ist dort nur Schritt 1. Schritte 2 und 3 beweisen die Wirkung nur auf einem Mac, der die Regel durchsetzt, etwa mit `mise run test:sdk-core` auf dem Mac der Entwicklung. Dort ist die Gegenprobe am 2026-11-15 mit 137 gestorben.
+**Grenze:** Die macOS-Runner von GitHub setzen die Hardened Runtime für Code im Speicher nicht durch. Dort läuft auch a38 ohne Entitlement (Lauf 43726064113, 2026-11-15). Der Runner ist eine virtuelle Maschine (`VirtualMac2,1`, arm64, macOS 27.0.1) mit abgeschalteter System Integrity Protection (Lauf 43726680826). Schritte 2 und 3 beweisen auf dem Runner deshalb nichts über die Hardened Runtime. Verlässlich ist dort nur Schritt 1. Schritte 2 und 3 beweisen die Wirkung nur auf einem Mac, der die Regel durchsetzt, etwa mit `mise run test:sdk-core` auf dem Mac der Entwicklung. Dort ist die Gegenprobe am 2026-11-15 mit 137 gestorben.
 
 Die Go-Tests prüfen den Befehl und die Auswertung der Antwort des Kerns. Sie laufen ohne Hardened Runtime.
