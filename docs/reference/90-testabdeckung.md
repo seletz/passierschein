@@ -101,5 +101,10 @@ Das Feld `umsetzung` von {{ ref("T29") }} steht auf `vorhanden`.
 {{ ref("T30") }} prüft, dass ein `a38` mit Hardened Runtime den Kern des 1Password-SDK ausführt ({{ ref("D59") }}).
 {{ ref("T31") }} prüft, dass `a38 service status` und `a38 doctor` den Abbruch wegen der Signatur nennen.
 
+Aus demselben Issue stammt ein zweiter Fehler: Das SDK lehnt eine Version der Integration mit mehr als 20 Zeichen ab, etwa `0.1.0-SNAPSHOT-322e7ba`.
+Die Tests `TestIntegrationVersion`, `TestConnectGetsIntegrationVersion`, `TestClassifyConnectErrors`, `TestFailLogsSafeHint` und `TestSDKRejectsRawSnapshotVersion` (nur macOS, echter Kern des SDK, ungültiges Token) im Paket `backend/onepassword` belegen die Korrektur.
+Sie gehören zu {{ ref("F12") }}.
+`a38 selftest sdk-core` sendet die Version wie der Daemon; so prüft auch {{ ref("T30") }} die Version.
+
 Das Register trägt denselben Stand im Feld `umsetzung` jedes Testfalls und jedes Features.
 `dg-register get <ID> umsetzung` zeigt ihn.

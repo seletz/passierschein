@@ -75,6 +75,22 @@ Die echte Anmeldung hat der Integrationstest {{ ref("T15") }} im macOS-Job der C
 
 Mit der normalen Zeitgrenze von 60 Sekunden scheiterte der Test im Interpreter.
 
+## Version der Integration
+
+Nach der Korrektur lief der signierte Snapshot `0.1.0-SNAPSHOT-322e7ba`, aber `connect` scheiterte mit der Klasse `unknown`.
+Das Programm `versions/` ruft `sdk.NewClient` mit ungültigen Token und verschiedenen Versionen und zeigt die Meldung des SDK.
+Das SDK prüft die Version vor dem Token:
+
+| Version | Meldung des SDK |
+|---|---|
+| `0.1.0-42-gb79fc9c` (17 Zeichen) | Token ungültig (Version angenommen) |
+| `0.1.0-SNAPSHOT-322e7ba` (22 Zeichen) | `integration version was too long. Max allowed: 20 chars` |
+| `0.1.0+meta` | `integration version contained unallowed char: '+'` |
+| leer | `integration version was not specified` |
+
+Erlaubt sind 1 bis 20 Zeichen aus Buchstaben, Ziffern, Leerzeichen, `-`, `.` und `_` (jedes druckbare ASCII-Zeichen geprüft).
+`a38` ersetzt `SNAPSHOT` durch `snap`, jedes andere Zeichen durch `_` und kürzt auf 20 Zeichen.
+
 ## Empfehlung
 
 Das Entitlement `com.apple.security.cs.allow-unsigned-executable-memory` für a38 allein. Der Compiler bleibt. Die Anmeldung im Interpreter dauert über eine Minute; das ist für den Daemon nicht nutzbar. Die Entscheidung ist {{ ref("D59") }}. Die Prüfung ist {{ ref("T30") }}.

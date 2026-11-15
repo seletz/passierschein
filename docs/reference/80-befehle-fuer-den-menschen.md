@@ -346,7 +346,9 @@ Die Tasten stehen in der Anleitung [Freigaben auswerten](../how-to/29-freigaben-
 ## a38 selftest
 
 `a38 selftest sdk-core` prüft das laufende Binary ({{ ref("D59") }}, {{ ref("T30") }}).
-Der Befehl lädt den WebAssembly-Kern des 1Password-SDK und gibt ihm ein ungültiges Token.
+Der Befehl lädt den WebAssembly-Kern des 1Password-SDK und gibt ihm ein ungültiges Token und die Version von `a38`, wie der Daemon.
+Das SDK prüft dabei auch die Version (höchstens 20 Zeichen; Buchstaben, Ziffern, Leerzeichen, `-`, `.`, `_`).
+`a38` kürzt und ersetzt die Version vorher; aus `SNAPSHOT` wird `snap`.
 Er liest kein Token, keine Datei und keinen Eintrag im Schlüsselbund.
 Er ruft kein Netz: Der Kern lehnt das Token vorher ab.
 

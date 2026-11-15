@@ -6,6 +6,8 @@ It is not production code. Do not use it in the product.
 `hrspike` calls `sdk.NewClient` of the 1Password SDK with an invalid token.
 It reads no token and calls no network: the SDK core rejects the token first.
 `bench/` runs a CPU load in wazero with the compiler and with the interpreter.
+`versions/` shows the answer of the SDK core to integration versions
+(`go build -o bin/versions ./versions && ./bin/versions 0.1.0 0.1.0-SNAPSHOT-322e7ba`).
 
 The report is in `docs/explanation/spikes/60-hardened-runtime-wasm.md`.
 
