@@ -1,0 +1,9 @@
+id: G43
+zustand: eingeloest
+titel: D68 nennt drei Sätze des Skills nicht, die mit dem exec-Weg falsch werden
+bezug: '#101'
+schluessel: '#101/skill-reste'
+lauf: '2.0'
+branch: feat/101-hook-skill-exec
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

@@ -89,6 +89,12 @@ func runMCPWith(ctx context.Context, args []string, t mcp.Transport, stderr io.W
 		SessionName: f.sessionName,
 		Version:     version.Version,
 		Logger:      slog.New(slog.NewTextHandler(stderr, nil)),
+		// D64: run_with_credentials accepts only a cwd in the project of
+		// the working directory of a38 mcp. The daemon checks again.
+		ProjectFor: func(dir string) (string, bool) {
+			p, ok := cfg.ProjectFor(dir)
+			return p.Name, ok
+		},
 	})
 	if err := srv.Run(ctx, t); err != nil && ctx.Err() == nil {
 		_, _ = fmt.Fprintf(stderr, "a38 mcp: %v\n", err)

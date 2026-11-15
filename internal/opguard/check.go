@@ -12,6 +12,7 @@
 package opguard
 
 import (
+	"regexp"
 	"strings"
 
 	"mvdan.cc/sh/v3/syntax"
@@ -31,6 +32,26 @@ const (
 	// RuleKeychainToken: the command prints a keychain item of a38 with
 	// "security find-generic-password -w" or "-g" (D51, D72).
 	RuleKeychainToken Rule = "a38-keychain-token"
+	// RuleOpDoubt: with --strict, the guard did not understand the command
+	// (a case of Doubt) and the raw command has the word op (D67, point 3).
+	RuleOpDoubt Rule = "op-doubt"
+)
+
+// Doubt names the reason why the guard did not inspect a command fully.
+// The empty doubt means "inspected". The text is a reason for the note of
+// the hook; it never contains a part of the command.
+type Doubt string
+
+// The three cases of doubt of D67, point 3.
+const (
+	// DoubtUnparsable: no shell parser understood the command or a nested
+	// shell string.
+	DoubtUnparsable Doubt = "command is not parsable"
+	// DoubtRuntimeWord: a command word or a nested shell string is built
+	// at run time, for example "$TOOL" or bash -c "$CMD".
+	DoubtRuntimeWord Doubt = "a command word is built at run time"
+	// DoubtTooDeep: the nesting of shell strings is deeper than MaxDepth.
+	DoubtTooDeep Doubt = "nesting of shell strings is deeper than 3"
 )
 
 // MaxDepth is the number of nested shell strings ("bash -c", "sh -c",
@@ -54,11 +75,48 @@ const hole = "\x00"
 // the empty rule. parsed is false when no shell parser understood the
 // command; the rule is then empty (fail-open, D15).
 func Check(command string) (rule Rule, parsed bool) {
-	return inspect(command, 0)
+	rule, doubt := Inspect(command)
+	return rule, doubt != DoubtUnparsable
+}
+
+// Inspect inspects a shell command. It returns the first rule that fires,
+// or the empty rule and the first case of doubt, if any. A rule wins over
+// a doubt: the doubt is empty when a rule fires.
+func Inspect(command string) (Rule, Doubt) {
+	var c checker
+	rule, parsed := c.inspect(command, 0)
+	switch {
+	case rule != "":
+		return rule, ""
+	case !parsed:
+		return "", DoubtUnparsable
+	}
+	return "", c.doubt
+}
+
+// wordPattern is the word pattern of D67: "op" as a word of its own.
+var wordPattern = regexp.MustCompile(`(^|[^A-Za-z0-9_.-])op([^A-Za-z0-9_.-]|$)`)
+
+// MentionsOp reports whether the raw command text has "op" as a word of
+// its own (D67, point 3). It does not parse the command.
+func MentionsOp(command string) bool {
+	return wordPattern.MatchString(command)
+}
+
+// checker walks one command and keeps the first case of doubt.
+type checker struct {
+	doubt Doubt
+}
+
+// doubtful keeps d if no case of doubt is known yet.
+func (c *checker) doubtful(d Doubt) {
+	if c.doubt == "" {
+		c.doubt = d
+	}
 }
 
 // inspect parses src as bash, then as zsh, and walks the syntax tree.
-func inspect(src string, depth int) (Rule, bool) {
+func (c *checker) inspect(src string, depth int) (Rule, bool) {
 	file := parse(src)
 	if file == nil {
 		return "", false
@@ -70,7 +128,7 @@ func inspect(src string, depth int) (Rule, bool) {
 		}
 		switch n := node.(type) {
 		case *syntax.CallExpr:
-			found = checkCall(words(n.Args), depth)
+			found = c.checkCall(words(n.Args), depth)
 		case *syntax.Redirect:
 			if (n.Op == syntax.RdrIn || n.Op == syntax.RdrInOut) && n.Word != nil && isTokenPath(wordText(n.Word)) {
 				found = RuleTokenFile
@@ -120,10 +178,13 @@ func commandName(word string) string {
 }
 
 // checkCall inspects one simple command: the words after the assignments.
-func checkCall(args []string, depth int) Rule {
+func (c *checker) checkCall(args []string, depth int) Rule {
 	for len(args) > 0 {
 		name := commandName(args[0])
 		rest := args[1:]
+		if name == "" && args[0] != "" {
+			c.doubtful(DoubtRuntimeWord)
+		}
 		switch name {
 		case "op":
 			return RuleOpCLI
@@ -134,7 +195,7 @@ func checkCall(args []string, depth int) Rule {
 			var split string
 			args, split = skipEnvOptions(rest)
 			if split != "" {
-				if r := inspectString(split, depth); r != "" {
+				if r := c.inspectString(split, depth); r != "" {
 					return r
 				}
 			}
@@ -163,11 +224,11 @@ func checkCall(args []string, depth int) Rule {
 		case "xargs":
 			args = skipOptions(rest, "IJLnPsEdaRS")
 		case "find":
-			return checkFind(rest, depth)
+			return c.checkFind(rest, depth)
 		case "eval":
-			return inspectString(strings.Join(rest, " "), depth)
+			return c.inspectString(strings.Join(rest, " "), depth)
 		case "sh", "bash", "zsh", "dash", "ksh", "mksh":
-			return checkShell(rest, depth)
+			return c.checkShell(rest, depth)
 		case "security":
 			return checkSecurity(rest)
 		default:
@@ -178,12 +239,20 @@ func checkCall(args []string, depth int) Rule {
 }
 
 // inspectString inspects a nested shell string. A string with a non-literal
-// part or a string deeper than MaxDepth is allowed.
-func inspectString(s string, depth int) Rule {
-	if depth >= MaxDepth || !literal(s) {
+// part or a string deeper than MaxDepth is allowed; it is a case of doubt.
+func (c *checker) inspectString(s string, depth int) Rule {
+	switch {
+	case !literal(s):
+		c.doubtful(DoubtRuntimeWord)
+		return ""
+	case depth >= MaxDepth:
+		c.doubtful(DoubtTooDeep)
 		return ""
 	}
-	r, _ := inspect(s, depth+1)
+	r, parsed := c.inspect(s, depth+1)
+	if !parsed {
+		c.doubtful(DoubtUnparsable)
+	}
 	return r
 }
 
@@ -270,11 +339,11 @@ func skipEnvOptions(args []string) (rest []string, split string) {
 }
 
 // checkFind inspects the commands of "-exec", "-execdir", "-ok" and "-okdir".
-func checkFind(args []string, depth int) Rule {
+func (c *checker) checkFind(args []string, depth int) Rule {
 	for i, a := range args {
 		switch a {
 		case "-exec", "-execdir", "-ok", "-okdir":
-			if r := checkCall(args[i+1:], depth); r != "" {
+			if r := c.checkCall(args[i+1:], depth); r != "" {
 				return r
 			}
 		}
@@ -284,7 +353,7 @@ func checkFind(args []string, depth int) Rule {
 
 // checkShell inspects the string of "-c". The first word after the
 // options is the string; "-o" and "-O" take a value.
-func checkShell(args []string, depth int) Rule {
+func (c *checker) checkShell(args []string, depth int) Rule {
 	sawC := false
 	for len(args) > 0 {
 		a := args[0]
@@ -309,7 +378,7 @@ func checkShell(args []string, depth int) Rule {
 	if !sawC || len(args) == 0 {
 		return "" // a script file or standard input: not inspected
 	}
-	return inspectString(args[0], depth)
+	return c.inspectString(args[0], depth)
 }
 
 // checkSecurity fires for "security find-generic-password" with "-w" or

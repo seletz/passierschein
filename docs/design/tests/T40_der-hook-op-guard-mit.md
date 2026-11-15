@@ -8,7 +8,7 @@ stand: '2026-11-15'
 order: 3
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F24, D67, UC16]
 ---
 # T40 — Der Hook op-guard mit --strict blockiert auch im Zweifel, wenn der Befehl op enthält
