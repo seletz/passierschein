@@ -4,14 +4,14 @@ id: 'D71'
 titel: 'Die Konfiguration nennt die 1Password-Konten mit Name und Token-Quelle'
 bereich: 'Backends'
 lauf: '2.0'
-stand: '2026-11-15'
+stand: '2026-11-16'
 order: 9
 headless: true
 status: gueltig
 use_cases: [UC11]
 beleg:
-  notiz: Vorschlag aus der Entwicklung (Issue 88), zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-16'
 ---
 # D71 — Die Konfiguration nennt die 1Password-Konten mit Name und Token-Quelle
 
@@ -58,4 +58,4 @@ Ein Konto ohne Vault ist erlaubt. `a38 doctor` nennt es als Hinweis. Der Daemon 
 
 **Folge:** Die Schlüssel `backend.onepassword.token_source` und `backend.onepassword.token_file` aus {{ ref("D51") }} entfallen. Den Übergang regelt {{ ref("D75") }}.
 
-**Quelle:** [Issue 88](https://github.com/seletz/passierschein/issues/88), Skizze. Vorschlag aus der Entwicklung, zu bestätigen durch Stefan.
+**Quelle:** [Issue 88](https://github.com/seletz/passierschein/issues/88), Skizze. Vorschlag aus der Entwicklung; von Stefan am 2026-11-16 in PR 114 bestätigt.

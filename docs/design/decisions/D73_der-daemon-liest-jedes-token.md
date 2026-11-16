@@ -4,14 +4,14 @@ id: 'D73'
 titel: 'Der Daemon liest jedes Token beim Start, und ein Konto ohne Token sperrt nur seine Vaults'
 bereich: 'Backends'
 lauf: '2.0'
-stand: '2026-11-15'
+stand: '2026-11-16'
 order: 11
 headless: true
 status: gueltig
 use_cases: [UC11, UC1]
 beleg:
-  notiz: Vorschlag aus der Entwicklung (Issue 88), zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-16'
 ---
 # D73 — Der Daemon liest jedes Token beim Start, und ein Konto ohne Token sperrt nur seine Vaults
 
@@ -28,6 +28,6 @@ beleg:
 
 **Begründung:** Ein gesperrtes Konto liefert nichts aus ({{ ref("D35") }}). Die anderen Konten arbeiten weiter; der Mensch verliert nicht alle Freigaben wegen eines Kontos. Der Code `backend_locked` sagt dem Agent, dass nur der Mensch helfen kann. Ohne jedes Token hat ein laufender Daemon keinen Zweck; der Abbruch beim Start ist dann die klarere Meldung.
 
-**Wahl von Stefan:** Ob ein Konto ohne Token den Start abbricht (wie bisher in {{ ref("D51") }}) oder nur seine Vaults sperrt. Empfehlung: nur seine Vaults sperren, wie in der Skizze des Issues.
+**Wahl von Stefan:** Ein Konto ohne Token sperrt nur seine Vaults. Es bricht den Start nicht mehr ab, wie bisher in {{ ref("D51") }}. Stefan hat das am 2026-11-16 in PR 114 entschieden.
 
-**Quelle:** [Issue 88](https://github.com/seletz/passierschein/issues/88), Skizze: „Ein Konto ohne gültiges Token sperrt nur seine Vaults.“ Vorschlag aus der Entwicklung, zu bestätigen durch Stefan.
+**Quelle:** [Issue 88](https://github.com/seletz/passierschein/issues/88), Skizze: „Ein Konto ohne gültiges Token sperrt nur seine Vaults.“ Vorschlag aus der Entwicklung; von Stefan am 2026-11-16 in PR 114 bestätigt.

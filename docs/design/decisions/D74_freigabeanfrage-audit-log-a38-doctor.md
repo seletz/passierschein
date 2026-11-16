@@ -4,14 +4,14 @@ id: 'D74'
 titel: 'Freigabeanfrage, Audit-Log, a38 doctor und a38 tui nennen das Konto neben dem Vault'
 bereich: 'Oberflächen'
 lauf: '2.0'
-stand: '2026-11-15'
+stand: '2026-11-16'
 order: 10
 headless: true
 status: gueltig
 use_cases: [UC1, UC6, UC11]
 beleg:
-  notiz: Vorschlag aus der Entwicklung (Issue 88), zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-16'
 ---
 # D74 — Freigabeanfrage, Audit-Log, a38 doctor und a38 tui nennen das Konto neben dem Vault
 
@@ -31,4 +31,4 @@ beleg:
 
 **Umsetzung:** `a38 doctor` und `a38 config vault list` setzt [Issue 88](https://github.com/seletz/passierschein/issues/88) um. Freigabeanfrage, Audit-Log und `a38 tui` brauchen ein neues Feld in der Nachricht an die Freigabe-App, in der Swift-App und im Schema des Audit-Logs. Sie folgen in einem eigenen Issue ({{ ref("F26") }}).
 
-**Quelle:** [Issue 88](https://github.com/seletz/passierschein/issues/88), Skizze. Vorschlag aus der Entwicklung, zu bestätigen durch Stefan.
+**Quelle:** [Issue 88](https://github.com/seletz/passierschein/issues/88), Skizze. Vorschlag aus der Entwicklung; von Stefan am 2026-11-16 in PR 114 bestätigt.

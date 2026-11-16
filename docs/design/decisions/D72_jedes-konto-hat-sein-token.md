@@ -4,14 +4,14 @@ id: 'D72'
 titel: 'Jedes Konto hat sein Token in einem eigenen Eintrag des Schlüsselbunds'
 bereich: 'Backends'
 lauf: '2.0'
-stand: '2026-11-15'
+stand: '2026-11-16'
 order: 10
 headless: true
 status: gueltig
 use_cases: [UC11]
 beleg:
-  notiz: Vorschlag aus der Entwicklung (Issue 88), zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-16'
 ---
 # D72 — Jedes Konto hat sein Token in einem eigenen Eintrag des Schlüsselbunds
 
@@ -36,4 +36,4 @@ beleg:
 
 **Grenze:** Die Grenze bis zur Signatur aus {{ ref("D51") }} gilt für jeden Eintrag ({{ ref("G5") }}). Mit mehreren Konten zeigt ein neuer Build mehrere Dialoge.
 
-**Quelle:** [Issue 88](https://github.com/seletz/passierschein/issues/88). Vorschlag aus der Entwicklung, zu bestätigen durch Stefan.
+**Quelle:** [Issue 88](https://github.com/seletz/passierschein/issues/88). Vorschlag aus der Entwicklung; von Stefan am 2026-11-16 in PR 114 bestätigt.

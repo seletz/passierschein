@@ -4,17 +4,17 @@ id: 'D51'
 titel: 'Das Token liegt im Schlüsselbund, eine Datei mit Modus 0600 ist der Ausweichweg'
 bereich: 'Backends'
 lauf: '2.0'
-stand: '2026-11-15'
+stand: '2026-11-16'
 order: 5
 headless: true
 status: ersetzt
 ersetzt_durch: D72
 use_cases: [UC11]
 beleg:
-  datum: '2026-11-15'
+  wer: Stefan
+  datum: '2026-11-16'
   quelle: ['#88', '#61']
-  notiz: Von Stefan am 2026-11-12 in PR 61 abgenommen. Ersetzt durch D72 (Token je Konto, Issue 88); die Ersetzung bestätigt Stefan.
-  annahme: true
+  notiz: Von Stefan am 2026-11-12 in PR 61 abgenommen. Ersetzt durch D72 (Token je Konto, Issue 88); die Ersetzung hat Stefan am 2026-11-16 in PR 114 bestätigt.
 ---
 # D51 — Das Token liegt im Schlüsselbund, eine Datei mit Modus 0600 ist der Ausweichweg
 

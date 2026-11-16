@@ -70,9 +70,9 @@ Eine Entscheidung hat eine von zwei Herkünften:
   und {{ ref("D41") }}.
 - **In Lauf 2 für mehrere 1Password-Konten:** {{ ref("D70") }} hat Stefan am
   2026-11-15 entschieden: Jeder Vault nennt sein Konto. {{ ref("D71") }} bis
-  {{ ref("D75") }} sind Annahmen aus
-  [Issue 88](https://github.com/seletz/passierschein/issues/88); Stefan bestätigt
-  sie. {{ ref("D72") }} ersetzt {{ ref("D51") }}.
+  {{ ref("D75") }} kommen aus
+  [Issue 88](https://github.com/seletz/passierschein/issues/88); Stefan hat
+  sie am 2026-11-16 in PR 114 bestätigt. {{ ref("D72") }} ersetzt {{ ref("D51") }}.
 
 Drei Entscheidungen ruhen auf Spikes: {{ ref("D39") }} (1Password-SDK),
 {{ ref("D31") }} und {{ ref("D45") }} (Freigabe-UI), {{ ref("D46") }}

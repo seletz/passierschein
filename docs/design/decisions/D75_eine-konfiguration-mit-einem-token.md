@@ -4,14 +4,14 @@ id: 'D75'
 titel: 'Eine Konfiguration mit einem Token lädt nicht mehr, und die Meldung nennt den Umbau'
 bereich: 'Betrieb und Release'
 lauf: '2.0'
-stand: '2026-11-15'
+stand: '2026-11-16'
 order: 8
 headless: true
 status: gueltig
 use_cases: [UC11]
 beleg:
-  notiz: Vorschlag aus der Entwicklung (Issue 88), zu bestätigen durch Stefan
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-16'
 ---
 # D75 — Eine Konfiguration mit einem Token lädt nicht mehr, und die Meldung nennt den Umbau
 
@@ -43,4 +43,4 @@ vault "beispiel.app.k8s-dev": the account "privat" is not in backend.onepassword
 
 **Begründung:** Ein automatischer Übergang bräuchte ein Standardkonto. Das schließt {{ ref("D70") }} aus. Die Konfiguration hat genau einen Menschen als Leser; der Umbau ist kurz. Eine klare Meldung beim Start ist sicherer als eine Datei, die halb im alten und halb im neuen Format gilt.
 
-**Quelle:** [Issue 88](https://github.com/seletz/passierschein/issues/88), Frage „Übergang für eine bestehende Konfiguration“. Vorschlag aus der Entwicklung, zu bestätigen durch Stefan.
+**Quelle:** [Issue 88](https://github.com/seletz/passierschein/issues/88), Frage „Übergang für eine bestehende Konfiguration“. Vorschlag aus der Entwicklung; von Stefan am 2026-11-16 in PR 114 bestätigt.
