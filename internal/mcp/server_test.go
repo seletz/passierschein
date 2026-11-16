@@ -82,7 +82,7 @@ func shortDir(t *testing.T) string {
 func testConfig(t *testing.T) *config.Config {
 	t.Helper()
 	dir := shortDir(t)
-	yaml := fmt.Sprintf("version: 1\nvaults:\n  - name: beispiel.app.k8s-dev\n    environment: dev\npaths:\n  socket_dir: %s/run\n  audit_file: %s/audit.db\n", dir, dir)
+	yaml := fmt.Sprintf("version: 1\nbackend:\n  onepassword:\n    accounts:\n      - name: privat\nvaults:\n  - name: beispiel.app.k8s-dev\n    environment: dev\n    account: privat\npaths:\n  socket_dir: %s/run\n  audit_file: %s/audit.db\n", dir, dir)
 	cfg, err := config.Parse([]byte(yaml))
 	if err != nil {
 		t.Fatal(err)

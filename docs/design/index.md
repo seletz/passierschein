@@ -39,10 +39,10 @@ neue Entscheidung. Die alte Entscheidung erhält den Status „ersetzt“.
 | Familie | Bereich |
 |---|---|
 | UC | {{ ref("UC1") }}–{{ ref("UC16") }} |
-| D | {{ ref("D1") }}–{{ ref("D69") }} |
-| F | {{ ref("F1") }}–{{ ref("F24") }} |
-| T | {{ ref("T1") }}–{{ ref("T42") }} |
-| G | {{ ref("G1") }}–{{ ref("G44") }} |
+| D | {{ ref("D1") }}–{{ ref("D75") }} |
+| F | {{ ref("F1") }}–{{ ref("F26") }} |
+| T | {{ ref("T1") }}–{{ ref("T48") }} |
+| G | {{ ref("G1") }}–{{ ref("G45") }} |
 | RI | {{ ref("RI1") }}–{{ ref("RI14") }} |
 
 ## Bestätigt und angenommen
@@ -72,6 +72,11 @@ Eine Entscheidung hat eine von zwei Herkünften:
   Reisepass). Stefan hat den Entwurf am 2026-11-15 im
   [Pull Request 109](https://github.com/seletz/passierschein/pull/109)
   gewählt.
+- **In Lauf 2 für mehrere 1Password-Konten:** {{ ref("D70") }} hat Stefan am
+  2026-11-15 entschieden: Jeder Vault nennt sein Konto. {{ ref("D71") }} bis
+  {{ ref("D75") }} kommen aus
+  [Issue 88](https://github.com/seletz/passierschein/issues/88); Stefan hat
+  sie am 2026-11-16 in PR 114 bestätigt. {{ ref("D72") }} ersetzt {{ ref("D51") }}.
 
 Drei Entscheidungen ruhen auf Spikes: {{ ref("D39") }} (1Password-SDK),
 {{ ref("D31") }} und {{ ref("D45") }} (Freigabe-UI), {{ ref("D46") }}

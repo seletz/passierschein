@@ -61,9 +61,11 @@ type Env interface {
 	// UI returns the state of the approval UI as far as the status of
 	// the daemon tells it.
 	UI(st *protocol.StatusResult) Component
-	// TokenStore returns the keychain item of the token; nil if the
-	// platform has no keychain.
-	TokenStore() TokenStore
+	// TokenStore returns the keychain item of the token of an account
+	// (D72); nil if the platform has no keychain. The account
+	// config.LegacyAccount gives the item of the configuration with one
+	// token (D51).
+	TokenStore(account string) TokenStore
 }
 
 // TokenStore is the part of a [token.Store] that the doctor uses. It has
@@ -81,10 +83,11 @@ type TokenStore interface {
 type SystemEnv struct {
 	// ConfigPath is the configuration file; empty means the default.
 	ConfigPath string
-	// Store is the keychain item of the token; nil if the platform has
-	// no keychain. The package keychain is not a dependency of doctor,
-	// so that the linux build does not contain it (D42, D53).
-	Store TokenStore
+	// Stores returns the keychain item of the token of an account; nil
+	// if the platform has no keychain. The package keychain is not a
+	// dependency of doctor, so that the linux build does not contain it
+	// (D42, D53).
+	Stores func(account string) TokenStore
 	// ServiceState returns the state of the LaunchAgent; nil on a
 	// platform without launchd. The package service is not a dependency
 	// of doctor (D53).
@@ -92,7 +95,12 @@ type SystemEnv struct {
 }
 
 // TokenStore implements [Env].
-func (e SystemEnv) TokenStore() TokenStore { return e.Store }
+func (e SystemEnv) TokenStore(account string) TokenStore {
+	if e.Stores == nil {
+		return nil
+	}
+	return e.Stores(account)
+}
 
 // LoadConfig implements [Env].
 func (e SystemEnv) LoadConfig() (*config.Config, error) {

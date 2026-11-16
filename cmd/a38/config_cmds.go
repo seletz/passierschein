@@ -194,20 +194,30 @@ type showProject struct {
 type showVault struct {
 	Name        string `json:"name"`
 	Environment string `json:"environment"`
+	Account     string `json:"account"`
+}
+
+// showAccount is one 1Password account (D71). It shows the token source,
+// never a token.
+type showAccount struct {
+	Name        string   `json:"name"`
+	TokenSource string   `json:"token_source"`
+	TokenFile   string   `json:"token_file"`
+	Vaults      []string `json:"vaults"`
 }
 
 type showDoc struct {
-	Path        string            `json:"path"`
-	Source      string            `json:"source"`
-	Why         string            `json:"why"`
-	Values      []showValue       `json:"values"`
-	Resolved    map[string]string `json:"resolved"`
-	Vaults      []showVault       `json:"vaults"`
-	Projects    []showProject     `json:"projects"`
-	Valid       bool              `json:"valid"`
-	Problems    []string          `json:"problems"`
-	Deprecated  []string          `json:"deprecated"`
-	TokenSource string            `json:"token_source"`
+	Path       string            `json:"path"`
+	Source     string            `json:"source"`
+	Why        string            `json:"why"`
+	Values     []showValue       `json:"values"`
+	Resolved   map[string]string `json:"resolved"`
+	Vaults     []showVault       `json:"vaults"`
+	Projects   []showProject     `json:"projects"`
+	Valid      bool              `json:"valid"`
+	Problems   []string          `json:"problems"`
+	Deprecated []string          `json:"deprecated"`
+	Accounts   []showAccount     `json:"accounts"`
 }
 
 func runConfigShow(args []string, stdout, stderr io.Writer) int {
@@ -285,22 +295,25 @@ func buildShow(loc config.Location, cfg *config.Config, in config.Inspection) sh
 			val("paths.socket_dir", cfg.Paths.SocketDir),
 			val("paths.audit_file", cfg.Paths.AuditFile),
 			val("paths.ui_app", uiApp),
-			val("backend.onepassword.token_source", string(cfg.Backend.OnePassword.TokenSource)),
-			val("backend.onepassword.token_file", cfg.Backend.OnePassword.TokenFile),
 		},
 		Resolved: map[string]string{
 			"agent_socket": cfg.AgentSocket(),
 			"admin_socket": cfg.AdminSocket(),
 			"audit_file":   cfg.Paths.AuditFile,
 			"ui_app":       cfg.Paths.UIApp,
-			"token_source": string(cfg.Backend.OnePassword.TokenSource),
-			"token_file":   cfg.Backend.OnePassword.TokenFile,
 		},
-		Vaults:      []showVault{},
-		Projects:    []showProject{},
-		Problems:    []string{},
-		Deprecated:  []string{},
-		TokenSource: string(cfg.Backend.OnePassword.TokenSource),
+		Vaults:     []showVault{},
+		Projects:   []showProject{},
+		Problems:   []string{},
+		Deprecated: []string{},
+		Accounts:   []showAccount{},
+	}
+	for _, a := range cfg.Backend.OnePassword.Accounts {
+		vaults := cfg.VaultsOf(a.Name)
+		if vaults == nil {
+			vaults = []string{}
+		}
+		doc.Accounts = append(doc.Accounts, showAccount{Name: a.Name, TokenSource: string(a.TokenSource), TokenFile: a.TokenFile, Vaults: vaults})
 	}
 	// The environments and the limits of the exec way (D66). The deprecated
 	// key grant.lifetime sets the lifetime of dev; its origin is the file.
@@ -326,7 +339,7 @@ func buildShow(loc config.Location, cfg *config.Config, in config.Inspection) sh
 		doc.Deprecated = append(doc.Deprecated, d.String())
 	}
 	for _, v := range cfg.Vaults {
-		doc.Vaults = append(doc.Vaults, showVault{Name: v.Name, Environment: string(v.Environment)})
+		doc.Vaults = append(doc.Vaults, showVault{Name: v.Name, Environment: string(v.Environment), Account: v.Account})
 	}
 	for _, p := range cfg.Projects {
 		sp := showProject{Name: p.Name, Valid: p.Invalid == "", Invalid: p.Invalid, Vaults: p.Vaults, Paths: []showPath{}}
@@ -360,11 +373,19 @@ func renderShow(w io.Writer, d showDoc, loc config.Location) {
 	for _, v := range d.Values {
 		p("  %-34s %-9s %s\n", v.Key, "["+v.Origin+"]", v.Value)
 	}
-	p("\nResolved\n  agent socket   %s\n  admin socket   %s\n  audit file     %s\n  token source   %s (the token is never read here)\n",
-		d.Resolved["agent_socket"], d.Resolved["admin_socket"], d.Resolved["audit_file"], d.TokenSource)
+	p("\nResolved\n  agent socket   %s\n  admin socket   %s\n  audit file     %s\n",
+		d.Resolved["agent_socket"], d.Resolved["admin_socket"], d.Resolved["audit_file"])
+	p("\nAccounts (%d) (the tokens are never read here)\n", len(d.Accounts))
+	for _, a := range d.Accounts {
+		src := a.TokenSource
+		if a.TokenSource == string(config.TokenSourceFile) {
+			src += " " + a.TokenFile
+		}
+		p("  %-20s token_source %s\n", a.Name, src)
+	}
 	p("\nVaults (%d)\n", len(d.Vaults))
 	for _, v := range d.Vaults {
-		p("  %-30s %s\n", v.Name, v.Environment)
+		p("  %-30s %-5s account %s\n", v.Name, v.Environment, v.Account)
 	}
 	p("\nProjects (%d)\n", len(d.Projects))
 	for _, pr := range d.Projects {
@@ -503,10 +524,11 @@ func runConfigInit(args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stdout, "Moved the old file to %s\n", backup)
 	}
 	_, _ = fmt.Fprintf(stdout, "Created %s (mode 0600), because of %s.\n\nNext steps:\n", loc.Path, loc.Why)
-	_, _ = fmt.Fprintf(stdout, "  1. %s\n", withConfig(loc, "a38 config vault add NAME --environment dev"))
-	_, _ = fmt.Fprintf(stdout, "  2. %s\n", withConfig(loc, "a38 config project add NAME --path DIR --vault NAME"))
-	_, _ = fmt.Fprintf(stdout, "  3. a38 config onepassword-token set   (token source keychain; for a file token set backend.onepassword.token_source: file)\n")
-	_, _ = fmt.Fprintf(stdout, "  4. %s\n", withConfig(loc, "a38 config validate"))
-	_, _ = fmt.Fprintf(stdout, "  5. %s\n", withConfig(loc, "a38 doctor"))
+	_, _ = fmt.Fprintf(stdout, "  1. %s\n", withConfig(loc, "a38 config account add ACCOUNT"))
+	_, _ = fmt.Fprintf(stdout, "  2. %s\n", withConfig(loc, "a38 config vault add NAME --environment dev --account ACCOUNT"))
+	_, _ = fmt.Fprintf(stdout, "  3. %s\n", withConfig(loc, "a38 config project add NAME --path DIR --vault NAME"))
+	_, _ = fmt.Fprintf(stdout, "  4. %s   (token source keychain; for a file token: a38 config account add ACCOUNT --token-source file)\n", withConfig(loc, "a38 config onepassword-token set --account ACCOUNT"))
+	_, _ = fmt.Fprintf(stdout, "  5. %s\n", withConfig(loc, "a38 config validate"))
+	_, _ = fmt.Fprintf(stdout, "  6. %s\n", withConfig(loc, "a38 doctor"))
 	return exitOK
 }

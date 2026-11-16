@@ -27,7 +27,7 @@ Drei Arten von Prozessen entstehen daraus.
 |---|---|---|
 | `a38 serve` | Daemon | Der Prozess stellt den Agent-Socket und den Admin-Socket bereit. Er prüft die Policy, bündelt, fragt die Freigabe an, vergibt Grants, schreibt das Audit-Log und liefert aus. Nur dieser Prozess spricht mit dem Backend ({{ ref("D1") }}). |
 | `a38 mcp` | Agent | Der Prozess ist ein MCP-Server über stdio (MCP: Model Context Protocol). Das Agent-Werkzeug startet ihn je Sitzung. Er übersetzt die zwei MCP-Werkzeuge in Nachrichten für den Agent-Socket ({{ ref("D41") }}). Er verbindet sich erst beim ersten Aufruf eines Werkzeugs mit dem Daemon und sendet dann den Namen der Sitzung und den Namen des MCP-Clients in `hello`. Ist der Daemon nicht erreichbar, antwortet er mit `daemon_unavailable` und versucht es beim nächsten Aufruf erneut. Er enthält keinen Code für ein Backend. |
-| Admin-Befehle | Mensch | `a38 grants`, `a38 fault` und `a38 doctor` sprechen mit dem Daemon über den Admin-Socket ({{ ref("D44") }}). `a38 audit` und `a38 tui` lesen die Audit-Datei direkt und nur lesend; `a38 tui` gibt es nur unter macOS ({{ ref("D57") }}). `a38 config onepassword-token` legt das Token des Service Accounts im Schlüsselbund ab ({{ ref("D51") }}). `a38 service` richtet den Daemon als LaunchAgent ein ({{ ref("D56") }}). `a38 llm` und `a38 version` brauchen keinen Daemon. |
+| Admin-Befehle | Mensch | `a38 grants`, `a38 fault` und `a38 doctor` sprechen mit dem Daemon über den Admin-Socket ({{ ref("D44") }}). `a38 audit` und `a38 tui` lesen die Audit-Datei direkt und nur lesend; `a38 tui` gibt es nur unter macOS ({{ ref("D57") }}). `a38 config onepassword-token` legt das Token des Service Accounts eines Kontos im Schlüsselbund ab ({{ ref("D72") }}). `a38 service` richtet den Daemon als LaunchAgent ein ({{ ref("D56") }}). `a38 llm` und `a38 version` brauchen keinen Daemon. |
 
 Die Freigabe-UI hat vier Varianten hinter derselben Schnittstelle.
 Die Varianten `auto-approve` und `auto-deny` laufen im Daemon.
@@ -571,6 +571,7 @@ version: 1
 vaults:
   - name: beispiel.app.k8s-dev
     environment: dev
+    account: privat
 projects:
   - name: beispielprojekt
     paths:
@@ -716,22 +717,29 @@ Der Daemon prüft beim Start im Hintergrund den Zustand und schreibt ihn ins Log
 
 | Lage beim Start | Verhalten |
 |---|---|
-| Quelle `keychain`: der Eintrag fehlt, der Schlüsselbund lehnt ab oder antwortet zwei Minuten nicht | Der Daemon startet nicht. Die Meldung nennt den Befund und `a38 config onepassword-token set`. |
-| Quelle `file`: die Token-Datei fehlt, ist ein Link, ist keine reguläre Datei, gehört einem anderen Benutzer oder hat nicht `0600` | Der Daemon startet nicht. Die Meldung nennt den Befund. |
-| Token ungültig | Der Daemon startet. Jede Anfrage endet mit `backend_locked`. `a38 doctor` zeigt den Zustand. |
+| Ein Konto, Quelle `keychain`: der Eintrag fehlt, der Schlüsselbund lehnt ab oder antwortet zwei Minuten nicht | Das Konto ist gesperrt. Jede Anfrage an seine Vaults endet mit `backend_locked`. Das Log nennt das Konto und `a38 config onepassword-token set --account <name>`. |
+| Ein Konto, Quelle `file`: die Token-Datei fehlt, ist ein Link, ist keine reguläre Datei, gehört einem anderen Benutzer oder hat nicht `0600` | Das Konto ist gesperrt. Das Log nennt das Konto und den Befund. |
+| Kein Konto hat ein Token | Der Daemon startet nicht. Die Meldung nennt jedes Konto mit Befund. |
+| Token eines Kontos ungültig | Der Daemon startet. Jede Anfrage an die Vaults des Kontos endet mit `backend_locked`. Das Log nennt das Konto. |
 | kein Netz | Der Daemon startet. Jede Anfrage endet mit `backend_unavailable`, bis das Netz wieder da ist. |
 
+Die Regeln je Konto stehen in {{ ref("D73") }}.
 Ein Fehler der Quelle ist ein Fehler der Einrichtung und bleibt gleich, bis der Mensch ihn behebt.
 Einen Fehler des Tokens oder des Netzes zeigt der laufende Daemon besser als eine Schleife von Neustarts.
 Die Wahl folgt dem Wunsch nach einem ruhigen Dienst ({{ ref("D48") }}): Ein gesperrtes oder nicht erreichbares Backend ist ein Fehler der Anfrage und keine Störung des Daemons.
 
-**Token ({{ ref("D51") }}):** Das Token liegt im Schlüsselbund von macOS, im Eintrag `a38.onepassword` (Konto `service-account`) des Anmelde-Schlüsselbunds.
-Der Mensch legt es mit `a38 config onepassword-token set` dort ab; `status` und `delete` ergänzen den Befehl.
+**Konten ({{ ref("D71") }}):** Die Konfiguration nennt die 1Password-Konten unter `backend.onepassword.accounts`; jeder Vault nennt sein Konto ({{ ref("D70") }}).
+`onepassword.Accounts` hält einen `onepassword.Backend` und damit einen Client des SDK je Konto.
+Es leitet jede Referenz über ihren Vault an das Konto des Vaults.
+Ein Konto ohne Token hat keinen Client; jede Anfrage an seine Vaults endet mit `backend_locked`.
+
+**Token ({{ ref("D72") }}):** Jedes Konto hat sein Token im Schlüsselbund von macOS, im Eintrag mit dem Dienst `a38.onepassword` und dem Konto `<name>` des Anmelde-Schlüsselbunds.
+Der Mensch legt es mit `a38 config onepassword-token set --account <name>` dort ab; `status` und `delete` ergänzen den Befehl.
 Die Token-Datei bleibt als Ausweichweg für Entwicklung und CI ({{ ref("RI5") }}, {{ ref("G3") }}).
-Der Schlüssel `backend.onepassword.token_source` wählt die Quelle: `keychain` (Standard) oder `file`.
-Der Daemon holt das Token über die Schnittstelle `token.Source` (Paket `internal/token`).
-Nur `tokenSource` in `cmd/a38/token_source.go` wählt die Quelle; das Backend kennt sie nicht.
-Der Daemon liest das Token einmal beim Start.
+Der Schlüssel `token_source` des Kontos wählt die Quelle: `keychain` (Standard) oder `file`.
+Der Daemon holt jedes Token über die Schnittstelle `token.Source` (Paket `internal/token`).
+Nur `tokenSourceFor` und `openAccounts` in `cmd/a38/token_source.go` wählen die Quelle; das Backend kennt sie nicht.
+Der Daemon liest jedes Token einmal beim Start.
 Er hält das Token nur im Arbeitsspeicher, im Typ `token.Token`.
 Der Typ gibt in `fmt`, `slog` und JSON nur `[redacted]` aus.
 Es gibt keine Umgebungsvariable für das Token, denn jeder Kindprozess erbt die Umgebung.
@@ -742,7 +750,7 @@ Es gibt keine Umgebungsvariable für das Token, denn jeder Kindprozess erbt die 
 - Ohne Developer ID bindet der Schlüsselbund den Eintrag an den Hash des Builds (`cdhash`). Ein anderer Build löst beim Lesen einen Dialog aus. `kSecUseAuthenticationUIFail` verhindert diesen Dialog nicht.
 - `Describe` liest nur die Attribute und die Zugriffsliste. Das zeigte im Spike nie einen Dialog. `a38 doctor` nutzt nur `Describe` und die Signatur.
 - `a38 config onepassword-token status` liest den Wert nie; er zeigt nur Metadaten. Kein Befehl zeigt das Token oder einen daraus abgeleiteten Wert.
-- `a38 config onepassword-token set` liest das Token nur vom Terminal, ohne Echo; eine Pipe oder Datei lehnt er mit dem Exit-Code 2 ab.
+- `a38 config onepassword-token set --account <name>` liest das Token nur vom Terminal, ohne Echo; eine Pipe oder Datei lehnt er mit dem Exit-Code 2 ab.
 - `a38 config` ist eine Gruppe mit einer Tabelle von Unterbefehlen (`cmd/a38/config.go`).
 - Die Signatur von `a38` liest das Paket mit `SecCodeCopySelf` und `SecCodeCopySigningInformation`, ohne Dialog und ohne Kindprozess.
 - Es gibt damit zwei Leser von Signaturen: `keychain` liest die eigene Signatur von `a38` über die Security-API für Anzeige und Partitionsliste, `appui` prüft die Datei der Freigabe-App mit `/usr/bin/codesign` gegen das Team von `a38`; die Zwecke und Build-Grenzen sind verschieden, eine Zusammenlegung ist offen.

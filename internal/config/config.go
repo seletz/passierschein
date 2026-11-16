@@ -11,6 +11,7 @@
 //	vaults:
 //	  - name: beispiel.app.k8s-dev
 //	    environment: dev
+//	    account: privat
 //	projects:
 //	  - name: beispielprojekt
 //	    paths:
@@ -46,8 +47,16 @@
 //	  audit_file: ~/.local/state/a38/audit.db
 //	backend:
 //	  onepassword:
-//	    token_source: keychain
-//	    token_file: ~/.config/a38/onepassword-token
+//	    accounts:
+//	      - name: privat
+//	        token_source: keychain
+//	      - name: firma
+//	        token_source: file
+//	        token_file: ~/.config/a38/onepassword-token-firma
+//
+// Each vault names its 1Password account (D70). There is no default
+// account. The keys backend.onepassword.token_source and token_file of the
+// format with one token are an error with the next step (D75).
 //
 // The key grant.lifetime is deprecated: it still sets the grant lifetime
 // of dev, but it cannot stand together with environments.dev.grant_lifetime.
@@ -165,18 +174,15 @@ type Backend struct {
 	OnePassword OnePassword
 }
 
-// OnePassword holds the settings of the 1Password backend (F12).
+// OnePassword holds the settings of the 1Password backend (F12, F25).
 type OnePassword struct {
-	// TokenSource is the source of the token of the service account
-	// (D51): the macOS keychain (default) or the token file.
-	TokenSource TokenSource
-	// TokenFile is the file with the token of the service account. Only
-	// "a38 serve --backend 1password" with the source file reads it. The
-	// file must be a regular file of the user with the mode 0600.
-	TokenFile string
+	// Accounts lists the 1Password accounts (D71). Each vault names one of
+	// them (D70). Each account has its own service account and token.
+	Accounts []Account
 }
 
-// TokenSource is the source of the token of the service account (D51).
+// TokenSource is the source of the token of the service account of an
+// account (D71).
 type TokenSource string
 
 // The sources of the token.
@@ -203,6 +209,9 @@ type Vault struct {
 	Name string
 	// Environment is the environment of the vault.
 	Environment Environment
+	// Account is the name of the 1Password account of the vault (D70).
+	// Each vault names one; there is no default account.
+	Account string
 }
 
 // Project is one project with its policy.

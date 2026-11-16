@@ -140,7 +140,12 @@ def run(command: list[str], cols: int, rows: int, keys: list[str], wait: float,
     # The picture shows the screen before the program ends.
     shot = pyte.Screen(cols, rows)
     shot.buffer = copy.deepcopy(screen.buffer)
-    os.write(master, b"q")
+    try:
+        os.write(master, b"q")
+    except OSError:
+        # The program has ended already, for example a command that
+        # reads one line.
+        pass
     pump(0.5)
     try:
         proc.wait(timeout=5)

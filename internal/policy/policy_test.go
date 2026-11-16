@@ -9,11 +9,15 @@ import (
 
 const cfgYAML = `
 version: 1
+backend:
+  onepassword:
+    accounts:
+      - name: privat
 vaults:
-  - {name: beispiel.app.k8s-dev, environment: dev}
-  - {name: beispiel.app.k8s-test, environment: test}
-  - {name: beispiel.app.k8s-prod, environment: prod}
-  - {name: beispiel.infra.k8s-dev, environment: dev}
+  - {name: beispiel.app.k8s-dev, environment: dev, account: privat}
+  - {name: beispiel.app.k8s-test, environment: test, account: privat}
+  - {name: beispiel.app.k8s-prod, environment: prod, account: privat}
+  - {name: beispiel.infra.k8s-dev, environment: dev, account: privat}
 projects:
   - name: beispielprojekt
     paths: [/tmp/a38-test/beispielprojekt]

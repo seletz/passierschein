@@ -1,0 +1,9 @@
+id: T47
+zustand: eingeloest
+titel: a38 doctor zeigt je Konto Quelle, Eintrag und Vaults und meldet den alten Eintrag
+bezug: '#88'
+schluessel: '#88/t-doctor'
+lauf: '2.0'
+branch: feat/88-mehrere-konten
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

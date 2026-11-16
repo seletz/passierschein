@@ -115,24 +115,21 @@ Alle Schritte, die Optionen und die Fehlermeldungen stehen in [Konfiguration anl
 
 ## Token ablegen
 
-Das Token des 1Password-Service-Accounts liegt im Schlüsselbund von macOS ({{ ref("D51") }}).
+Das Token des Service Accounts jedes 1Password-Kontos liegt im Schlüsselbund von macOS ({{ ref("D72") }}).
 Den Service Account legst du an, wie in [1Password-Backend einrichten](30-1password-backend-einrichten.md#service-account-anlegen) beschrieben.
-Dann legst du das Token ab:
+Trage das Konto in die Konfiguration ein und lege dann das Token ab:
 
 ```sh
-a38 config onepassword-token set
+a38 config account add privat
+a38 config onepassword-token set --account privat
 ```
 
 Füge das Token beim Prompt ein.
-Der Standard der Quelle ist `keychain`; die Konfiguration braucht dafür keinen Eintrag.
+Der Standard der Quelle ist `keychain`.
 
-Hast du eine ältere Konfiguration, die nur `token_file` nennt, hast du zwei Wege:
-
-- Lege das Token mit `a38 config onepassword-token set` im Schlüsselbund ab und entferne `token_file` aus der Konfiguration.
-- Oder trage `token_source: file` unter `backend.onepassword` ein. Dann liest der Daemon weiter die Token-Datei.
-
-Die Datei ist der Ausweichweg für Entwicklung und CI.
-Den Umzug beschreibt [1Password-Backend einrichten](30-1password-backend-einrichten.md#von-der-token-datei-in-den-schlusselbund-umziehen).
+Hast du eine ältere Konfiguration mit `token_source` oder `token_file` direkt unter `backend.onepassword`, lädt sie nicht mehr ({{ ref("D75") }}).
+Die Meldung nennt den Umbau.
+Die Schritte stehen in [Mehrere 1Password-Konten einrichten](31-mehrere-1password-konten.md#von-einem-token-auf-konten-umstellen).
 
 ## Prüfen und starten
 
@@ -164,7 +161,7 @@ So steht es in der Dokumentation von macOS; ein Praxistest mit einem Update steh
 Erscheint beim Start des Daemons trotzdem ein Dialog, der fragt, ob `a38` den Eintrag `a38.onepassword` lesen darf:
 
 - Hast du gerade selbst `a38` aktualisiert und den Daemon gestartet, ist der Dialog erwartet. Du kannst ihn bestätigen.
-- Alternativ legst du das Token neu ab: `a38 config onepassword-token set --replace`.
+- Alternativ legst du das Token neu ab: `a38 config onepassword-token set --account <name> --replace`.
 - Kommt der Dialog ohne einen Grund, den du kennst, wähle „Verweigern“. Ein anderes Programm, auch ein Agent, kann denselben Dialog auslösen.
 
 Melde einen Dialog nach einem Update als Beobachtung; er hilft, die Lücke {{ ref("G5") }} zu schließen.

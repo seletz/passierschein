@@ -14,15 +14,22 @@ import (
 // minimal is the smallest valid configuration.
 const minimal = "version: 1\n"
 
+// privat is the account section with the account privat, for a file with
+// vaults: each vault names its account (D70).
+const privat = "backend:\n  onepassword:\n    accounts:\n      - name: privat\n"
+
 // example is a complete configuration with neutral test data.
 const example = `version: 1
 vaults:
   - name: beispiel.app.k8s-dev
     environment: dev
+    account: privat
   - name: beispiel.app.k8s-test
     environment: test
+    account: privat
   - name: beispiel.app.k8s-prod
     environment: prod
+    account: privat
 projects:
   - name: beispielprojekt
     paths:
@@ -49,8 +56,10 @@ paths:
   audit_file: ~/a38/audit.db
 backend:
   onepassword:
-    token_source: file
-    token_file: ~/a38/onepassword-token
+    accounts:
+      - name: privat
+        token_source: file
+        token_file: ~/a38/onepassword-token
 `
 
 // setHome gives the test a fixed home directory and no XDG variables.
@@ -93,9 +102,6 @@ func TestParseDefaults(t *testing.T) {
 			SocketDir: "/home/beispiel/.local/state/a38/run",
 			AuditFile: "/home/beispiel/.local/state/a38/audit.db",
 		},
-		// D51, issue 59: the keychain is the default source; the token
-		// file keeps its default path for the source file.
-		Backend: Backend{OnePassword: OnePassword{TokenSource: TokenSourceKeychain, TokenFile: "/home/beispiel/.config/a38/onepassword-token"}},
 	}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("Parse(minimal) =\n%+v\nwant\n%+v", cfg, want)
@@ -116,9 +122,9 @@ func TestParseExample(t *testing.T) {
 	}
 	want := &Config{
 		Vaults: []Vault{
-			{Name: "beispiel.app.k8s-dev", Environment: EnvDev},
-			{Name: "beispiel.app.k8s-test", Environment: EnvTest},
-			{Name: "beispiel.app.k8s-prod", Environment: EnvProd},
+			{Name: "beispiel.app.k8s-dev", Environment: EnvDev, Account: "privat"},
+			{Name: "beispiel.app.k8s-test", Environment: EnvTest, Account: "privat"},
+			{Name: "beispiel.app.k8s-prod", Environment: EnvProd, Account: "privat"},
 		},
 		Projects: []Project{
 			{Name: "beispielprojekt",
@@ -140,7 +146,9 @@ func TestParseExample(t *testing.T) {
 		Bundle:       Bundle{Window: 1500 * time.Millisecond, MaxEntries: 3},
 		SessionName:  SessionNameRules{MaxLength: 20, AllowedCharacters: "abcdefghijklmnopqrstuvwxyz-."},
 		Paths:        Paths{SocketDir: "/home/beispiel/a38/run", AuditFile: "/home/beispiel/a38/audit.db"},
-		Backend:      Backend{OnePassword: OnePassword{TokenSource: TokenSourceFile, TokenFile: "/home/beispiel/a38/onepassword-token"}},
+		Backend: Backend{OnePassword: OnePassword{Accounts: []Account{
+			{Name: "privat", TokenSource: TokenSourceFile, TokenFile: "/home/beispiel/a38/onepassword-token"},
+		}}},
 	}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("Parse(example) =\n%+v\nwant\n%+v", cfg, want)
@@ -181,7 +189,7 @@ func TestParseAccepts(t *testing.T) {
 			}
 		}},
 		// T22 (part): the name of a vault says nothing about its environment.
-		{"vault name against environment", minimal + "vaults:\n  - {name: beispiel-prod, environment: dev}\n  - {name: beispiel-dev, environment: prod}\n", func(t *testing.T, c *Config) {
+		{"vault name against environment", minimal + privat + "vaults:\n  - {name: beispiel-prod, environment: dev, account: privat}\n  - {name: beispiel-dev, environment: prod, account: privat}\n", func(t *testing.T, c *Config) {
 			if v, ok := c.Vault("beispiel-prod"); !ok || v.Environment != EnvDev {
 				t.Errorf("Vault(beispiel-prod) = %+v, %v", v, ok)
 			}
@@ -221,9 +229,9 @@ func TestParseAccepts(t *testing.T) {
 
 func TestParseRejects(t *testing.T) {
 	setHome(t)
-	vault := func(body string) string { return minimal + "vaults:\n" + body }
+	vault := func(body string) string { return minimal + privat + "vaults:\n" + body }
 	project := func(body string) string {
-		return vault("  - {name: beispiel.app.k8s-dev, environment: dev}\n") + "projects:\n" + body
+		return vault("  - {name: beispiel.app.k8s-dev, environment: dev, account: privat}\n") + "projects:\n" + body
 	}
 	tests := []struct {
 		name string
@@ -239,13 +247,7 @@ func TestParseRejects(t *testing.T) {
 		{"unknown key", minimal + "vault: []\n", "vault"},
 		{"unknown key in a vault", vault("  - {name: beispiel.app.k8s-dev, environment: dev, pattern: k8s}\n"), "pattern"},
 		{"two documents", minimal + "---\nversion: 1\n", "one YAML document"},
-		{"relative token file", minimal + "backend:\n  onepassword:\n    token_file: token\n", "backend.onepassword.token_file"},
-		{"empty token file", minimal + "backend:\n  onepassword:\n    token_file: \"\"\n", "backend.onepassword.token_file"},
 		{"unknown backend key", minimal + "backend:\n  onepassword:\n    token: x\n", "token"},
-		// D51, issue 59: only keychain and file are token sources.
-		{"unknown token source", minimal + "backend:\n  onepassword:\n    token_source: env\n", "backend.onepassword.token_source"},
-		{"token source in capitals", minimal + "backend:\n  onepassword:\n    token_source: Keychain\n", "backend.onepassword.token_source"},
-		{"empty token source", minimal + "backend:\n  onepassword:\n    token_source: \"\"\n", "backend.onepassword.token_source"},
 
 		// T22 (part): cases in which the daemon does not start. The message
 		// names the vault.
@@ -254,11 +256,11 @@ func TestParseRejects(t *testing.T) {
 		{"environment empty", vault("  - {name: beispiel.app.k8s-dev, environment: \"\"}\n"), `"beispiel.app.k8s-dev"`},
 		{"environment Dev", vault("  - {name: beispiel.app.k8s-dev, environment: Dev}\n"), `"beispiel.app.k8s-dev"`},
 		{"environment null", vault("  - {name: beispiel.app.k8s-dev, environment: null}\n"), `"beispiel.app.k8s-dev"`},
-		{"vault twice with different environments", vault("  - {name: beispiel.app.k8s-dev, environment: dev}\n  - {name: beispiel.app.k8s-dev, environment: prod}\n"), `"beispiel.app.k8s-dev"`},
-		{"vault twice with the same environment", vault("  - {name: beispiel.app.k8s-dev, environment: dev}\n  - {name: beispiel.app.k8s-dev, environment: dev}\n"), `"beispiel.app.k8s-dev"`},
-		{"vault without name", vault("  - {environment: dev}\n"), "name"},
-		{"vault name with a slash", vault("  - {name: beispiel/dev, environment: dev}\n"), "slash"},
-		{"vault name with a control character", vault("  - {name: \"beispiel\\tdev\", environment: dev}\n"), "control character"},
+		{"vault twice with different environments", vault("  - {name: beispiel.app.k8s-dev, environment: dev, account: privat}\n  - {name: beispiel.app.k8s-dev, environment: prod, account: privat}\n"), `"beispiel.app.k8s-dev"`},
+		{"vault twice with the same environment", vault("  - {name: beispiel.app.k8s-dev, environment: dev, account: privat}\n  - {name: beispiel.app.k8s-dev, environment: dev, account: privat}\n"), `"beispiel.app.k8s-dev"`},
+		{"vault without name", vault("  - {environment: dev, account: privat}\n"), "name"},
+		{"vault name with a slash", vault("  - {name: beispiel/dev, environment: dev, account: privat}\n"), "slash"},
+		{"vault name with a control character", vault("  - {name: \"beispiel\\tdev\", environment: dev, account: privat}\n"), "control character"},
 
 		{"project without name", project("  - paths: [/home/beispiel/develop/beispielprojekt]\n"), "name"},
 		{"project twice", project("  - {name: beispielprojekt, paths: [/home/beispiel/a]}\n  - {name: beispielprojekt, paths: [/home/beispiel/b]}\n"), `"beispielprojekt"`},
@@ -333,8 +335,8 @@ func TestInvalidProject(t *testing.T) {
 	// T22 (part): a project that names a vault that is not in the vault
 	// list does not stop the start. Only this project is invalid.
 	setHome(t)
-	cfg, err := Parse([]byte(minimal + `vaults:
-  - {name: beispiel.app.k8s-dev, environment: dev}
+	cfg, err := Parse([]byte(minimal + privat + `vaults:
+  - {name: beispiel.app.k8s-dev, environment: dev, account: privat}
 projects:
   - name: projekt-a
     paths: [/home/beispiel/develop/projekt-a]

@@ -62,7 +62,7 @@ func newServiceWorld(t *testing.T) *serviceWorld {
 		}
 	}
 	w.cfgPath = filepath.Join(root, "config.yaml")
-	cfg := "version: 1\nvaults:\n  - {name: beispiel.app.k8s-dev, environment: dev}\npaths:\n  socket_dir: " + short + "/run\n  audit_file: " + short + "/audit.db\n"
+	cfg := "version: 1\nvaults:\n  - {name: beispiel.app.k8s-dev, environment: dev, account: privat}\nbackend:\n  onepassword:\n    accounts:\n      - name: privat\npaths:\n  socket_dir: " + short + "/run\n  audit_file: " + short + "/audit.db\n"
 	if err := os.WriteFile(w.cfgPath, []byte(cfg), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func (w *serviceWorld) deps() serviceDeps {
 			return service.Probe{
 				LoadConfig:    config.Load,
 				AppPath:       func(*config.Config) string { return w.app },
-				TokenItem:     func() (token.StoreInfo, error) { return w.item, nil },
+				TokenItem:     func(string) (token.StoreInfo, error) { return w.item, nil },
 				DaemonAnswers: func(context.Context, string) bool { return false },
 				UID:           os.Getuid(),
 			}

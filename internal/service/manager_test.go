@@ -52,17 +52,19 @@ func newWorld(t *testing.T) *world {
 	w.self = writeExe(t, filepath.Join(bundle, "a38"))
 	w.app = writeExe(t, filepath.Join(bundle, "Passierschein"))
 	w.cfgPath = filepath.Join(root, "config.yaml")
-	cfg, err := config.Parse([]byte("version: 1\npaths:\n  socket_dir: " + short + "/run\n  audit_file: " + short + "/audit.db\n"))
+	cfg, err := config.Parse([]byte("version: 1\npaths:\n  socket_dir: " + short + "/run\n  audit_file: " + short + "/audit.db\n" +
+		"vaults:\n  - {name: beispiel.app.k8s-dev, environment: dev, account: privat}\n" +
+		"backend:\n  onepassword:\n    accounts:\n      - name: privat\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	w.cfg = cfg
-	w.item = token.StoreInfo{Name: "a38.onepassword/service-account", Exists: true, ReadableWithoutDialog: true}
+	w.item = token.StoreInfo{Name: "a38.onepassword/privat", Exists: true, ReadableWithoutDialog: true}
 	w.m = service.Manager{Layout: service.Layout{Home: w.home, UID: 501}, Launchctl: w.lc, Self: w.self}
 	w.probe = service.Probe{
 		LoadConfig: func(string) (*config.Config, error) { return w.cfg, nil },
 		AppPath:    func(*config.Config) string { return w.app },
-		TokenItem:  func() (token.StoreInfo, error) { return w.item, w.itemErr },
+		TokenItem:  func(string) (token.StoreInfo, error) { return w.item, w.itemErr },
 		DaemonAnswers: func(context.Context, string) bool {
 			return w.answers
 		},

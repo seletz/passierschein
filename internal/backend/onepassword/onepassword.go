@@ -80,6 +80,9 @@ const (
 
 // Options configures a [Backend].
 type Options struct {
+	// Account is the name of the 1Password account (D71). Each log line of
+	// the backend names it; empty for a backend without a name.
+	Account string
 	// Vaults lists the vault names of the configuration (D12). The
 	// backend asks for no other vault.
 	Vaults []string
@@ -163,6 +166,9 @@ func newBackend(opts Options, connect connectFunc) (*Backend, error) {
 	}
 	if b.log == nil {
 		b.log = slog.New(slog.DiscardHandler)
+	}
+	if opts.Account != "" {
+		b.log = b.log.With("account", opts.Account)
 	}
 	if b.timeout <= 0 {
 		b.timeout = DefaultCallTimeout

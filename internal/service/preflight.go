@@ -102,7 +102,7 @@ type Probe struct {
 	AppPath func(cfg *config.Config) string
 	// TokenItem returns the metadata of the keychain item of the token,
 	// never the token. nil means: the platform has no keychain.
-	TokenItem func() (token.StoreInfo, error)
+	TokenItem func(account string) (token.StoreInfo, error)
 	// DaemonAnswers reports whether a daemon answers on the admin socket.
 	DaemonAnswers func(ctx context.Context, socket string) bool
 	// UID is the user id.
@@ -176,34 +176,66 @@ func (p Probe) Run(ctx context.Context, o Options, ownJobRuns bool) Preflight {
 	return r
 }
 
-// tokenSource checks the source of the 1Password token without reading
-// the token (D51).
+// tokenSource checks the token source of each account that a vault names,
+// without reading a token (D72, D73). The daemon starts if at least one
+// account has its token; it locks the vaults of an account without token.
+// So the preflight refuses only if no account is ready. For each other
+// account that is not ready it gives a warning.
 func (p Probe) tokenSource(cfg *config.Config, r *Preflight) {
-	op := cfg.Backend.OnePassword
-	if op.TokenSource == config.TokenSourceFile {
-		if err := tokenfile.Check(op.TokenFile); err != nil {
-			r.Findings = append(r.Findings, Finding{
-				fmt.Sprintf("the token file %s is not ready: %v (token_source: file)", op.TokenFile, err),
-				"write the token of the service account to the file with the mode 0600, or use the keychain: a38 config onepassword-token set"})
+	var used []config.Account
+	for _, a := range cfg.Backend.OnePassword.Accounts {
+		if len(cfg.VaultsOf(a.Name)) > 0 {
+			used = append(used, a)
 		}
+	}
+	if len(used) == 0 {
+		r.Findings = append(r.Findings, Finding{
+			"the configuration names no vault with a 1Password account, so the 1Password backend has nothing to read",
+			"add an account and a vault: a38 config account add NAME, then a38 config vault add VAULT --environment dev --account NAME"})
 		return
+	}
+	var bad []Finding
+	for _, a := range used {
+		if f, ready := p.accountToken(a, r); !ready {
+			bad = append(bad, f)
+		}
+	}
+	if len(bad) == len(used) {
+		r.Findings = append(r.Findings, bad...)
+		return
+	}
+	for _, f := range bad {
+		r.Warnings = append(r.Warnings, f.What+"; the daemon starts and locks the vaults of this account. Next step: "+f.Next)
+	}
+}
+
+// accountToken checks the token source of one account. ready is false
+// with a finding if the daemon cannot read the token at its start.
+func (p Probe) accountToken(a config.Account, r *Preflight) (f Finding, ready bool) {
+	if a.TokenSource == config.TokenSourceFile {
+		if err := tokenfile.Check(a.TokenFile); err != nil {
+			return Finding{
+				fmt.Sprintf("account %q: the token file %s is not ready: %v (token_source: file)", a.Name, a.TokenFile, err),
+				"write the token of the service account to the file with the mode 0600, or use the keychain: a38 config onepassword-token set --account " + a.Name}, false
+		}
+		return Finding{}, true
 	}
 	if p.TokenItem == nil {
-		r.Findings = append(r.Findings, Finding{"this build of a38 has no keychain", "use the macOS build of a38"})
-		return
+		return Finding{"this build of a38 has no keychain", "use the macOS build of a38"}, false
 	}
-	info, err := p.TokenItem()
+	info, err := p.TokenItem(a.Name)
 	switch {
 	case err != nil:
-		r.Findings = append(r.Findings, Finding{
-			fmt.Sprintf("the keychain item of the token cannot be read: %v", err),
-			"run a38 config onepassword-token status; if the login keychain is locked, unlock it"})
+		return Finding{
+			fmt.Sprintf("account %q: the keychain item of the token cannot be read: %v", a.Name, err),
+			"run a38 config onepassword-token status --account " + a.Name + "; if the login keychain is locked, unlock it"}, false
 	case !info.Exists:
-		r.Findings = append(r.Findings, Finding{
-			"the keychain has no token of the 1Password service account (token_source: keychain)",
-			"run a38 config onepassword-token set in this terminal, then run a38 service install again"})
+		return Finding{
+			fmt.Sprintf("account %q: the keychain has no token of the 1Password service account (token_source: keychain)", a.Name),
+			"run a38 config onepassword-token set --account " + a.Name + " in this terminal, then run a38 service install again"}, false
 	case info.AccessListError == "" && !info.ReadableWithoutDialog:
-		r.Warnings = append(r.Warnings,
-			"the keychain item may not trust this a38; the daemon may show a macOS dialog after the login and waits for it for 2 minutes. Store the token again with a38 config onepassword-token set --replace instead of confirming a dialog")
+		r.Warnings = append(r.Warnings, fmt.Sprintf(
+			"account %q: the keychain item may not trust this a38; the daemon may show a macOS dialog after the login and waits for it for 2 minutes. Store the token again with a38 config onepassword-token set --account %s --replace instead of confirming a dialog", a.Name, a.Name))
 	}
+	return Finding{}, true
 }

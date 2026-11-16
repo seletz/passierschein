@@ -147,10 +147,11 @@ write_config() {
 version: 1
 
 # The vaults that a38 can see. A vault that is not in this list does not
-# exist for a38. Only a vault of the environment dev delivers values today.
+# exist for a38. Each vault names its 1Password account (backend below).
 vaults:
   - name: passierschein.dev
     environment: dev
+    account: demo
 
 # The projects. A session belongs to a project through the working
 # directory of the agent. A project can use only the vaults it names.
@@ -176,14 +177,17 @@ bundle:
 paths:
   ui_app: $(tilde "$APP_EXE")
 
-# The 1Password backend reads the token of the service account from this
-# file (mode 0600). Only "a38 serve --backend 1password" reads it. The
-# demo uses the token file; without token_source the daemon would read the
-# macOS keychain (a38 config onepassword-token set).
+# The 1Password account of the demo. The daemon reads the token of its
+# service account from this file (mode 0600). Only "a38 serve --backend
+# 1password" reads it. The demo uses the token file; without token_source
+# the daemon would read the macOS keychain
+# (a38 config onepassword-token set --account demo).
 backend:
   onepassword:
-    token_source: file
-    token_file: $(tilde "$TOKEN_FILE")
+    accounts:
+      - name: demo
+        token_source: file
+        token_file: $(tilde "$TOKEN_FILE")
 EOF
   else
     cat >"$out" <<EOF
@@ -192,6 +196,7 @@ version: 1
 vaults:
   - name: passierschein.dev
     environment: dev
+    account: demo
 projects:
   - name: demo-projekt
     paths:
@@ -202,6 +207,10 @@ paths:
   socket_dir: $SOCKET_DIR
   audit_file: $AUDIT_DIR/audit.db
   ui_app: $APP_EXE
+backend:
+  onepassword:
+    accounts:
+      - name: demo
 EOF
   fi
 }

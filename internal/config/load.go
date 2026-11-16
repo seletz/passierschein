@@ -46,16 +46,23 @@ type rawFile struct {
 		UIApp     yaml.Node `yaml:"ui_app"`
 	} `yaml:"paths"`
 	Backend struct {
-		OnePassword struct {
-			TokenSource yaml.Node `yaml:"token_source"`
-			TokenFile   yaml.Node `yaml:"token_file"`
-		} `yaml:"onepassword"`
+		OnePassword rawOnePassword `yaml:"onepassword"`
 	} `yaml:"backend"`
+}
+
+// rawOnePassword is backend.onepassword. TokenSource and TokenFile are the
+// keys of the format with one token (D51); they only give an error with
+// the next step (D75).
+type rawOnePassword struct {
+	Accounts    []rawAccount `yaml:"accounts"`
+	TokenSource yaml.Node    `yaml:"token_source"`
+	TokenFile   yaml.Node    `yaml:"token_file"`
 }
 
 type rawVault struct {
 	Name        string `yaml:"name"`
 	Environment string `yaml:"environment"`
+	Account     string `yaml:"account"`
 }
 
 type rawProject struct {
@@ -104,6 +111,9 @@ func Parse(data []byte) (*Config, error) {
 
 	cfg := &Config{}
 	cfg.Vaults = parseVaults(raw.Vaults, fail)
+	cfg.Backend.OnePassword.Accounts = parseAccounts(raw.Backend.OnePassword, fail)
+	op := raw.Backend.OnePassword
+	checkVaultAccounts(cfg, op.TokenSource.Kind != 0 || op.TokenFile.Kind != 0, fail)
 	cfg.Projects = parseProjects(raw.Projects, cfg, fail)
 
 	var err error
@@ -132,12 +142,6 @@ func Parse(data []byte) (*Config, error) {
 	cfg.Paths.AuditFile = pathValue(raw.Paths.AuditFile, DefaultAuditFile, "paths.audit_file", fail)
 	// An empty UIApp means: search next to the a38 binary.
 	cfg.Paths.UIApp = pathValue(raw.Paths.UIApp, func() (string, error) { return "", nil }, "paths.ui_app", fail)
-	if src, err := stringValue(raw.Backend.OnePassword.TokenSource, string(DefaultTokenSource)); err != nil {
-		fail("backend.onepassword.token_source: %v", err)
-	} else if cfg.Backend.OnePassword.TokenSource = TokenSource(src); !cfg.Backend.OnePassword.TokenSource.Valid() {
-		fail("backend.onepassword.token_source: the value must be %q or %q", TokenSourceKeychain, TokenSourceFile)
-	}
-	cfg.Backend.OnePassword.TokenFile = pathValue(raw.Backend.OnePassword.TokenFile, DefaultTokenFile, "backend.onepassword.token_file", fail)
 	if cfg.Paths.SocketDir != "" && len(cfg.AgentSocket()) > maxSocketPath {
 		fail("paths.socket_dir: the path of a socket is longer than %d bytes", maxSocketPath)
 	}
@@ -168,7 +172,7 @@ func parseVaults(raw []rawVault, fail func(string, ...any)) []Vault {
 			fail("vault %q: the vault is in the list more than once", rv.Name)
 		}
 		seen[rv.Name] = true
-		vaults = append(vaults, Vault{Name: rv.Name, Environment: env})
+		vaults = append(vaults, Vault{Name: rv.Name, Environment: env, Account: rv.Account})
 	}
 	return vaults
 }
@@ -412,9 +416,11 @@ func DefaultAuditFile() (string, error) {
 	return filepath.Join(dir, "audit.db"), nil
 }
 
-// DefaultTokenFile returns the default location of the token file of the
-// 1Password backend: $XDG_CONFIG_HOME/a38/onepassword-token, or
-// ~/.config/a38/onepassword-token. A38_CONFIG does not move it.
+// DefaultTokenFile returns the location of the token file of the
+// configuration with one token (D51): $XDG_CONFIG_HOME/a38/onepassword-token,
+// or ~/.config/a38/onepassword-token. The daemon does not read it any more
+// (D72); a38 doctor reports a file that is left. The token file of an
+// account is [DefaultAccountTokenFile].
 func DefaultTokenFile() (string, error) {
 	dir, err := xdgDir("XDG_CONFIG_HOME", ".config")
 	if err != nil {

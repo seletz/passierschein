@@ -6,9 +6,8 @@ import (
 )
 
 // Template returns the content of a new configuration file: each value
-// has its default, and short comments say what it does. The token source
-// is written out. The file loads without an error; it names no vault and
-// no project yet.
+// has its default, and short comments say what it does. The file loads
+// without an error; it names no account, no vault and no project yet.
 func Template() ([]byte, error) {
 	socketDir, err := DefaultSocketDir()
 	if err != nil {
@@ -18,7 +17,7 @@ func Template() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	tokenFile, err := DefaultTokenFile()
+	tokenFile, err := DefaultAccountTokenFile("firma")
 	if err != nil {
 		return nil, err
 	}
@@ -29,8 +28,9 @@ func Template() ([]byte, error) {
 version: %d
 
 # The vaults that a38 can see. A vault that is not in this list does not
-# exist for a38. Only a vault of the environment dev delivers values today.
-# Add one with: a38 config vault add NAME --environment dev
+# exist for a38. Each vault names its 1Password account (backend.onepassword.accounts
+# below); there is no default account.
+# Add one with: a38 config vault add NAME --environment dev --account ACCOUNT
 vaults: []
 
 # The projects. A session belongs to a project through the working
@@ -83,14 +83,22 @@ paths:
   # The approval app. Without it, "a38 serve" searches next to its own binary.
   # ui_app: /path/to/Passierschein.app/Contents/MacOS/Passierschein
 
-# The 1Password backend reads the token of the service account from the
-# macOS keychain (store it with: a38 config onepassword-token set). For
-# development and CI, set token_source to file: the daemon then reads
-# token_file (mode 0600).
+# The 1Password accounts. Each account has its own service account and
+# token. The daemon reads the token of an account from the macOS keychain
+# (store it with: a38 config onepassword-token set --account NAME). For
+# development and CI, an account can use token_source: file; the daemon
+# then reads token_file (mode 0600).
+# Add one with: a38 config account add NAME
+# Example:
+#   accounts:
+#     - name: privat
+#       token_source: %s
+#     - name: firma
+#       token_source: file
+#       token_file: %s
 backend:
   onepassword:
-    token_source: %s
-    # token_file: %s
+    accounts: []
 `, FileVersion, DefaultBundleMaxEntries, DefaultSessionNameMaxLength,
 		strconv.Quote(DefaultSessionNameCharacters), TildePath(socketDir), TildePath(auditFile),
 		DefaultTokenSource, TildePath(tokenFile))

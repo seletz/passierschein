@@ -30,18 +30,24 @@ a38 config init
 
 Der Befehl legt die Datei mit den Standardwerten und kurzen Kommentaren an.
 Das Verzeichnis hat den Modus 0700, die Datei den Modus 0600.
-Die Datei nennt die Quelle des Tokens ausdrücklich: `token_source: keychain`.
+Die Datei enthält eine leere Liste der 1Password-Konten (`backend.onepassword.accounts: []`).
 Der Befehl überschreibt nie eine Datei.
 Existiert sie, endet er mit 1 und nennt den Pfad.
 `a38 config init --force` verschiebt die alte Datei nach `config.yaml.bak-<Zeitstempel>` und schreibt eine neue.
 
-## Schritt 3: Vaults eintragen
+## Schritt 3: Konto und Vaults eintragen
+
+Jeder Vault nennt sein 1Password-Konto ({{ ref("D70") }}).
+Trage deshalb zuerst das Konto ein:
 
 ```sh
-a38 config vault add datenbank-dev --environment dev
+a38 config account add privat
+a38 config vault add datenbank-dev --environment dev --account privat
 a38 config vault list
 ```
 
+Der Name des Kontos ist frei gewählt: Kleinbuchstaben, Ziffern und Bindestrich.
+Mehrere Konten beschreibt [Mehrere 1Password-Konten einrichten](31-mehrere-1password-konten.md).
 Die Umgebung ist `dev`, `test` oder `prod`.
 Der Name muss genau der Name des Vaults im Backend sein ({{ ref("D12") }}).
 
@@ -111,7 +117,7 @@ Beide Schlüssel zusammen sind ein Fehler.
 ## Schritt 5: Token ablegen
 
 ```sh
-a38 config onepassword-token set
+a38 config onepassword-token set --account privat
 ```
 
 Siehe [1Password-Backend einrichten](30-1password-backend-einrichten.md).

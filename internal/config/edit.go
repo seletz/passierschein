@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"go.yaml.in/yaml/v3"
@@ -23,9 +24,10 @@ type Edit struct {
 // AddVault adds a vault at the end of the vault list of the file content
 // data. It checks the change with the rules of [Parse] before it returns
 // it, and it keeps all other bytes of the file (comments, order, blank
-// lines). The name must not be in the list, and the environment must be
-// dev, test or prod.
-func AddVault(data []byte, name string, env Environment) (Edit, error) {
+// lines). The name must not be in the list, the environment must be dev,
+// test or prod, and the account must be in backend.onepassword.accounts
+// (D70).
+func AddVault(data []byte, name string, env Environment, account string) (Edit, error) {
 	cfg, err := loadForEdit(data)
 	if err != nil {
 		return Edit{}, err
@@ -39,8 +41,75 @@ func AddVault(data []byte, name string, env Environment) (Edit, error) {
 	if _, ok := cfg.Vault(name); ok {
 		return Edit{}, fmt.Errorf("the vault %q is in the list already", name)
 	}
-	item := []string{"- name: " + quote(name), "  environment: " + string(env)}
-	return splice(data, func(e *splicer) error { return e.appendItem("vaults", item) })
+	if account == "" {
+		return Edit{}, errors.New("each vault names its 1Password account (--account NAME); there is no default account")
+	}
+	if _, ok := cfg.Account(account); !ok {
+		return Edit{}, fmt.Errorf("the account %q is not in backend.onepassword.accounts; add it first (a38 config account add)", account)
+	}
+	item := []string{"- name: " + quote(name), "  environment: " + string(env), "  account: " + quote(account)}
+	return splice(data, func(e *splicer) error { return e.appendItem([]string{"vaults"}, item) })
+}
+
+// accountsPath is the path of the account list in the file.
+var accountsPath = []string{"backend", "onepassword", "accounts"}
+
+// AddAccount adds an account at the end of backend.onepassword.accounts
+// (D71). The name must follow [ValidAccountName] and must not be in the
+// list. tokenFile is allowed only with the source file; empty means the
+// default file of the account. If the file has no section backend, the
+// change adds it at the end of the file.
+func AddAccount(data []byte, name string, source TokenSource, tokenFile string) (Edit, error) {
+	cfg, err := loadForEdit(data)
+	if err != nil {
+		return Edit{}, err
+	}
+	if err := ValidAccountName(name); err != nil {
+		return Edit{}, fmt.Errorf("the account name %v", err)
+	}
+	if _, ok := cfg.Account(name); ok {
+		return Edit{}, fmt.Errorf("the account %q is in the list already", name)
+	}
+	if !source.Valid() {
+		return Edit{}, fmt.Errorf("the token source %q is not %q or %q", string(source), TokenSourceKeychain, TokenSourceFile)
+	}
+	if tokenFile != "" && source != TokenSourceFile {
+		return Edit{}, errors.New("a token file is allowed only with the token source file (--token-source file)")
+	}
+	if tokenFile != "" {
+		if _, err := absPath(tokenFile); err != nil {
+			return Edit{}, fmt.Errorf("the token file %q %v", tokenFile, err)
+		}
+	}
+	item := []string{"- name: " + quote(name), "  token_source: " + string(source)}
+	if tokenFile != "" {
+		item = append(item, "  token_file: "+quote(tokenFile))
+	}
+	return splice(data, func(e *splicer) error { return e.appendItem(accountsPath, item) })
+}
+
+// RemoveAccount removes an account from backend.onepassword.accounts. It
+// refuses if a vault still names the account; the error names the vaults.
+// The keychain item of the account stays; "a38 config onepassword-token
+// delete --account NAME" removes it.
+func RemoveAccount(data []byte, name string) (Edit, error) {
+	cfg, err := loadForEdit(data)
+	if err != nil {
+		return Edit{}, err
+	}
+	idx := slices.IndexFunc(cfg.Backend.OnePassword.Accounts, func(a Account) bool { return a.Name == name })
+	if idx < 0 {
+		return Edit{}, fmt.Errorf("the account %q is not in the list", name)
+	}
+	if vaults := cfg.VaultsOf(name); len(vaults) > 0 {
+		quoted := make([]string, len(vaults))
+		for i, v := range vaults {
+			quoted[i] = strconv.Quote(v)
+		}
+		return Edit{}, fmt.Errorf("the account %q is still named by the vaults %s; remove these vaults first (a38 config vault remove)",
+			name, strings.Join(quoted, ", "))
+	}
+	return splice(data, func(e *splicer) error { return e.removeItem(accountsPath, idx) })
 }
 
 // RemoveVault removes a vault from the vault list. It refuses if a project
@@ -64,7 +133,7 @@ func RemoveVault(data []byte, name string) (Edit, error) {
 		return Edit{}, fmt.Errorf("the vault %q is still used by the projects %s; remove the vault from these projects first (a38 config project remove)",
 			name, strings.Join(users, ", "))
 	}
-	return splice(data, func(e *splicer) error { return e.removeItem("vaults", idx) })
+	return splice(data, func(e *splicer) error { return e.removeItem([]string{"vaults"}, idx) })
 }
 
 // AddProject adds a project at the end of the project list. Each path
@@ -106,7 +175,7 @@ func AddProject(data []byte, name string, paths, vaults []string) (Edit, error) 
 	for _, v := range vaults {
 		item = append(item, "    - "+quote(v))
 	}
-	out, err := splice(data, func(e *splicer) error { return e.appendItem("projects", item) })
+	out, err := splice(data, func(e *splicer) error { return e.appendItem([]string{"projects"}, item) })
 	if err != nil {
 		return Edit{}, err
 	}
@@ -182,7 +251,7 @@ func RemoveProject(data []byte, name string) (Edit, error) {
 	if idx < 0 {
 		return Edit{}, fmt.Errorf("the project %q is not in the list", name)
 	}
-	return splice(data, func(e *splicer) error { return e.removeItem("projects", idx) })
+	return splice(data, func(e *splicer) error { return e.removeItem([]string{"projects"}, idx) })
 }
 
 // loadForEdit parses the file before a change. A file that does not load
@@ -237,12 +306,35 @@ func splice(data []byte, change func(*splicer) error) (Edit, error) {
 
 // entry returns the key and the value node of a top-level key.
 func (s *splicer) entry(key string) (k, v *yaml.Node) {
-	for i := 0; i+1 < len(s.root.Content); i += 2 {
-		if s.root.Content[i].Value == key {
-			return s.root.Content[i], s.root.Content[i+1]
+	return mapEntry(s.root, key)
+}
+
+// mapEntry returns the key and the value node of a key of a mapping.
+func mapEntry(m *yaml.Node, key string) (k, v *yaml.Node) {
+	if m == nil || m.Kind != yaml.MappingNode {
+		return nil, nil
+	}
+	for i := 0; i+1 < len(m.Content); i += 2 {
+		if m.Content[i].Value == key {
+			return m.Content[i], m.Content[i+1]
 		}
 	}
 	return nil, nil
+}
+
+// entryPath returns the key and the value node of a nested key, for
+// example backend.onepassword.accounts. present is the number of keys of
+// the path that the file has, from the start.
+func (s *splicer) entryPath(path []string) (k, v *yaml.Node, present int) {
+	m := s.root
+	for i, key := range path {
+		k, v = mapEntry(m, key)
+		if k == nil {
+			return nil, nil, i
+		}
+		m = v
+	}
+	return k, v, len(path)
 }
 
 var errStyle = "the key %q is written in a style that a38 does not edit (for example a list in flow style [..] over many lines); edit the file by hand"
@@ -299,18 +391,27 @@ func (s *splicer) insertAfter(n int, lines []string) {
 	s.lines = slices.Insert(s.lines, n, lines...)
 }
 
-// appendItem adds a list item at the end of the list under the key.
-func (s *splicer) appendItem(key string, item []string) error {
-	k, v := s.entry(key)
+// appendItem adds a list item at the end of the list under the key path.
+// If the file has no key of the path, it adds the path at the end of the
+// file. If it has only a part of the path, it refuses: the human adds the
+// rest by hand.
+func (s *splicer) appendItem(path []string, item []string) error {
+	k, v, present := s.entryPath(path)
+	key := path[len(path)-1]
 	switch {
-	case k == nil:
+	case k == nil && present == 0:
 		// The key is absent: add it at the end of the file.
 		for len(s.lines) > 0 && s.lines[len(s.lines)-1] == "" {
 			s.lines = s.lines[:len(s.lines)-1]
 		}
-		s.lines = append(s.lines, "", key+":")
-		s.lines = append(s.lines, indentLines(item, "  ")...)
 		s.lines = append(s.lines, "")
+		for i, p := range path {
+			s.lines = append(s.lines, strings.Repeat("  ", i)+p+":")
+		}
+		s.lines = append(s.lines, indentLines(item, strings.Repeat("  ", len(path)))...)
+		s.lines = append(s.lines, "")
+	case k == nil:
+		return fmt.Errorf("the file has %q but not %q; add the key by hand", strings.Join(path[:present], "."), strings.Join(path, "."))
 	case isEmptyValue(v):
 		if err := s.setKeyLine(k, key, false); err != nil {
 			return err
@@ -359,10 +460,11 @@ func (s *splicer) appendPaths(idx int, paths []string) error {
 	return nil
 }
 
-// removeItem removes the list item with the index. A comment line above
-// the item stays.
-func (s *splicer) removeItem(key string, idx int) error {
-	k, v := s.entry(key)
+// removeItem removes the list item with the index from the list under the
+// key path. A comment line above the item stays.
+func (s *splicer) removeItem(path []string, idx int) error {
+	k, v, _ := s.entryPath(path)
+	key := path[len(path)-1]
 	if k == nil || v.Kind != yaml.SequenceNode || v.Style&yaml.FlowStyle != 0 || idx >= len(v.Content) {
 		return fmt.Errorf(errStyle, key)
 	}

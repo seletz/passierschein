@@ -1,5 +1,7 @@
-// Package keychain keeps the token of the 1Password service account in one
-// generic password item of the macOS keychain (D51, issue 59).
+// Package keychain keeps the token of the 1Password service account of each
+// account in one generic password item of the macOS keychain (D72, issue
+// 88). The items share the service name; the account of an item is the
+// name of the account in the configuration.
 //
 // The package calls Security.framework through purego, without CGO. It
 // creates the item itself, never through /usr/bin/security: the keychain
@@ -24,13 +26,15 @@ import (
 	"github.com/seletz/passierschein/internal/token"
 )
 
-// The item of the product. Tests never use it: [Store] refuses it in a
-// test binary.
+// The items of the product. Tests never use them: [Store] refuses the
+// service in a test binary.
 const (
-	// ProductService is the service name of the item.
+	// ProductService is the service name of each item of the product.
 	ProductService = "a38.onepassword"
-	// ProductAccount is the account name of the item.
-	ProductAccount = "service-account"
+	// LegacyAccount is the account name of the item of the configuration
+	// with one token (D51). The daemon does not read it any more (D72);
+	// no account of the configuration can have this name.
+	LegacyAccount = "service-account"
 	// ProductLabel is the label that Keychain Access shows.
 	ProductLabel = "a38: 1Password Service Account"
 )
@@ -49,9 +53,17 @@ type Store struct {
 	Label string
 }
 
-// Product returns the store of the product item.
-func Product() Store {
-	return Store{Service: ProductService, Account: ProductAccount, Label: ProductLabel}
+// ForAccount returns the store of the item of an account (D72). The
+// caller checks the name with config.ValidAccountName.
+func ForAccount(account string) Store {
+	return Store{Service: ProductService, Account: account, Label: ProductLabel + " (" + account + ")"}
+}
+
+// Legacy returns the store of the item of the configuration with one token
+// (D51). Only "a38 config onepassword-token status" and "delete --legacy"
+// and a38 doctor use it; they never read its value.
+func Legacy() Store {
+	return Store{Service: ProductService, Account: LegacyAccount, Label: ProductLabel}
 }
 
 // Name returns "service/account" for an output line.

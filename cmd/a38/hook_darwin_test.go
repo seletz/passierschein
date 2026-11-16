@@ -16,6 +16,8 @@ func TestHookKeychainNames(t *testing.T) {
 	for _, cmd := range []string{
 		"security find-generic-password -w -s " + keychain.ProductService,
 		"security find-generic-password -w -l '" + keychain.ProductLabel + "'",
+		// T44 (part): the item of an account (D72).
+		"security find-generic-password -w -l '" + keychain.ForAccount("firma").Label + "'",
 	} {
 		if rule, _ := opguard.Check(cmd); rule != opguard.RuleKeychainToken {
 			t.Errorf("Check(%q) = %q, want %q", cmd, rule, opguard.RuleKeychainToken)

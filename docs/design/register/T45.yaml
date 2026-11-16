@@ -1,0 +1,9 @@
+id: T45
+zustand: eingeloest
+titel: Das Backend leitet jede Referenz über den Vault an den Client seines Kontos
+bezug: '#88'
+schluessel: '#88/t-backend'
+lauf: '2.0'
+branch: feat/88-mehrere-konten
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

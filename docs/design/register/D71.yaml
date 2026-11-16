@@ -1,0 +1,9 @@
+id: D71
+zustand: eingeloest
+titel: Die Konfiguration nennt die 1Password-Konten mit Name und Token-Quelle
+bezug: '#88'
+schluessel: '#88/konten-konfiguration'
+lauf: '2.0'
+branch: feat/88-mehrere-konten
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/seletz/passierschein/internal/config"
 	"github.com/seletz/passierschein/internal/doctor"
 )
 
@@ -21,10 +22,16 @@ prints no secret value.
 func runDoctor(args []string, stdout, stderr io.Writer) int {
 	return runDoctorWith(args, stdout, stderr, func(configPath string) doctor.Env {
 		env := doctor.SystemEnv{ConfigPath: configPath, ServiceState: newServiceState}
-		// The doctor reads only the metadata of the keychain item, never
-		// its value (D51, issue 59). Without a keychain the field stays nil.
-		if store, err := newTokenStore(); err == nil {
-			env.Store = store
+		// The doctor reads only the metadata of the keychain items, never
+		// a value (D72, issue 88). Without a keychain the field stays nil.
+		if _, err := newTokenStore(config.LegacyAccount); err == nil {
+			env.Stores = func(account string) doctor.TokenStore {
+				store, err := newTokenStore(account)
+				if err != nil {
+					return nil
+				}
+				return store
+			}
 		}
 		return env
 	})

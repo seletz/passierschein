@@ -1,0 +1,9 @@
+id: D70
+zustand: eingeloest
+titel: Jeder Vault nennt sein 1Password-Konto, es gibt kein Standardkonto
+bezug: '#88'
+schluessel: '#88/konto-pflicht'
+lauf: '2.0'
+branch: feat/88-mehrere-konten
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

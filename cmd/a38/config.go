@@ -12,9 +12,10 @@ var configCommands = []command{
 	{"show", "Show the effective configuration with the origin of each value", runConfigShow},
 	{"init", "Write a new configuration file with the default values", runConfigInit},
 	{"validate", "Check the configuration file with the rules of the daemon", runConfigValidate},
+	{"account", "Add, remove and list 1Password accounts in the configuration file", runAccount},
 	{"vault", "Add, remove and list vaults in the configuration file", runVault},
 	{"project", "Add, remove and list projects in the configuration file", runProject},
-	{"onepassword-token", "Store, show and delete the token of the 1Password service account (macOS keychain)", runOnePasswordToken},
+	{"onepassword-token", "Store, show and delete the token of a 1Password account (macOS keychain)", runOnePasswordToken},
 }
 
 // runConfig dispatches "a38 config <subcommand>".
