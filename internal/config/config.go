@@ -18,8 +18,23 @@
 //	      - ~/develop/beispielprojekt__worktrees
 //	    vaults:
 //	      - beispiel.app.k8s-dev
-//	grant:
-//	  lifetime: 4h
+//	environments:
+//	  dev:
+//	    delivery: [mcp, exec]
+//	    grant_lifetime: 4h
+//	    binding: none
+//	  test:
+//	    delivery: [exec]
+//	    grant_lifetime: 30m
+//	    binding: program
+//	  prod:
+//	    delivery: []
+//	    grant_lifetime: 0s
+//	    binding: command
+//	exec:
+//	  default_timeout: 2m
+//	  max_timeout: 10m
+//	  output_limit: 64KiB
 //	bundle:
 //	  window: 3s
 //	  max_entries: 10
@@ -33,6 +48,9 @@
 //	  onepassword:
 //	    token_source: keychain
 //	    token_file: ~/.config/a38/onepassword-token
+//
+// The key grant.lifetime is deprecated: it still sets the grant lifetime
+// of dev, but it cannot stand together with environments.dev.grant_lifetime.
 //
 // Only "version" is necessary. Each other value has a default.
 //
@@ -119,8 +137,18 @@ type Config struct {
 	Vaults []Vault
 	// Projects lists the projects and the vaults that each project can use.
 	Projects []Project
-	// Grant holds the settings for grants.
+	// Grant holds the settings for grants. Grant.Lifetime is the grant
+	// lifetime of dev: the deprecated key grant.lifetime or
+	// environments.dev.grant_lifetime sets it.
 	Grant Grant
+	// Environments holds the settings of dev, test and prod (D66). Use
+	// [Config.Policy] and the other accessors.
+	Environments map[Environment]EnvironmentPolicy
+	// Exec holds the limits of the exec way (D64, D66).
+	Exec Exec
+	// Deprecations lists each deprecated key that the file uses. The file
+	// still loads.
+	Deprecations []Deprecation
 	// Bundle holds the settings for the bundling of requests.
 	Bundle Bundle
 	// SessionName holds the rules for the session name.

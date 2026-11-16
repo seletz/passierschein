@@ -435,3 +435,34 @@ type fakeConfigEnv struct {
 
 func (e fakeConfigEnv) LoadConfig() (*config.Config, error)  { return e.cfg, nil }
 func (fakeConfigEnv) Lstat(path string) (fs.FileInfo, error) { return os.Lstat(path) }
+
+func TestConfigCheckDeprecation(t *testing.T) {
+	// T37: row 7. The configuration check names a deprecated key and the
+	// new key. A note is no finding.
+	cfg, err := config.Parse([]byte("version: 1\ngrant:\n  lifetime: 2h\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	results := ConfigResults(context.Background(), fakeConfigEnv{cfg: cfg})
+	var found bool
+	for _, r := range results {
+		if !r.OK {
+			t.Errorf("unexpected finding: %+v", r)
+		}
+		if r.Note && strings.Contains(r.Detail, "grant.lifetime") && strings.Contains(r.Detail, "environments.dev.grant_lifetime") && strings.Contains(r.Detail, "deprecated") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("no note about grant.lifetime: %+v", results)
+	}
+	cfg, err = config.Parse([]byte("version: 1\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range ConfigResults(context.Background(), fakeConfigEnv{cfg: cfg}) {
+		if r.Note {
+			t.Errorf("note without a deprecated key: %+v", r)
+		}
+	}
+}

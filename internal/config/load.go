@@ -30,7 +30,9 @@ type rawFile struct {
 	Grant    struct {
 		Lifetime yaml.Node `yaml:"lifetime"`
 	} `yaml:"grant"`
-	Bundle struct {
+	Environments rawEnvironments `yaml:"environments"`
+	Exec         rawExec         `yaml:"exec"`
+	Bundle       struct {
 		Window     yaml.Node `yaml:"window"`
 		MaxEntries yaml.Node `yaml:"max_entries"`
 	} `yaml:"bundle"`
@@ -105,9 +107,8 @@ func Parse(data []byte) (*Config, error) {
 	cfg.Projects = parseProjects(raw.Projects, cfg, fail)
 
 	var err error
-	if cfg.Grant.Lifetime, err = durationValue(raw.Grant.Lifetime, DefaultGrantLifetime); err != nil {
-		fail("grant.lifetime: %v", err)
-	}
+	parseEnvironments(raw.Environments, raw.Grant.Lifetime, cfg, fail)
+	parseExec(raw.Exec, cfg, fail)
 	if cfg.Bundle.Window, err = durationValue(raw.Bundle.Window, DefaultBundleWindow); err != nil {
 		fail("bundle.window: %v", err)
 	}

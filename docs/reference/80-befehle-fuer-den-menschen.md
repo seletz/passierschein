@@ -69,6 +69,54 @@ Eine Änderung des Tokens wirkt erst nach einem Neustart des Daemons.
 Ein ungültiges Token oder ein fehlendes Netz verhindern den Start nicht: Jede Anfrage endet dann mit `backend_locked` oder `backend_unavailable`.
 Die Einrichtung beschreibt [1Password-Backend einrichten](../how-to/30-1password-backend-einrichten.md).
 
+### Umgebungen und exec-Weg
+
+Die Abschnitte `environments` und `exec` setzen Weg, Laufzeit und Bindung je Umgebung und die Grenzen des exec-Wegs ({{ ref("D66") }}, {{ ref("F22") }}).
+Die Versionsnummer bleibt `1`. Jeder Schlüssel hat einen Standard.
+
+```yaml
+environments:
+  dev:
+    delivery: [mcp, exec]
+    grant_lifetime: 4h
+    binding: none
+  test:
+    delivery: [exec]
+    grant_lifetime: 30m
+    binding: program
+  prod:
+    delivery: []
+    grant_lifetime: 0s
+    binding: command
+exec:
+  default_timeout: 2m
+  max_timeout: 10m
+  output_limit: 64KiB
+```
+
+| Schlüssel | Standard | Erlaubte Werte |
+|---|---|---|
+| `environments.<env>.delivery` | dev `[mcp, exec]`, test `[exec]`, prod `[]` | Liste aus `mcp` und `exec`, ohne Wiederholung. `mcp` nur bei dev ({{ ref("D62") }}). Die leere Liste schaltet die Umgebung aus. |
+| `environments.<env>.grant_lifetime` | dev `4h`, test `30m`, prod `0s` | Dauer von `0s` bis `24h`. Bei prod nur `0s`. `0s` heißt: Ein Grant gilt für genau eine Auslieferung ({{ ref("D63") }}). |
+| `environments.<env>.binding` | dev `none`, test `program`, prod `command` | `none`, `program` oder `command`. Bei test nicht `none`. Bei prod nur `command`. |
+| `exec.default_timeout` | `2m` | Dauer größer als 0, höchstens `exec.max_timeout`. |
+| `exec.max_timeout` | `10m` | Dauer größer als 0, höchstens `1h`. |
+| `exec.output_limit` | `64KiB` | Größe von `1KiB` bis `1MiB` mit der Einheit `KiB` oder `MiB`; gilt je Strom ({{ ref("D64") }}). |
+
+`<env>` ist `dev`, `test` oder `prod`. Eine andere Umgebung unter `environments` ist ein unbekannter Schlüssel.
+Die festen Regeln stehen im Code. Die Konfiguration kann sie nicht lockern.
+Der Mensch kann prod einschalten (`delivery: [exec]`) und dev und test enger fassen.
+Ein Verstoß verhindert das Laden; die Meldung nennt den Schlüssel.
+
+`grant.lifetime` ist veraltet ({{ ref("D32") }}).
+Der Schlüssel setzt weiter die Laufzeit von dev.
+Zusammen mit `environments.dev.grant_lifetime` ist er ein Fehler.
+`a38 config validate` und `a38 doctor` nennen ihn als veraltet (Zeile `NOTE`, Exit-Code bleibt 0) und nennen den neuen Schlüssel.
+`a38 config show` führt `grant.lifetime` nur auf, wenn die Datei ihn setzt.
+
+Die Anzeige je Umgebung in `a38 doctor` und `a38 tui` folgt in einem eigenen Schritt ({{ ref("F22") }}).
+Der Broker wertet die Schlüssel mit den Methoden `Policy`, `DeliveryAllowed`, `GrantLifetime` und `Binding` der Konfiguration und mit dem Feld `Exec` aus.
+
 ### Obergrenze eines Bündels
 
 Der Schlüssel `bundle.max_entries` der Konfiguration legt fest, wie viele Einträge ein Bündel höchstens hat.
@@ -225,8 +273,8 @@ Die Entscheidung dazu ist {{ ref("D55") }}.
 | Unterbefehl | Wirkung |
 |---|---|
 | `path` | Zeigt die Datei, die gilt, den Grund (Schalter, `A38_CONFIG`, `XDG_CONFIG_HOME`, Standard) und ob sie existiert. Exit-Code 0. |
-| `show` | Zeigt jeden Wert mit der Herkunft (`file`, `default`), die aufgelösten Pfade (Sockets, Audit-Datei, Quelle des Tokens), die vorhandenen Vaults und die Projekte mit Pfaden (geschrieben, aufgelöst, fehlend) und die Prüfung. Eine Datei, die nicht lädt, gibt den Fehler mit Zeile und Exit-Code 1, nie eine Teilausgabe. Der Befehl liest das Token nie. |
-| `init [--force]` | Legt die Datei mit den Standardwerten und Kommentaren an (Verzeichnis 0700, Datei 0600). Eine vorhandene Datei bleibt; der Befehl endet mit 1. `--force` verschiebt sie nach `config.yaml.bak-<Zeitstempel>`. |
+| `show` | Zeigt jeden Wert mit der Herkunft (`file`, `default`), auch die Schlüssel von `environments` und `exec`, die aufgelösten Pfade (Sockets, Audit-Datei, Quelle des Tokens), die vorhandenen Vaults und die Projekte mit Pfaden (geschrieben, aufgelöst, fehlend) und die Prüfung. Eine Datei, die nicht lädt, gibt den Fehler mit Zeile und Exit-Code 1, nie eine Teilausgabe. Der Befehl liest das Token nie. |
+| `init [--force]` | Legt die Datei mit den Standardwerten (auch `environments` und `exec`) und Kommentaren an (Verzeichnis 0700, Datei 0600). Eine vorhandene Datei bleibt; der Befehl endet mit 1. `--force` verschiebt sie nach `config.yaml.bak-<Zeitstempel>`. |
 | `validate` | Lädt und prüft die Datei wie die Prüfung `configuration` von `a38 doctor`. Exit-Code 0 ohne Befund, sonst 1 mit dem nächsten Schritt. |
 | `vault add <name> --environment dev\|test\|prod` | Trägt einen Vault ein. Ein doppelter Name oder eine andere Umgebung ist ein Fehler. |
 | `vault remove <name>` | Entfernt einen Vault. Nutzt ihn ein Projekt, endet der Befehl mit 1 und nennt die Projekte. |
@@ -290,7 +338,7 @@ Der Exit-Code ist 0 ohne Befund.
 
 | Prüfung | Inhalt |
 |---|---|
-| `configuration` | Die Konfiguration lädt. Je ungültigem Projekt folgt ein Befund mit dem Namen des Projekts. |
+| `configuration` | Die Konfiguration lädt. Je ungültigem Projekt folgt ein Befund mit dem Namen des Projekts. Ein veralteter Schlüssel (`grant.lifetime`) steht als Zeile `NOTE` mit dem neuen Schlüssel. |
 | `socket modes` | Das Verzeichnis hat den Modus 0700, die Sockets 0600. |
 | `service` | Nur macOS. Der LaunchAgent: nicht eingerichtet (Zeile `OK`, kein Befund), eingerichtet und läuft, eingerichtet und läuft nicht (Befund mit letztem Exit-Code, Grund des Abbruchs und Log), von macOS wegen der Signatur beendet (`OS_REASON_CODESIGNING`, eigener Befund mit `a38 selftest sdk-core` als nächstem Schritt), plist nennt ein fehlendes oder ein anderes `a38` (Befund), plist nicht von `a38` (Befund), abgeschaltet (Befund). |
 | `daemon` | Der Daemon antwortet auf dem Admin-Socket. Die Zeile nennt Version, Sitzungen und Grants. |
@@ -361,7 +409,7 @@ Er ruft kein Netz: Der Kern lehnt das Token vorher ab.
 
 ## a38 hook
 
-`a38 hook op-guard` ist ein Hook für das Agent-Werkzeug ({{ ref("F16") }}, {{ ref("D58") }}).
+`a38 hook op-guard` ist ein Hook für das Agent-Werkzeug ({{ ref("F16") }}, {{ ref("F24") }}, {{ ref("D58") }}, {{ ref("D67") }}).
 Das Agent-Werkzeug startet ihn vor jedem Befehl des Werkzeugs `Bash`.
 Der Mensch richtet ihn ein ([Hook gegen den direkten Aufruf von op einrichten](../how-to/23-hook-gegen-op-einrichten.md)).
 
@@ -370,6 +418,8 @@ Der Mensch richtet ihn ein ([Hook gegen den direkten Aufruf von op einrichten](.
 | `a38 hook op-guard` | Liest die Eingabe des Hooks (JSON) von stdin und entscheidet. Führt den Befehl der Eingabe nie aus. |
 | `a38 hook op-guard --print-config` | Gibt den Block `hooks` für die `settings.json` von Claude Code aus, mit dem Namen `a38` (`--scope project`, Standard). |
 | `a38 hook op-guard --print-config --scope user` | Derselbe Block mit dem absoluten Pfad des laufenden `a38`. |
+| `a38 hook op-guard --strict` | Wie oben. Ein Befehl, den der Hook nicht prüfen kann, blockiert, wenn er `op` als eigenes Wort enthält ({{ ref("D67") }}). |
+| `a38 hook op-guard --print-config --strict` | Der Block mit dem Schalter `--strict` im Aufruf des Hooks. Kombinierbar mit `--scope user`. |
 
 Der Befehl liest weder die Konfigurationsdatei noch den Daemon.
 Er ändert keine Datei.
@@ -378,7 +428,7 @@ Die Exit-Codes folgen dem Vertrag des Agent-Werkzeugs, nicht der Tabelle oben:
 
 | Code | Bedeutung |
 |---|---|
-| 0 | Durchlassen. Keine Ausgabe. Auch bei einer Eingabe, die kein JSON ist, größer als 1 MiB ist oder deren Befehl kein Parser versteht; dann steht nur der Grund auf stderr, nie ein Teil der Eingabe. |
+| 0 | Durchlassen. Keine Ausgabe. Auch bei einer Eingabe, die kein JSON ist, größer als 1 MiB ist oder deren Befehl kein Parser versteht; dann steht nur der Grund auf stderr, nie ein Teil der Eingabe. Mit `--strict` blockiert ein Befehl, den der Hook nicht prüfen kann, wenn er `op` als eigenes Wort enthält. |
 | 2 | Blockieren. Die Meldung für den Agent steht auf stderr, stdout bleibt leer. |
 | 1 | Falscher Aufruf, zum Beispiel ein unbekannter Schalter. Das Agent-Werkzeug lässt den Befehl dann durch. |
 

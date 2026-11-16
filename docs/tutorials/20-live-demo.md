@@ -72,8 +72,9 @@ projects:
     vaults:
       - passierschein.dev
 
-grant:
-  lifetime: 4h
+environments:
+  dev:
+    grant_lifetime: 4h
 
 bundle:
   window: 3s

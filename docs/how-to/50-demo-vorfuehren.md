@@ -332,7 +332,7 @@ Geprüft am 2026-11-12 ohne 1Password und ohne Touch ID:
 
 - die Probe von Anfang bis Ende: Aufbau, Vorabprüfung, Start, die Akte 1 bis 7 ohne Agent (freigeben mit `auto-approve`, ablehnen mit `auto-deny`, `not_allowed`, Störung mit Reparatur und `fault clear`), `demo:status`, Abbau;
 - die echte Installation gegen ein temporäres Home-Verzeichnis: Aufbau, Abbruch bei fremdem `a38` und fremder Konfiguration, `DEMO_FORCE_CONFIG=1`, zweiter Aufbau ohne Änderung, Vorabprüfung, Abbau mit und ohne `DEMO_PURGE=1`; dazu ein Daemon mit dem Fake-Backend an den Standardorten, Anfragen, Störung und Reparatur am Verzeichnis `~/.local/state/a38`;
-- `.mcp.json` ist gültiges JSON; `a38 mcp`, gestartet wie in der Datei, antwortet auf `initialize` und nennt die zwei Werkzeuge.
+- `.mcp.json` ist gültiges JSON; `a38 mcp`, gestartet wie in der Datei, antwortet auf `initialize` und nennt die drei Werkzeuge.
 - `.claude/settings.json` der Probe (2026-11-12, temporäres Home-Verzeichnis): Der Aufbau trägt den Hook ein. Ein zweiter Aufbau behält eigene Einträge in der Datei und fügt nichts doppelt hinzu. Eine Datei, die kein JSON ist, bricht den Aufbau vor jeder Änderung ab.
 
 Nur du prüfst am Bildschirm:

@@ -154,7 +154,7 @@ Die Zahlen helfen, das Ausgangsproblem zu erkennen: Der Mensch bestätigt ohne z
 Ab welchem Wert eine Zahl ein Warnsignal ist, ist offen ({{ ref("G12") }}).
 Die folgenden Schritte sind Vorschläge.
 
-- **Viele Popups je Tag:** Prüfe in der Übersicht die aktivsten Sitzungen und Zugangsdaten. Ein Zugangsdatum, das jede Sitzung braucht, spricht für eine längere Laufzeit des Grants (`grant.lifetime`) oder ein größeres Bündelfenster (`bundle.window`).
+- **Viele Popups je Tag:** Prüfe in der Übersicht die aktivsten Sitzungen und Zugangsdaten. Ein Zugangsdatum, das jede Sitzung braucht, spricht für eine längere Laufzeit des Grants (`environments.dev.grant_lifetime`) oder ein größeres Bündelfenster (`bundle.window`).
 - **Anteil der Ablehnungen nahe null:** Das kann heißen, dass du ohne Lesen bestätigst. Öffne einige Popups der letzten Tage in der Ansicht „Ereignisse“ (Filter `type=decision`) und prüfe, ob du jede Freigabe wieder so geben würdest.
 - **Viele Ablehnungen:** Ein Agent fragt Zugangsdaten an, die er nicht braucht. Filtere nach der Sitzung, lies Aufgabe und Begründung im Detail und passe die Anleitung des Agents oder die Vaults des Projekts an.
 - **Viele Abweichungen:** Der erste Grant einer Sitzung ist zu klein. Der Agent fordert nach und nach weitere Einträge an. Prüfe, ob die Anleitung des Agents alle nötigen Zugangsdaten auf einmal anfordert.
