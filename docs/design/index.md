@@ -39,9 +39,9 @@ neue Entscheidung. Die alte Entscheidung erhält den Status „ersetzt“.
 | Familie | Bereich |
 |---|---|
 | UC | {{ ref("UC1") }}–{{ ref("UC16") }} |
-| D | {{ ref("D1") }}–{{ ref("D68") }} |
+| D | {{ ref("D1") }}–{{ ref("D69") }} |
 | F | {{ ref("F1") }}–{{ ref("F24") }} |
-| T | {{ ref("T1") }}–{{ ref("T41") }} |
+| T | {{ ref("T1") }}–{{ ref("T42") }} |
 | G | {{ ref("G1") }}–{{ ref("G44") }} |
 | RI | {{ ref("RI1") }}–{{ ref("RI14") }} |
 
@@ -68,6 +68,10 @@ Eine Entscheidung hat eine von zwei Herkünften:
   mit dem [Pull Request 94](https://github.com/seletz/passierschein/pull/94)
   bestätigt. Sie ersetzen {{ ref("D10") }}, {{ ref("D24") }}, {{ ref("D32") }}
   und {{ ref("D41") }}.
+- **In Lauf 2 bestätigt:** {{ ref("D69") }} (App-Icon: stilisierter
+  Reisepass). Stefan hat den Entwurf am 2026-11-15 im
+  [Pull Request 109](https://github.com/seletz/passierschein/pull/109)
+  gewählt.
 
 Drei Entscheidungen ruhen auf Spikes: {{ ref("D39") }} (1Password-SDK),
 {{ ref("D31") }} und {{ ref("D45") }} (Freigabe-UI), {{ ref("D46") }}

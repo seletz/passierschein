@@ -112,6 +112,12 @@ description = "macOS only: build the approval app (debug and release), assemble 
 tools = { "swift" = "6.4.2" }
 run = "bash scripts/app-build.sh"
 
+[tasks."app:icon"]
+description = "macOS only: draw the three icon drafts of app/Icon/render-icon.swift and build app/.build/icon/AppIcon.icns (draft of APP_ICON_DRAFT, default 2); fails if two runs differ (T42)"
+# renovate: datasource=github-releases depName=swiftlang/swift extractVersion=^swift-(?<version>.+)-RELEASE$
+tools = { "swift" = "6.4.2" }
+run = "bash scripts/app-icon.sh"
+
 [tasks."app:test"]
 description = "macOS only: run the tests of the approval app (swift test, headless, fake authenticator, no Touch ID)"
 # renovate: datasource=github-releases depName=swiftlang/swift extractVersion=^swift-(?<version>.+)-RELEASE$
