@@ -7,6 +7,7 @@ import (
 
 	"github.com/seletz/passierschein/internal/approval"
 	"github.com/seletz/passierschein/internal/approval/fakeui"
+	"github.com/seletz/passierschein/internal/config"
 )
 
 func TestAutoApprove(t *testing.T) {
@@ -59,5 +60,46 @@ func TestAutoDeny(t *testing.T) {
 	}
 	if err := (fakeui.AutoDeny{}).Notify(context.Background(), approval.Notice{}); err != nil {
 		t.Error(err)
+	}
+}
+
+// T38 (part, approval request): auto-approve gives a valid decision for a
+// command: a grant with the configured lifetime, or "only this command"
+// with lifetime 0 in prod.
+func TestAutoApproveExec(t *testing.T) {
+	for _, env := range []config.Environment{config.EnvDev, config.EnvTest, config.EnvProd} {
+		t.Run(string(env), func(t *testing.T) {
+			req := sampleRequest()
+			for i := range req.Credentials {
+				req.Credentials[i].Environment = env
+			}
+			req.Exec = &approval.ExecCommand{
+				Environment: env, Program: "/usr/bin/true", Cwd: "/tmp",
+				Env: []approval.ExecVariable{
+					{Name: "A", CredentialID: "c1"}, {Name: "B", CredentialID: "c2"}, {Name: "C", CredentialID: "c3"},
+				},
+				Approval: approval.ExecApproval{Kind: approval.ExecApprovalGrant, Binding: approval.BindingProgram,
+					LifetimeChoicesSeconds: approval.ExecLifetimeChoices(3600)},
+			}
+			wantTTL := int64(3600)
+			if env == config.EnvProd {
+				req.Grant.TTLSeconds = 0
+				req.Exec.Approval = approval.ExecApproval{Kind: approval.ExecApprovalOnce, Binding: approval.BindingCommand}
+				wantTTL = 0
+			}
+			if err := req.Validate(); err != nil {
+				t.Fatalf("test request: %v", err)
+			}
+			d, err := fakeui.AutoApprove{}.Approve(context.Background(), req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if d.Outcome != approval.OutcomeApproved || d.TTLSeconds != wantTTL || len(d.ApprovedCredentialIDs) != 3 {
+				t.Errorf("decision = %+v", d)
+			}
+			if _, err := fakeui.ValidateDecision(req, d); err != nil {
+				t.Errorf("own decision is invalid: %v", err)
+			}
+		})
 	}
 }

@@ -11,11 +11,26 @@
 import Foundation
 import Observation
 
-/// The kind of popup. The app derives it from the data: existing_grant
-/// marks a deviation. A request outside dev never reaches the app (D24).
+/// The kind of popup. The app derives it from the data: the object exec
+/// marks a command of the exec way (D65), existing_grant marks a
+/// deviation. A plain request outside dev never reaches the app (D62).
 public enum PopupCase: Sendable, Equatable {
     case firstRequest
     case deviation
+    /// A command of the exec way in the strictest environment of its
+    /// credentials.
+    case command(ExecEnvironment)
+}
+
+/// One credential of a command with the names of its variables.
+public struct VariableRow: Sendable, Equatable, Identifiable {
+    public var credential: Credential
+    /// The names of the variables that get the value, in the order of the
+    /// request.
+    public var names: [String]
+    /// "vault › item › field" with the names of the backend.
+    public var reference: String
+    public var id: String { credential.id }
 }
 
 /// One line of the verified facts.
@@ -56,6 +71,8 @@ public final class ApprovalViewModel {
     public static let scrollThreshold = 6
     /// A vault needs more entries than this for "Select all n".
     public static let selectAllThreshold = 3
+    /// A command with more characters than this scrolls (D65: no cut).
+    public static let commandScrollThreshold = 480
 
     public let request: ApprovalRequest
     /// The time from the start to the outcome timeout.
@@ -71,7 +88,6 @@ public final class ApprovalViewModel {
 
     public private(set) var selected: Set<String> = []
     public private(set) var lifetime: Int64
-    public private(set) var lifetimeChoiceOpen = false
     public private(set) var armed = false
     public private(set) var secondsLeft: Int
     public private(set) var authInProgress = false
@@ -95,7 +111,13 @@ public final class ApprovalViewModel {
         let requested = TimeInterval(request.timeoutSeconds)
         self.timeout = min(requested, timeoutOverride ?? requested)
         self.armDelay = armDelay
-        self.lifetimeChoices = A38ApprovalCore.lifetimeChoices(proposal: request.grant.ttlSeconds)
+        // A command offers the lifetimes of the daemon; "only this command"
+        // offers none (D63). A plain request keeps the fixed set of D32.
+        if let exec = request.exec {
+            self.lifetimeChoices = exec.approval.lifetimeChoices
+        } else {
+            self.lifetimeChoices = A38ApprovalCore.lifetimeChoices(proposal: request.grant.ttlSeconds)
+        }
         self.lifetime = request.grant.ttlSeconds
         self.secondsLeft = Int(timeout.rounded(.up))
     }
@@ -103,8 +125,76 @@ public final class ApprovalViewModel {
     // MARK: Derived state
 
     public var popupCase: PopupCase {
-        request.existingGrant == nil ? .firstRequest : .deviation
+        if let exec = request.exec { return .command(exec.environment) }
+        return request.existingGrant == nil ? .firstRequest : .deviation
     }
+
+    /// True for a command in test or prod: the window highlights the
+    /// environment (D65).
+    public var environmentHighlighted: Bool {
+        guard let exec = request.exec else { return false }
+        return exec.environment != .dev
+    }
+
+    /// Program, arguments and working directory, in full (D65). Empty for
+    /// a plain request.
+    public var commandRows: [FactRow] {
+        guard let exec = request.exec else { return [] }
+        return [
+            FactRow(label: UIText.commandProgram, value: DisplayText.clean(exec.program)),
+            FactRow(label: UIText.commandArguments,
+                    value: exec.args.isEmpty ? UIText.commandNoArguments : DisplayText.shellWords(exec.args)),
+            FactRow(label: UIText.commandDirectory, value: DisplayText.clean(exec.cwd)),
+        ]
+    }
+
+    /// The number of characters of the command.
+    public var commandLength: Int { commandRows.reduce(0) { $0 + $1.value.count } }
+
+    /// A long command scrolls; the view never cuts it.
+    public var commandScrolls: Bool { commandLength > Self.commandScrollThreshold }
+
+    /// The credentials of a command, each with its variables, in the order
+    /// of the variables. Empty for a plain request.
+    public var variableRows: [VariableRow] {
+        guard let exec = request.exec else { return [] }
+        var order: [String] = []
+        var names: [String: [String]] = [:]
+        for v in exec.env {
+            if names[v.credentialID] == nil { order.append(v.credentialID) }
+            names[v.credentialID, default: []].append(v.name)
+        }
+        return order.compactMap { id in
+            guard let c = request.credentials.first(where: { $0.id == id }) else { return nil }
+            let reference = [c.vault, c.title, c.field].map(DisplayText.clean).joined(separator: " › ")
+            return VariableRow(credential: c, names: names[id] ?? [], reference: reference)
+        }
+    }
+
+    /// True if the human can select a shorter lifetime.
+    public var offersLifetimeChoice: Bool { lifetimeChoices.count > 1 }
+
+    /// The text of the binding of a grant for a command (D63).
+    public var bindingText: String {
+        switch request.exec?.approval.binding {
+        case .none?: return UIText.bindingNone
+        case .program?: return UIText.bindingProgram
+        case .command?: return UIText.bindingCommand
+        case nil: return ""
+        }
+    }
+
+    /// The kind of approval of a command: the lifetime of the grant, or
+    /// "only this command" (D65).
+    public var approvalText: String {
+        if request.exec?.approval.kind == .once { return UIText.approvalOnce }
+        return lifetimeText
+    }
+
+    /// True for a command: every variable must be selected.
+    private var needsAll: Bool { request.exec != nil }
+
+    private var allSelected: Bool { selected.count == request.credentials.count }
 
     public var verifiedRows: [FactRow] {
         let facts = request.verified
@@ -169,7 +259,7 @@ public final class ApprovalViewModel {
     }
 
     public var canConfirm: Bool {
-        decision == nil && armed && !authInProgress && !selected.isEmpty
+        decision == nil && armed && !authInProgress && !selected.isEmpty && (!needsAll || allSelected)
     }
 
     /// The selection can change until Touch ID starts.
@@ -178,6 +268,9 @@ public final class ApprovalViewModel {
     public var confirmTitle: String {
         if authInProgress { return UIText.confirmInProgress }
         if !armed { return UIText.confirmWaiting }
+        if needsAll {
+            return allSelected ? UIText.confirmCommand : UIText.confirmSelectAll
+        }
         if selected.isEmpty { return UIText.confirmSelect }
         return UIText.confirm(selected.count)
     }
@@ -214,13 +307,6 @@ public final class ApprovalViewModel {
         selected.formUnion(group.items.map(\.id))
     }
 
-    public func openLifetimeChoice() {
-        guard canEditSelection else { return }
-        lifetimeChoiceOpen = true
-    }
-
-    public func closeLifetimeChoice() { lifetimeChoiceOpen = false }
-
     /// Selects a lifetime. Only a value of the fixed set is possible; it is
     /// never longer than the proposal.
     public func selectLifetime(_ seconds: Int64) {
@@ -255,11 +341,14 @@ public final class ApprovalViewModel {
         tick()
         guard canConfirm else { return }
         let ids = selectedIDs
-        let ttl = lifetime
+        // "Only this command" has no lifetime (D63: lifetime 0).
+        let ttl: Int64? = request.exec?.approval.kind == .once ? nil : lifetime
         authInProgress = true
-        lifetimeChoiceOpen = false
         message = nil
-        let reason = UIText.authReason(count: ids.count, project: DisplayText.clean(request.verified.project))
+        let project = DisplayText.clean(request.verified.project)
+        let reason = request.exec.map {
+            UIText.authReasonCommand(count: ids.count, environment: $0.environment, project: project)
+        } ?? UIText.authReason(count: ids.count, project: project)
         let outcome = await authenticator.authenticate(reason: reason)
         authInProgress = false
         // The timeout or a denial can end the popup during the dialog.
@@ -286,9 +375,8 @@ public final class ApprovalViewModel {
 
     /// Test switch of a debug build: puts the popup in a state for a
     /// screenshot. A release build does not contain this function.
-    public func applyDemo(select ids: [String], lifetimeOpen: Bool) {
+    public func applyDemo(select ids: [String]) {
         for id in ids { setSelected(id, true) }
-        if lifetimeOpen { openLifetimeChoice() }
     }
     #endif
 

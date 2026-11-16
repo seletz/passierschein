@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "type": "approval_request",
+  "request_id": "req-exec-test-0001",
+  "timeout_seconds": 120,
+  "verified": {
+    "session_id": "s-7f3a9c21",
+    "origin": "local",
+    "project": "beispielprojekt",
+    "peer_pid": 4242,
+    "peer_uid": 501,
+    "process": "/usr/local/bin/agent-cli",
+    "cwd": "/Users/beispiel/develop/beispielprojekt"
+  },
+  "claims": {
+    "session_name": "beispiel-koordinator",
+    "agent": "coding-agent",
+    "task": "Count the orders in test",
+    "reason": "Verify migration 42"
+  },
+  "credentials": [
+    {
+      "id": "c1",
+      "vault": "beispiel.app.k8s-test",
+      "title": "datenbank-test",
+      "field": "password",
+      "environment": "test"
+    }
+  ],
+  "grant": {
+    "ttl_seconds": 1800,
+    "scope": {
+      "project": "beispielprojekt",
+      "vaults": [
+        "beispiel.app.k8s-test"
+      ]
+    }
+  },
+  "exec": {
+    "environment": "test",
+    "program": "/opt/homebrew/bin/psql",
+    "args": [
+      "-h",
+      "datenbank-test.beispiel.internal",
+      "-U",
+      "beispiel",
+      "-c",
+      "select count(*) from auftrag"
+    ],
+    "cwd": "/Users/beispiel/develop/beispielprojekt",
+    "env": [
+      {
+        "name": "PGPASSWORD",
+        "credential_id": "c1"
+      }
+    ],
+    "approval": {
+      "kind": "grant",
+      "binding": "program",
+      "lifetime_choices_seconds": [
+        1800,
+        900,
+        300
+      ]
+    }
+  }
+}

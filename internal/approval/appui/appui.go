@@ -198,6 +198,15 @@ func (u *UI) Approve(ctx context.Context, req approval.Request) (approval.Decisi
 		return approval.Decision{}, fmt.Errorf("appui: timeout_seconds %d is outside %d to %d",
 			req.TimeoutSeconds, approval.MinTimeoutSeconds, approval.MaxTimeoutSeconds)
 	}
+	// The app rejects a request of the exec way that it cannot show in
+	// full or whose kind of approval does not fit the environment. Fail
+	// closed before the start. A plain request keeps the checks of the
+	// app only.
+	if req.Exec != nil {
+		if err := req.Validate(); err != nil {
+			return approval.Decision{}, fmt.Errorf("appui: %w", err)
+		}
+	}
 	wait := time.Duration(req.TimeoutSeconds) * time.Second
 	timer := u.clock.NewTimer(wait + u.grace)
 	defer timer.Stop()

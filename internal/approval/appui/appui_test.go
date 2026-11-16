@@ -15,6 +15,7 @@ import (
 	"github.com/seletz/passierschein/internal/approval"
 	"github.com/seletz/passierschein/internal/approval/appui"
 	"github.com/seletz/passierschein/internal/clock"
+	"github.com/seletz/passierschein/internal/config"
 	"github.com/seletz/passierschein/internal/protocol"
 	"github.com/seletz/passierschein/internal/session"
 )
@@ -445,5 +446,77 @@ func TestNoticeLifetimeAndClose(t *testing.T) {
 	waitGone(t, pid2)
 	if err := u2.Notify(context.Background(), sampleNotice()); err == nil {
 		t.Error("Notify after Close")
+	}
+}
+
+// execRequest is a valid approval request of the exec way for test.
+func execRequest() approval.Request {
+	req := sampleRequest()
+	req.Credentials = []approval.Credential{
+		{ID: "c1", Vault: "beispiel.app.k8s-test", Title: "datenbank-test", Field: "password", Environment: config.EnvTest},
+	}
+	req.Grant.TTLSeconds = 1800
+	req.Exec = &approval.ExecCommand{
+		Environment: config.EnvTest, Program: "/opt/homebrew/bin/psql", Args: []string{"-c", "select 1"},
+		Cwd: "/Users/beispiel/develop/beispielprojekt",
+		Env: []approval.ExecVariable{{Name: "PGPASSWORD", CredentialID: "c1"}},
+		Approval: approval.ExecApproval{Kind: approval.ExecApprovalGrant, Binding: approval.BindingProgram,
+			LifetimeChoicesSeconds: approval.ExecLifetimeChoices(1800)},
+	}
+	return req
+}
+
+// T38 (part, approval request): appui gives the app only a valid request
+// of the exec way, and the decision for a command must fit its kind of
+// approval (fail closed).
+func TestApproveExec(t *testing.T) {
+	tests := []struct {
+		name    string
+		mutate  func(*approval.Request)
+		flags   []string
+		started bool
+		wantErr string
+		wantTTL int64
+	}{
+		{name: "grant with the proposed lifetime", mutate: func(*approval.Request) {}, flags: []string{"-tick", "all"}, started: true, wantTTL: 1800},
+		{name: "grant with a shorter choice", mutate: func(*approval.Request) {}, flags: []string{"-tick", "all", "-ttl", "300"}, started: true, wantTTL: 300},
+		{name: "lifetime not offered", mutate: func(*approval.Request) {}, flags: []string{"-tick", "all", "-ttl", "600"}, started: true, wantErr: "offered"},
+		{name: "prod once", mutate: func(r *approval.Request) {
+			r.Credentials[0].Environment = config.EnvProd
+			r.Exec.Environment = config.EnvProd
+			r.Grant.TTLSeconds = 0
+			r.Exec.Approval = approval.ExecApproval{Kind: approval.ExecApprovalOnce, Binding: approval.BindingCommand}
+		}, flags: []string{"-tick", "all", "-ttl", "0"}, started: true, wantTTL: 0},
+		{name: "invalid exec is not started", mutate: func(r *approval.Request) { r.Exec.Program = "psql" }, flags: []string{"-tick", "all"}, wantErr: "exec.program"},
+		{name: "prod with a grant is not started", mutate: func(r *approval.Request) {
+			r.Credentials[0].Environment = config.EnvProd
+			r.Exec.Environment = config.EnvProd
+		}, flags: []string{"-tick", "all"}, wantErr: "prod"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := shortDir(t)
+			rec := filepath.Join(dir, "rec")
+			path := app(t, dir, 0o700, append(tt.flags, "-record", rec)...)
+			req := execRequest()
+			tt.mutate(&req)
+			d, err := newUI(t, path, nil).Approve(context.Background(), req)
+			_, statErr := os.Stat(rec)
+			if started := statErr == nil; started != tt.started {
+				t.Errorf("app started = %v, want %v", started, tt.started)
+			}
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) || d.Outcome == approval.OutcomeApproved {
+					t.Fatalf("decision %+v, err = %v, want %q", d, err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if d.Outcome != approval.OutcomeApproved || d.TTLSeconds != tt.wantTTL {
+				t.Errorf("decision = %+v", d)
+			}
+		})
 	}
 }

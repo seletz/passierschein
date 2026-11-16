@@ -50,6 +50,14 @@ public enum AppMain {
     }
 
     private static func show(_ panel: ApprovalPanel, options: Options) {
+        #if A38_TEST_SWITCHES
+        // Test switch --demo-appearance, for screenshots in light and dark.
+        switch options.demoAppearance {
+        case .light?: panel.appearance = NSAppearance(named: .aqua)
+        case .dark?: panel.appearance = NSAppearance(named: .darkAqua)
+        case nil: break
+        }
+        #endif
         panel.place()
         // Show the panel without the keyboard focus (D31, D45).
         panel.orderFrontRegardless()
@@ -74,7 +82,7 @@ public enum AppMain {
         model.onFinish = { emit($0, request: request) }
         #if A38_TEST_SWITCHES
         let ids = options.demoSelect == ["all"] ? request.credentials.map(\.id) : options.demoSelect
-        model.applyDemo(select: ids, lifetimeOpen: options.demoLifetimeOpen)
+        model.applyDemo(select: ids)
         model.demoScrollToEnd = options.demoScrollEnd
         #endif
 

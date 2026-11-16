@@ -12,7 +12,8 @@ import (
 type AutoApprove struct{}
 
 // Approve approves all entries. A request with no entries is a denial. A
-// request with no proposed lifetime is an error.
+// request with no proposed lifetime is an error, except an approval of one
+// command (exec way, prod), which has the lifetime 0.
 func (AutoApprove) Approve(ctx context.Context, req approval.Request) (approval.Decision, error) {
 	if err := ctx.Err(); err != nil {
 		return approval.Decision{}, err
@@ -20,7 +21,8 @@ func (AutoApprove) Approve(ctx context.Context, req approval.Request) (approval.
 	if len(req.Credentials) == 0 {
 		return decision(req, approval.OutcomeDenied), nil
 	}
-	if req.Grant.TTLSeconds <= 0 {
+	once := req.Exec != nil && req.Exec.Approval.Kind == approval.ExecApprovalOnce
+	if req.Grant.TTLSeconds <= 0 && !once {
 		return approval.Decision{}, errors.New("auto-approve: the request has no lifetime")
 	}
 	d := decision(req, approval.OutcomeApproved)

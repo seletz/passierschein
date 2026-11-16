@@ -125,7 +125,7 @@ public func runHeadless(request: ApprovalRequest, options: Options, startedAt: T
                                   armDelay: options.demoArmDelay ?? ApprovalViewModel.armDelay)
     model.onFinish = { emit($0, request: request) }
     let ids = options.demoSelect == ["all"] ? request.credentials.map(\.id) : options.demoSelect
-    model.applyDemo(select: ids, lifetimeOpen: options.demoLifetimeOpen)
+    model.applyDemo(select: ids)
     var confirmed = false
     let timer = Timer(timeInterval: 0.05, repeats: true) { _ in
         MainActor.assumeIsolated {

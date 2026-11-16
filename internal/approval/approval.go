@@ -97,6 +97,10 @@ type Request struct {
 	// ExistingGrant is set if the session already has a grant and the
 	// request goes beyond it. It marks the request as a deviation.
 	ExistingGrant *ExistingGrant `json:"existing_grant,omitempty"`
+	// Exec is set for a request of the exec way (D65). It names the
+	// command, the variables and the kind of approval. A request without
+	// Exec is a plain credentials request; its JSON has no key "exec".
+	Exec *ExecCommand `json:"exec,omitempty"`
 }
 
 // Credential is one entry of an approval request. Vault, Title and Field
@@ -133,7 +137,8 @@ const (
 // GrantProposal describes the grant that an approval creates.
 type GrantProposal struct {
 	// TTLSeconds is the lifetime from the configuration. The human can
-	// select a shorter lifetime, never a longer one.
+	// select a shorter lifetime, never a longer one. It is 0 for an
+	// approval of one command (ExecApprovalOnce).
 	TTLSeconds int64 `json:"ttl_seconds"`
 	// Scope names the project and the vaults of the request. It is text
 	// for the UI. The grant covers exactly the approved credentials, not
@@ -198,7 +203,8 @@ type Decision struct {
 	// is empty for each outcome that is not approved.
 	ApprovedCredentialIDs []string `json:"approved_credential_ids"`
 	// TTLSeconds is the lifetime that the human selected. It is set only
-	// for the outcome approved.
+	// for the outcome approved. It is 0 for an approval of one command
+	// (ExecApprovalOnce).
 	TTLSeconds int64 `json:"ttl_seconds,omitempty"`
 	// Auth says how the human confirmed. A faked mode reports the policy
 	// "skipped".
