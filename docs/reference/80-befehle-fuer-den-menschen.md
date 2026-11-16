@@ -415,7 +415,7 @@ Ein Eintrag des exec-Wegs trägt das Kommando: Weg `exec`, Programm, Argumente (
 Ein Eintrag ohne Kommando gehört zum Weg `mcp` ({{ ref("D77") }}).
 Das Ereignis `execution` nennt Exit-Code, Dauer, Zeitüberschreitung und Zahl der Maskierungen. Diese Angaben stammen von `a38 mcp` und sind nicht geprüft.
 Ein Wert und die Ausgabe des Kommandos stehen nie im Audit-Log.
-Der Eintrag `request` nennt das Programm, wie der Agent es sendet. Jeder spätere Eintrag nennt den Pfad nach dem Auflösen der symbolischen Links ({{ ref("D63") }}).
+Das Programm steht mit dem Pfad nach dem Auflösen der symbolischen Links im Audit-Log. `a38 mcp` sendet schon diesen Pfad und startet genau ihn ({{ ref("G48") }}). Der Daemon löst den Pfad noch einmal auf; der Eintrag `request` nennt den Pfad, wie er ankommt, jeder spätere Eintrag den Pfad des Daemons ({{ ref("D63") }}).
 
 Bekannte Grenze ({{ ref("G46") }}): Schreibt ein Agent einen Wert in das Programm, ein Argument, das Arbeitsverzeichnis, die Aufgabe oder den Grund, stehen der Wert und das Kommando in den Einträgen `request`, `decision` und `grant`.
 Diese Einträge entstehen vor dem Lesen der Werte.

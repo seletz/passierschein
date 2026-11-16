@@ -109,7 +109,7 @@ Das Ergebnis hat die Felder `exit_code`, `timed_out`, `stdout`, `stderr`, `stdou
 Die Freigabeanfrage zeigt das volle Kommando ({{ ref("D65") }}).
 Prüfe vor der Freigabe:
 
-- Passt das Programm zur Aufgabe? Die Freigabeanfrage zeigt den Pfad nach dem Auflösen der symbolischen Links. Ein Link im Projekt auf `/bin/sh` erscheint als `/bin/sh`.
+- Passt das Programm zur Aufgabe? Die Freigabeanfrage zeigt den Pfad nach dem Auflösen der symbolischen Links. Ein Link im Projekt auf `/bin/sh` erscheint als `/bin/sh`. `a38 mcp` startet genau diesen Pfad; ein späterer Wechsel des Links wirkt nicht.
 - Gibt das Kommando die Variable aus, zum Beispiel mit `printenv`, `echo "$PGPASSWORD"` oder `base64`? Dann lehne ab.
   Die Maskierung erkennt nur den exakten Wert ({{ ref("RI13") }}).
 - Stehen die Argumente ohne Wert da?
