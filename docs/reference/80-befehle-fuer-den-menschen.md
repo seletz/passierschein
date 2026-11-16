@@ -375,10 +375,13 @@ Ein Eintrag des exec-Wegs trägt das Kommando: Weg `exec`, Programm, Argumente (
 Ein Eintrag ohne Kommando gehört zum Weg `mcp` ({{ ref("D77") }}).
 Das Ereignis `execution` nennt Exit-Code, Dauer, Zeitüberschreitung und Zahl der Maskierungen. Diese Angaben stammen von `a38 mcp` und sind nicht geprüft.
 Ein Wert und die Ausgabe des Kommandos stehen nie im Audit-Log.
+Der Eintrag `request` nennt das Programm, wie der Agent es sendet. Jeder spätere Eintrag nennt den Pfad nach dem Auflösen der symbolischen Links ({{ ref("D63") }}).
 
-Bekannte Grenze ({{ ref("G46") }}): Schreibt ein Agent einen Wert in ein Argument oder in das Arbeitsverzeichnis, stehen Wert und Kommando in den Einträgen `request`, `decision` und `grant`.
+Bekannte Grenze ({{ ref("G46") }}): Schreibt ein Agent einen Wert in das Programm, ein Argument, das Arbeitsverzeichnis, die Aufgabe oder den Grund, stehen der Wert und das Kommando in den Einträgen `request`, `decision` und `grant`.
 Diese Einträge entstehen vor dem Lesen der Werte.
-Der Daemon findet den Wert danach, liefert nicht aus und schreibt die Ablehnung mit dem Code `invalid_request` ohne das Kommando.
+Der Daemon findet den Wert danach, liefert nicht aus und schreibt die Ablehnung mit dem Code `invalid_request` ohne das Kommando und ohne Aufgabe und Grund.
+Der Daemon sucht den ganzen Wert in jedem Feld einzeln.
+Einen Wert, den der Agent auf zwei Argumente aufteilt, findet er nicht.
 Der Skill verbietet einen Wert im Kommando.
 
 ## a38 tui

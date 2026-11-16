@@ -351,9 +351,9 @@ Ablauf von `request_exec` im Daemon:
 1. Der Broker schreibt das Ereignis Anfrage mit dem Kommando.
 2. Mehr Variablen als `bundle.max_entries` enden mit `bundle_too_large`. Eine Zeitgrenze über `exec.max_timeout` endet mit `invalid_request`.
 3. `policy.CheckWay` prüft jede Referenz für den Weg `exec`. Das Arbeitsverzeichnis muss nach dem Auflösen der Links im Projekt der Sitzung liegen. Sonst endet die Anfrage mit `not_allowed`.
-4. Der Broker bestimmt die strengste Umgebung, die kürzeste Laufzeit und die strengste Bindung. Bei einem Programm ohne Aussage wird `program` zu `command`.
-5. Decken Grants der Sitzung das Kommando nach ihrer Bindung, entfällt die Freigabe. Sonst fragt der Broker den Menschen. Die Anfrage bildet ein eigenes Bündel ohne Fenster.
-6. Der Broker liest die Werte und prüft Argumente und Arbeitsverzeichnis. Danach schreibt er die Auslieferung und antwortet mit den Werten und den Grenzen.
+4. Der Broker löst die symbolischen Links des Programms auf; ein Pfad, der sich nicht auflösen lässt, endet mit `not_allowed`. Eine ID, die schon eine wartende Auslieferung der Sitzung trägt, endet mit `invalid_request`. Der Broker bestimmt die strengste Umgebung, die kürzeste Laufzeit und die strengste Bindung. Bei einem Programm ohne Aussage wird `program` zu `command`; der Vergleich nutzt den letzten Teil des aufgelösten Pfads in Kleinbuchstaben und ohne Versionsendung.
+5. Decken Grants der Sitzung das Kommando nach ihrer Bindung, entfällt die Freigabe. Die Bindungen `program` und `command` vergleichen die Zuordnung jedes Namens zu seiner Referenz. Sonst fragt der Broker den Menschen. Die Anfrage bildet ein eigenes Bündel ohne Fenster.
+6. Der Broker liest die Werte und prüft Programm, Argumente, Arbeitsverzeichnis, Aufgabe und Grund. Danach schreibt er die Auslieferung und antwortet mit den Werten und den Grenzen.
 7. Ein Grant mit Laufzeit 0 steht nicht im Speicher der Grants. Er endet mit der Auslieferung (Ereignis Ablauf, `single_delivery`). `grant_status` zeigt ihn nie.
 
 `request_credentials` für einen Vault außerhalb von dev endet vor dem Backend mit `exec_required`. Ist der exec-Weg für die Umgebung ausgeschaltet, endet sie mit `not_allowed`.

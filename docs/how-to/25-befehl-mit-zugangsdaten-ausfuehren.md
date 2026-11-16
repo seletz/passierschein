@@ -109,16 +109,17 @@ Das Ergebnis hat die Felder `exit_code`, `timed_out`, `stdout`, `stderr`, `stdou
 Die Freigabeanfrage zeigt das volle Kommando ({{ ref("D65") }}).
 Prüfe vor der Freigabe:
 
-- Passt das Programm zur Aufgabe?
+- Passt das Programm zur Aufgabe? Die Freigabeanfrage zeigt den Pfad nach dem Auflösen der symbolischen Links. Ein Link im Projekt auf `/bin/sh` erscheint als `/bin/sh`.
 - Gibt das Kommando die Variable aus, zum Beispiel mit `printenv`, `echo "$PGPASSWORD"` oder `base64`? Dann lehne ab.
   Die Maskierung erkennt nur den exakten Wert ({{ ref("RI13") }}).
 - Stehen die Argumente ohne Wert da?
 
 ## Ein Wert im Kommando
 
-Ein Wert gehört nie in ein Argument oder in das Arbeitsverzeichnis.
+Ein Wert gehört nie in das Programm, ein Argument, das Arbeitsverzeichnis, die Aufgabe oder den Grund.
 Der Skill verbietet das.
 Der Daemon prüft es nach der Freigabe.
+Er sucht den ganzen Wert in jedem Feld; einen auf zwei Argumente aufgeteilten Wert findet er nicht.
 Findet er einen Wert, liefert er nicht aus, und der Agent erhält `invalid_request`.
 
 Diese Prüfung kommt spät; das ist eine bekannte Grenze ({{ ref("G46") }}).
@@ -132,7 +133,7 @@ Siehst du einen Wert im Kommando, lehne ab.
 Ein Grant gilt so lange, wie du es erlaubst ({{ ref("D63") }}).
 
 - In dev kann er einige Stunden gelten.
-- In test ist er kurz und gilt nur für dasselbe Programm.
+- In test ist er kurz und gilt nur für dasselbe Programm mit denselben Variablen und denselben Referenzen. Eine Shell, ein Interpreter oder ein Starter erscheint mit „nur dieses Kommando“. Die Liste dieser Programme ist fest und nicht vollständig ({{ ref("G48") }}).
 - In prod gibt es keinen Grant. Jedes Kommando braucht eine neue Freigabe.
 - Steht die Laufzeit von dev oder test auf `0s`, gilt dort dasselbe wie in prod ({{ ref("D76") }}). Die Freigabeanfrage zeigt dann „Only this command, one time“. In dev antwortet `request_credentials` dann mit `exec_required`.
 
