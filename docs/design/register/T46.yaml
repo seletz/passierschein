@@ -1,0 +1,9 @@
+id: T46
+zustand: eingeloest
+titel: Der Daemon startet mit einem Konto ohne Token und sperrt nur dessen Vaults
+bezug: '#88'
+schluessel: '#88/t-start'
+lauf: '2.0'
+branch: feat/88-mehrere-konten
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

@@ -147,7 +147,7 @@ func (b *fakeBroker) FaultClear(context.Context, *protocol.FaultClear) (*protoco
 // directory under /tmp. projects maps a project name to its directory.
 func testConfig(t *testing.T, projects map[string]string) *config.Config {
 	t.Helper()
-	yaml := fmt.Sprintf("version: 1\nvaults:\n  - name: beispiel.app.k8s-dev\n    environment: dev\npaths:\n  socket_dir: %s\n  audit_file: %s\n",
+	yaml := fmt.Sprintf("version: 1\nbackend:\n  onepassword:\n    accounts:\n      - name: privat\nvaults:\n  - name: beispiel.app.k8s-dev\n    environment: dev\n    account: privat\npaths:\n  socket_dir: %s\n  audit_file: %s\n",
 		filepath.Join(shortDir(t), "run"), filepath.Join(shortDir(t), "audit.db"))
 	if len(projects) > 0 {
 		yaml += "projects:\n"

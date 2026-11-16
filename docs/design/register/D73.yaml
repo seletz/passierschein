@@ -1,0 +1,9 @@
+id: D73
+zustand: eingeloest
+titel: Der Daemon liest jedes Token beim Start, und ein Konto ohne Token sperrt nur seine Vaults
+bezug: '#88'
+schluessel: '#88/start-je-konto'
+lauf: '2.0'
+branch: feat/88-mehrere-konten
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

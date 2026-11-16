@@ -108,14 +108,18 @@ vaults:
 func configYAML(lifetime string, maxEntries string, extra ...string) string {
 	return `
 version: 1
+backend:
+  onepassword:
+    accounts:
+      - name: privat
 vaults:
-  - {name: beispiel.app.k8s-dev, environment: dev}
-  - {name: beispiel.infra.k8s-dev, environment: dev}
-  - {name: beispiel.extern.k8s-dev, environment: dev}
-  - {name: beispiel.app.k8s-test, environment: test}
-  - {name: beispiel.app.k8s-prod, environment: prod}
-  - {name: beispiel-prod, environment: dev}
-  - {name: beispiel-dev, environment: prod}
+  - {name: beispiel.app.k8s-dev, environment: dev, account: privat}
+  - {name: beispiel.infra.k8s-dev, environment: dev, account: privat}
+  - {name: beispiel.extern.k8s-dev, environment: dev, account: privat}
+  - {name: beispiel.app.k8s-test, environment: test, account: privat}
+  - {name: beispiel.app.k8s-prod, environment: prod, account: privat}
+  - {name: beispiel-prod, environment: dev, account: privat}
+  - {name: beispiel-dev, environment: prod, account: privat}
 projects:
   - name: beispielprojekt
     paths: [/tmp/a38-test/beispielprojekt]

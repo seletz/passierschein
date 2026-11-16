@@ -1,0 +1,9 @@
+id: G41
+zustand: eingeloest
+titel: Zwei Konten mit einem Vault desselben Titels
+bezug: '#88'
+schluessel: '#88/g-gleicher-vault'
+lauf: '2.0'
+branch: feat/88-mehrere-konten
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

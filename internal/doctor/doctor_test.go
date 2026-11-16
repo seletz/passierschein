@@ -3,6 +3,7 @@ package doctor
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -27,6 +28,40 @@ func shortDir(t *testing.T) string {
 }
 
 // stateFor returns a state with a configuration for the directory.
+// oneAccount sets the account privat with one vault in the state.
+func oneAccount(st *State, a config.Account) {
+	a.Name = "privat"
+	st.Config.Backend.OnePassword = config.OnePassword{Accounts: []config.Account{a}}
+	st.Config.Vaults = []config.Vault{{Name: "beispiel.app.k8s-dev", Environment: config.EnvDev, Account: "privat"}}
+}
+
+// storesOf returns the keychain items: store for the account privat, an
+// empty item for each other account. nil store means no keychain.
+func storesOf(store TokenStore) func(string) TokenStore {
+	if store == nil {
+		return nil
+	}
+	return func(account string) TokenStore {
+		if account == "privat" {
+			if f, ok := store.(fakeTokenStore); ok {
+				f.account = account
+				return f
+			}
+			return store
+		}
+		return fakeTokenStore{account: account, sig: token.Signature{Path: "/x/a38", Kind: token.SignatureAdhoc}}
+	}
+}
+
+// noLegacyFile points XDG_CONFIG_HOME to an empty directory, so that the
+// token file of the configuration with one token does not exist.
+func noLegacyFile(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	return dir
+}
+
 func stateFor(dir string) *State {
 	return &State{Config: &config.Config{Paths: config.Paths{
 		SocketDir: filepath.Join(dir, "run"), AuditFile: filepath.Join(dir, "audit.db"),
@@ -229,7 +264,8 @@ func TestTokenSourceCheckFile(t *testing.T) {
 			dir := shortDir(t)
 			st := stateFor(dir)
 			path := filepath.Join(dir, "onepassword-token")
-			st.Config.Backend.OnePassword = config.OnePassword{TokenSource: config.TokenSourceFile, TokenFile: path}
+			noLegacyFile(t)
+			oneAccount(st, config.Account{TokenSource: config.TokenSourceFile, TokenFile: path})
 			if tt.kind != "" {
 				st.Status = &protocol.StatusResult{Backend: &protocol.BackendStatus{Kind: tt.kind, State: protocol.BackendOK}}
 			}
@@ -254,12 +290,13 @@ func TestTokenSourceCheckFile(t *testing.T) {
 // fakeTokenStore is a keychain item without a value: the doctor has no
 // way to read a value.
 type fakeTokenStore struct {
+	account string
 	info    token.StoreInfo
 	sig     token.Signature
 	descErr error
 }
 
-func (f fakeTokenStore) Name() string                        { return "a38-test-doctor/a38-test" }
+func (f fakeTokenStore) Name() string                        { return "a38-test-doctor/" + f.account }
 func (f fakeTokenStore) Describe() (token.StoreInfo, error)  { return f.info, f.descErr }
 func (f fakeTokenStore) Signature() (token.Signature, error) { return f.sig, nil }
 
@@ -284,20 +321,20 @@ func TestTokenSourceCheckKeychain(t *testing.T) {
 		want     []want
 	}{
 		{"no item, daemon down", "", fakeTokenStore{sig: adhoc}, false, []want{
-			{true, false, "no item a38-test-doctor/a38-test; only a38 serve --backend 1password needs it"},
+			{true, false, "no item a38-test-doctor/privat; only a38 serve --backend 1password needs it"},
 			{true, true, "each new build of a38 needs a confirmation"},
 		}},
 		{"no item, 1password daemon", "1password", fakeTokenStore{sig: adhoc}, false, []want{
-			{false, false, "run a38 config onepassword-token set"},
+			{false, false, "run a38 config onepassword-token set --account privat"},
 			{true, true, "ad-hoc"},
 		}},
 		{"item of this build", "1password", fakeTokenStore{info: item, sig: adhoc}, false, []want{
-			{true, false, "item a38-test-doctor/a38-test exists, changed 2026-11-12T08:00:00Z, trusted: /x/a38 (value not read)"},
+			{true, false, "item a38-test-doctor/privat exists, changed 2026-11-12T08:00:00Z, trusted: /x/a38 (value not read)"},
 			{true, true, "the protection against a process of the same user starts with the Developer ID signature (G5)"},
 		}},
 		{"item of another build", "1password", fakeTokenStore{info: func() token.StoreInfo { i := item; i.ReadableWithoutDialog = false; return i }(), sig: adhoc}, false, []want{
 			{true, false, "exists"},
-			{true, true, "a38 config onepassword-token set --replace instead of confirming the dialog"},
+			{true, true, "a38 config onepassword-token set --account privat --replace instead of confirming the dialog"},
 			{true, true, "ad-hoc"},
 		}},
 		{"item trusts security", "", fakeTokenStore{info: func() token.StoreInfo { i := item; i.Trusted = []string{"/usr/bin/security"}; return i }(), sig: adhoc}, false, []want{
@@ -311,14 +348,19 @@ func TestTokenSourceCheckKeychain(t *testing.T) {
 		}},
 		{"file left", "1password", fakeTokenStore{info: item, sig: adhoc}, true, []want{
 			{true, false, "exists"},
-			{true, true, "ad-hoc"},
 			{false, false, "rm "},
+			{true, true, "ad-hoc"},
 		}},
 		{"describe fails", "", fakeTokenStore{descErr: errors.New("keychain: status -25294")}, false, []want{
 			{false, false, "-25294"},
+			{true, true, "signature of a38"},
 		}},
 		{"no keychain", "", nil, false, []want{
 			{false, false, "token_source: file"},
+		}},
+		{"describe fails, daemon down", "", fakeTokenStore{descErr: errors.New("keychain: status -25294")}, false, []want{
+			{false, false, `account "privat"`},
+			{true, true, "signature of a38"},
 		}},
 	}
 	for _, tt := range tests {
@@ -326,14 +368,15 @@ func TestTokenSourceCheckKeychain(t *testing.T) {
 			dir := shortDir(t)
 			st := stateFor(dir)
 			path := filepath.Join(dir, "onepassword-token")
-			st.Config.Backend.OnePassword = config.OnePassword{TokenSource: config.TokenSourceKeychain, TokenFile: path}
+			noLegacyFile(t)
+			oneAccount(st, config.Account{TokenSource: config.TokenSourceKeychain, TokenFile: path})
 			if tt.kind != "" {
 				st.Status = &protocol.StatusResult{Backend: &protocol.BackendStatus{Kind: tt.kind, State: protocol.BackendOK}}
 			}
 			if tt.fileLeft {
 				writeFile(t, path, "ops_beispiel-kein-token", 0o600)
 			}
-			res := tokenSourceCheck{SystemEnv{Store: tt.store}, "darwin"}.Run(context.Background(), st)
+			res := tokenSourceCheck{SystemEnv{Stores: storesOf(tt.store)}, "darwin"}.Run(context.Background(), st)
 			if len(res) != len(tt.want) {
 				t.Fatalf("results = %+v", res)
 			}
@@ -463,6 +506,86 @@ func TestConfigCheckDeprecation(t *testing.T) {
 	for _, r := range ConfigResults(context.Background(), fakeConfigEnv{cfg: cfg}) {
 		if r.Note {
 			t.Errorf("note without a deprecated key: %+v", r)
+		}
+	}
+}
+
+func TestTokenSourceAccounts(t *testing.T) {
+	// T47: a38 doctor shows for each account the source, the item or the
+	// file and the vaults; it reports the item and the file of the
+	// configuration with one token and an account without vault (D74,
+	// D75). It never reads a token.
+	adhoc := token.Signature{Path: "/x/a38", Kind: token.SignatureAdhoc, CDHash: "abcd"}
+	item := token.StoreInfo{Exists: true, Trusted: []string{"/x/a38"}, ReadableWithoutDialog: true,
+		Modified: time.Date(2026, 11, 15, 8, 0, 0, 0, time.UTC)}
+	dir := shortDir(t)
+	legacyDir := noLegacyFile(t)
+	writeFile(t, filepath.Join(mustMkdirAll(t, filepath.Join(legacyDir, "a38")), "onepassword-token"), "ops_beispiel-kein-token", 0o600)
+	st := stateFor(dir)
+	st.Status = &protocol.StatusResult{Backend: &protocol.BackendStatus{Kind: "1password", State: protocol.BackendOK}}
+	st.Config.Vaults = []config.Vault{
+		{Name: "beispiel.app.k8s-dev", Environment: config.EnvDev, Account: "privat"},
+		{Name: "datenbank-dev", Environment: config.EnvDev, Account: "firma"},
+	}
+	st.Config.Backend.OnePassword = config.OnePassword{Accounts: []config.Account{
+		{Name: "privat", TokenSource: config.TokenSourceKeychain, TokenFile: filepath.Join(dir, "onepassword-token-privat")},
+		{Name: "firma", TokenSource: config.TokenSourceFile, TokenFile: filepath.Join(dir, "onepassword-token-firma")},
+		{Name: "reserve", TokenSource: config.TokenSourceKeychain, TokenFile: filepath.Join(dir, "onepassword-token-reserve")},
+	}}
+	stores := func(account string) TokenStore {
+		switch account {
+		case "privat", config.LegacyAccount:
+			return fakeTokenStore{account: account, info: item, sig: adhoc}
+		}
+		return fakeTokenStore{account: account, sig: adhoc}
+	}
+	res := tokenSourceCheck{SystemEnv{Stores: stores}, "darwin"}.Run(context.Background(), st)
+	var lines []string
+	for _, r := range res {
+		lines = append(lines, fmt.Sprintf("ok=%v note=%v %s%s%s%s", r.OK, r.Note, r.Detail, r.Finding, r.Cause, r.NextStep))
+	}
+	text := strings.Join(lines, "\n")
+	for _, want := range []string{
+		`ok=true note=false account "privat" (vaults: beispiel.app.k8s-dev): source keychain: item a38-test-doctor/privat exists`,
+		`ok=false note=false account "firma" (vaults: datenbank-dev): the token file does not exist`,
+		"a38 config onepassword-token set --account firma",
+		`ok=true note=true account "reserve" names no vault; the daemon does not read its token`,
+		"ok=false note=false the keychain item of the configuration with one token is left",
+		"a38 config onepassword-token delete --legacy",
+		"ok=false note=false the token file of the configuration with one token is left",
+		"ok=true note=true signature of a38: ad-hoc",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("results lack %q:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "kein-token") {
+		t.Error("the doctor shows a token")
+	}
+	if strings.Count(text, "signature of a38") != 1 {
+		t.Errorf("the signature is not shown once:\n%s", text)
+	}
+}
+
+func mustMkdirAll(t *testing.T, dir string) string {
+	t.Helper()
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func TestTokenSourceLegacyFileInUse(t *testing.T) {
+	// T47 (part), D75: the old token file is no finding if an account
+	// names it as its token file.
+	legacyDir := noLegacyFile(t)
+	path := filepath.Join(mustMkdirAll(t, filepath.Join(legacyDir, "a38")), "onepassword-token")
+	writeFile(t, path, "ops_beispiel-kein-token", 0o600)
+	st := stateFor(shortDir(t))
+	oneAccount(st, config.Account{TokenSource: config.TokenSourceFile, TokenFile: path})
+	for _, r := range (tokenSourceCheck{SystemEnv{}, "darwin"}).Run(context.Background(), st) {
+		if !r.OK {
+			t.Errorf("finding: %+v", r)
 		}
 	}
 }

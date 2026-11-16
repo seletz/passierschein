@@ -99,8 +99,14 @@ func systemServiceProbe() service.Probe {
 		},
 		UID: os.Getuid(),
 	}
-	if store, err := newTokenStore(); err == nil {
-		p.TokenItem = func() (token.StoreInfo, error) { return store.Describe() }
+	if _, err := newTokenStore(config.LegacyAccount); err == nil {
+		p.TokenItem = func(account string) (token.StoreInfo, error) {
+			store, err := newTokenStore(account)
+			if err != nil {
+				return token.StoreInfo{}, err
+			}
+			return store.Describe()
+		}
 	}
 	return p
 }

@@ -53,7 +53,7 @@ func healthyEnv(t *testing.T) *fakeEnv {
 	project := t.TempDir() // exists, so the path check finds nothing
 	cfg, err := config.Parse([]byte(`version: 1
 vaults:
-  - {name: beispiel.app.k8s-dev, environment: dev}
+  - {name: beispiel.app.k8s-dev, environment: dev, account: privat}
 projects:
   - name: beispielprojekt
     paths: [` + project + `]
@@ -63,7 +63,9 @@ paths:
   audit_file: /tmp/a38-doctor/audit.db
 backend:
   onepassword:
-    token_file: /tmp/a38-doctor/onepassword-token
+    accounts:
+      - name: privat
+        token_file: /tmp/a38-doctor/onepassword-token
 `))
 	if err != nil {
 		t.Fatal(err)
@@ -104,7 +106,12 @@ func (e *fakeEnv) VerifyAudit(context.Context, string) (audit.Verification, erro
 	return e.verify, e.verifyErr
 }
 func (e *fakeEnv) Backend(*protocol.StatusResult) doctor.Component { return e.backend }
-func (e *fakeEnv) TokenStore() doctor.TokenStore {
+func (e *fakeEnv) TokenStore(account string) doctor.TokenStore {
+	if account != "privat" {
+		// Each other item, also the item of the configuration with one
+		// token, does not exist.
+		return newFakeStoreFor(account)
+	}
 	if e.tokenStore == nil {
 		e.tokenStore = newFakeStore()
 	}
@@ -158,7 +165,7 @@ func TestDoctor(t *testing.T) {
 		// Issue 59, D51: the keychain is the default source of the token.
 		{"keychain item missing with 1password daemon", func(e *fakeEnv) {
 			e.status.Backend = &protocol.BackendStatus{Kind: "1password", State: protocol.BackendOK}
-		}, 1, []string{"the keychain has no token of the 1Password backend", "no item a38-test-fake/a38-test", "run a38 config onepassword-token set"}},
+		}, 1, []string{"the keychain has no token of the account", "no item a38-test-fake/privat", "run a38 config onepassword-token set --account privat"}},
 		{"keychain item present with 1password daemon", func(e *fakeEnv) {
 			e.status.Backend = &protocol.BackendStatus{Kind: "1password", State: protocol.BackendOK}
 			v := markerValue
@@ -234,7 +241,7 @@ func TestDoctorTokenNote(t *testing.T) {
 	if code != 0 || !strings.Contains(out, "NOTE     1password token") || !strings.Contains(out, "each new build of a38 needs a confirmation") {
 		t.Errorf("code %d, output:\n%s", code, out)
 	}
-	if !strings.Contains(out, "item a38-test-fake/a38-test exists") || strings.Contains(out, markerValue) {
+	if !strings.Contains(out, "item a38-test-fake/privat exists") || strings.Contains(out, markerValue) {
 		t.Errorf("output:\n%s", out)
 	}
 	if e.tokenStore.reads != 0 {

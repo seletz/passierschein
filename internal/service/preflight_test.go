@@ -63,11 +63,14 @@ func TestPreflightRefusals(t *testing.T) {
 			if err := os.WriteFile(path, nil, 0o644); err != nil {
 				t.Fatal(err)
 			}
-			w.cfg.Backend.OnePassword = config.OnePassword{TokenSource: config.TokenSourceFile, TokenFile: path}
+			w.cfg.Backend.OnePassword = config.OnePassword{Accounts: []config.Account{{Name: "privat", TokenSource: config.TokenSourceFile, TokenFile: path}}}
 		}, "token file", "0600"},
 		{"token file missing", func(t *testing.T, w *world, _ *service.Options) {
-			w.cfg.Backend.OnePassword = config.OnePassword{TokenSource: config.TokenSourceFile, TokenFile: filepath.Join(t.TempDir(), "none")}
+			w.cfg.Backend.OnePassword = config.OnePassword{Accounts: []config.Account{{Name: "privat", TokenSource: config.TokenSourceFile, TokenFile: filepath.Join(t.TempDir(), "none")}}}
 		}, "token file", "0600"},
+		{"no vault with an account", func(_ *testing.T, w *world, _ *service.Options) {
+			w.cfg.Vaults = nil
+		}, "no vault with a 1Password account", "a38 config account add"},
 		{"fake file missing", func(t *testing.T, _ *world, o *service.Options) {
 			o.Backend, o.UI, o.FakeFile = "fake", "auto-approve", filepath.Join(t.TempDir(), "none.yaml")
 		}, "fake backend", "--fake-file"},
@@ -110,7 +113,7 @@ func TestPreflightPassesWithoutReadingToken(t *testing.T) {
 	if err := os.WriteFile(path, []byte("beispiel-wert-marker"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	w.cfg.Backend.OnePassword = config.OnePassword{TokenSource: config.TokenSourceFile, TokenFile: path}
+	w.cfg.Backend.OnePassword = config.OnePassword{Accounts: []config.Account{{Name: "privat", TokenSource: config.TokenSourceFile, TokenFile: path}}}
 	r, err := w.m.Install(context.Background(), w.opts(), w.probe)
 	if err != nil {
 		t.Fatal(err)
@@ -170,5 +173,29 @@ func TestServeArgs(t *testing.T) {
 	o.ConfigGiven = true
 	if got := strings.Join(o.ServeArgs(), " "); !strings.HasSuffix(got, "--config /x/c.yaml") {
 		t.Errorf("args = %s", got)
+	}
+}
+
+func TestPreflightOneAccountWithoutToken(t *testing.T) {
+	// T46 (part): an account without token does not stop the install; the
+	// daemon starts and locks only the vaults of this account (D73).
+	w := newWorld(t)
+	w.cfg.Vaults = append(w.cfg.Vaults, config.Vault{Name: "datenbank-dev", Environment: config.EnvDev, Account: "firma"})
+	w.cfg.Backend.OnePassword.Accounts = append(w.cfg.Backend.OnePassword.Accounts, config.Account{Name: "firma", TokenSource: config.TokenSourceKeychain})
+	w.probe.TokenItem = func(account string) (token.StoreInfo, error) {
+		return token.StoreInfo{Name: "a38.onepassword/" + account, Exists: account == "privat", ReadableWithoutDialog: true}, nil
+	}
+	r, err := w.m.Install(context.Background(), w.opts(), w.probe)
+	if err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+	got := strings.Join(r.Warnings, "\n")
+	for _, want := range []string{`account "firma"`, "locks the vaults of this account", "a38 config onepassword-token set --account firma"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("warnings %q lack %q", got, want)
+		}
+	}
+	if strings.Contains(got, `account "privat"`) {
+		t.Errorf("warnings name the account privat: %q", got)
 	}
 }

@@ -54,17 +54,32 @@ func TestConfigRoundTrip(t *testing.T) {
 	}
 
 	out := mustA38(t, "config", "init")
-	for _, want := range []string{cfgPath, "a38 config vault add", "a38 config onepassword-token set", "a38 doctor"} {
+	for _, want := range []string{cfgPath, "a38 config account add", "a38 config vault add", "a38 config onepassword-token set --account", "a38 doctor"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("init output lacks %q:\n%s", want, out)
 		}
 	}
-	out = mustA38(t, "config", "vault", "add", "beispiel.app.k8s-dev", "--environment", "dev")
+	// T43 (part), D70: a vault names its account; the account comes first.
+	if code, _, errOut := a38(t, "config", "vault", "add", "beispiel.app.k8s-dev", "--environment", "dev", "--account", "privat"); code != 1 || !strings.Contains(errOut, "a38 config account add") {
+		t.Errorf("vault add with an unknown account: code %d, %s", code, errOut)
+	}
+	out = mustA38(t, "config", "account", "add", "privat")
+	if !strings.Contains(out, "a38 config onepassword-token set --account privat") {
+		t.Errorf("account add lacks the next step:\n%s", out)
+	}
+	mustA38(t, "config", "account", "add", "firma", "--token-source", "file")
+	out = mustA38(t, "config", "vault", "add", "beispiel.app.k8s-dev", "--environment", "dev", "--account", "privat")
 	if !strings.Contains(out, "reads the configuration file only at its start") {
 		t.Errorf("no restart note:\n%s", out)
 	}
 	// Flags after the positional argument and before it.
-	mustA38(t, "config", "vault", "add", "--environment", "prod", "beispiel.prod")
+	mustA38(t, "config", "vault", "add", "--environment", "prod", "--account", "firma", "beispiel.prod")
+	if out := mustA38(t, "config", "account", "list"); !strings.Contains(out, "privat") || !strings.Contains(out, "beispiel.prod") || !strings.Contains(out, "file") {
+		t.Errorf("account list:\n%s", out)
+	}
+	if out := mustA38(t, "config", "vault", "list"); !strings.Contains(out, "beispiel.prod") || !strings.Contains(out, "firma") {
+		t.Errorf("vault list:\n%s", out)
+	}
 	mustA38(t, "config", "project", "add", "beispielprojekt", "--path", "~/develop/beispielprojekt", "--path", proj+"__worktrees", "--vault", "beispiel.app.k8s-dev")
 
 	code, out, _ := a38(t, "config", "validate")
@@ -85,12 +100,8 @@ func TestConfigRoundTrip(t *testing.T) {
 	if len(doc.Vaults) != 2 || len(doc.Projects) != 1 || !doc.Valid || doc.Projects[0].Paths[0].Written != "~/develop/beispielprojekt" {
 		t.Errorf("show: %+v", doc)
 	}
-	origins := map[string]string{}
-	for _, v := range doc.Values {
-		origins[v.Key] = v.Origin
-	}
-	if origins["backend.onepassword.token_source"] != "file" || origins["backend.onepassword.token_file"] != "default" {
-		t.Errorf("origins = %v", origins)
+	if len(doc.Accounts) != 2 || doc.Accounts[1].Name != "firma" || doc.Accounts[1].TokenSource != "file" || doc.Vaults[1].Account != "firma" {
+		t.Errorf("show accounts: %+v, vaults %+v", doc.Accounts, doc.Vaults)
 	}
 
 	cfg, err := config.Load(cfgPath)
@@ -108,6 +119,13 @@ func TestConfigRoundTrip(t *testing.T) {
 	}
 	mustA38(t, "config", "project", "remove", "beispielprojekt")
 	mustA38(t, "config", "vault", "remove", "beispiel.app.k8s-dev")
+	// An account that a vault names is not removed.
+	if code, _, errOut := a38(t, "config", "account", "remove", "firma"); code != 1 || !strings.Contains(errOut, `"beispiel.prod"`) {
+		t.Errorf("remove account in use: code %d, %s", code, errOut)
+	}
+	if out := mustA38(t, "config", "account", "remove", "privat"); !strings.Contains(out, "a38 config onepassword-token delete --account privat") {
+		t.Errorf("account remove lacks the hint:\n%s", out)
+	}
 	if out := mustA38(t, "config", "vault", "list"); strings.Contains(out, "k8s-dev") || !strings.Contains(out, "beispiel.prod") {
 		t.Errorf("vault list:\n%s", out)
 	}
@@ -174,7 +192,7 @@ func TestConfigInitRefusals(t *testing.T) {
 	if code != 1 || !strings.Contains(errOut, cfgPath) || !strings.Contains(errOut, "--force") {
 		t.Errorf("second init: code %d, %s", code, errOut)
 	}
-	mustA38(t, "config", "vault", "add", "v", "--environment", "dev")
+	mustA38(t, "config", "account", "add", "privat")
 	changed, _ := os.ReadFile(cfgPath)
 	if bytes.Equal(first, changed) {
 		t.Fatal("vault add changed nothing")
@@ -207,7 +225,7 @@ func TestConfigSymlinkAndReadOnly(t *testing.T) {
 	}
 	for _, args := range [][]string{
 		{"config", "init", "--force", "--config", link},
-		{"config", "vault", "add", "v", "--environment", "dev", "--config", link},
+		{"config", "account", "add", "privat", "--config", link},
 	} {
 		code, _, errOut := a38(t, args...)
 		if code != 1 || !strings.Contains(errOut, "symbolic link") {
@@ -231,7 +249,7 @@ func TestConfigSymlinkAndReadOnly(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() { _ = os.Chmod(ro, 0o700) })
-		code, _, errOut := a38(t, "config", "vault", "add", "v", "--environment", "dev", "--config", p)
+		code, _, errOut := a38(t, "config", "account", "add", "privat", "--config", p)
 		if code != 1 || !strings.Contains(errOut, ro) {
 			t.Errorf("read-only dir: code %d, %s", code, errOut)
 		}
@@ -283,7 +301,7 @@ func TestConfigShowInvalidProject(t *testing.T) {
 func TestConfigHelpAndUsage(t *testing.T) {
 	configHome(t)
 	_, out, _ := a38(t, "config", "--help")
-	for _, sub := range []string{"path", "show", "init", "validate", "vault", "project", "onepassword-token"} {
+	for _, sub := range []string{"path", "show", "init", "validate", "account", "vault", "project", "onepassword-token"} {
 		if !strings.Contains(out, "  "+sub+" ") {
 			t.Errorf("config --help lacks %q:\n%s", sub, out)
 		}
@@ -305,6 +323,9 @@ func TestConfigHelpAndUsage(t *testing.T) {
 		{"vault without sub", []string{"config", "vault"}, 2, ""},
 		{"vault unknown", []string{"config", "vault", "x"}, 2, ""},
 		{"vault add without environment", []string{"config", "vault", "add", "x"}, 2, ""},
+		{"vault add without account", []string{"config", "vault", "add", "x", "--environment", "dev"}, 2, "--account is necessary"},
+		{"account help", []string{"config", "account", "--help"}, 0, "a38 config account add"},
+		{"account add two names", []string{"config", "account", "add", "x", "y"}, 2, ""},
 		{"vault add two names", []string{"config", "vault", "add", "x", "y", "--environment", "dev"}, 2, ""},
 		{"unknown flag", []string{"config", "show", "--nope"}, 2, ""},
 		{"path argument", []string{"config", "path", "x"}, 2, ""},
@@ -323,7 +344,7 @@ func TestConfigVaultAddErrors(t *testing.T) {
 	// F15 (part): the same rules as loading, before the write.
 	home := configHome(t)
 	p := filepath.Join(home, "c.yaml")
-	src := "version: 1\nvaults:\n  - name: datenbank-dev\n    environment: dev\n"
+	src := "version: 1\nvaults:\n  - name: datenbank-dev\n    environment: dev\n    account: privat\nbackend:\n  onepassword:\n    accounts:\n      - name: privat\n"
 	if err := os.WriteFile(p, []byte(src), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -332,8 +353,11 @@ func TestConfigVaultAddErrors(t *testing.T) {
 		args []string
 		want string
 	}{
-		{"duplicate", []string{"vault", "add", "datenbank-dev", "--environment", "dev"}, "in the list already"},
-		{"environment", []string{"vault", "add", "x", "--environment", "staging"}, "not dev, test or prod"},
+		{"duplicate", []string{"vault", "add", "datenbank-dev", "--environment", "dev", "--account", "privat"}, "in the list already"},
+		{"environment", []string{"vault", "add", "x", "--environment", "staging", "--account", "privat"}, "not dev, test or prod"},
+		{"unknown account", []string{"vault", "add", "x", "--environment", "dev", "--account", "firma"}, "a38 config account add"},
+		{"account twice", []string{"account", "add", "privat"}, "in the list already"},
+		{"account in use", []string{"account", "remove", "privat"}, `"datenbank-dev"`},
 		{"project unknown vault", []string{"project", "add", "p", "--path", "/srv/p", "--vault", "nope"}, "not in the vault list"},
 		{"project relative path", []string{"project", "add", "p", "--path", "rel", "--vault", "datenbank-dev"}, "must be absolute"},
 	}
@@ -354,16 +378,16 @@ func TestConfigEditKeepsComments(t *testing.T) {
 	// F15 (part): a commented file survives an edit except the changed block.
 	home := configHome(t)
 	p := filepath.Join(home, "c.yaml")
-	src := "# my file\nversion: 1\n\n# vaults\nvaults:\n  - name: datenbank-dev # dev\n    environment: dev\n\n# end\ngrant:\n  lifetime: 2h\n"
+	src := "# my file\nversion: 1\n\n# vaults\nvaults:\n  - name: datenbank-dev # dev\n    environment: dev\n    account: privat\n\n# end\ngrant:\n  lifetime: 2h\nbackend:\n  onepassword:\n    accounts: [{name: privat}]\n"
 	if err := os.WriteFile(p, []byte(src), 0o640); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chmod(p, 0o640); err != nil {
 		t.Fatal(err)
 	}
-	mustA38(t, "config", "vault", "add", "beispiel.test", "--environment", "test", "--config", p)
+	mustA38(t, "config", "vault", "add", "beispiel.test", "--environment", "test", "--account", "privat", "--config", p)
 	got, _ := os.ReadFile(p)
-	want := strings.Replace(src, "    environment: dev\n", "    environment: dev\n  - name: beispiel.test\n    environment: test\n", 1)
+	want := strings.Replace(src, "    account: privat\n\n", "    account: privat\n  - name: beispiel.test\n    environment: test\n    account: privat\n\n", 1)
 	if string(got) != want {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
 	}
@@ -390,7 +414,8 @@ func TestConfigProjectAddPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	mustA38(t, "config", "init")
-	mustA38(t, "config", "vault", "add", "datenbank-dev", "--environment", "dev")
+	mustA38(t, "config", "account", "add", "privat")
+	mustA38(t, "config", "vault", "add", "datenbank-dev", "--environment", "dev", "--account", "privat")
 	mustA38(t, "config", "project", "add", "beispielprojekt", "--path", proj, "--vault", "datenbank-dev")
 
 	wt := proj + "__worktrees"

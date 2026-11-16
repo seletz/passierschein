@@ -1,0 +1,9 @@
+id: F25
+zustand: eingeloest
+titel: Mehrere 1Password-Konten mit je einem Token im Daemon, in den Befehlen und in a38 doctor
+bezug: '#88'
+schluessel: '#88/f-konten'
+lauf: '2.0'
+branch: feat/88-mehrere-konten
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

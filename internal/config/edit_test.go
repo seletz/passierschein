@@ -17,6 +17,7 @@ version: 1
 vaults:
   - name: beispiel.app.k8s-dev # the dev vault
     environment: dev
+    account: privat
 
 # The projects.
 projects:
@@ -29,16 +30,22 @@ projects:
 # Grants.
 grant:
   lifetime: 4h # long enough
+
+# The accounts.
+backend:
+  onepassword:
+    accounts:
+      - name: privat # the private account
 `
 
 func TestAddVaultKeepsComments(t *testing.T) {
 	// F15 (part): the edit keeps the file byte for byte except the block.
-	got, err := AddVault([]byte(commented), "datenbank-dev", EnvTest)
+	got, err := AddVault([]byte(commented), "datenbank-dev", EnvTest, "privat")
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := strings.Replace(commented, "      - beispiel.app.k8s-dev\n\n# Grants", "      - beispiel.app.k8s-dev\n\n# Grants", 1)
-	want = strings.Replace(want, "    environment: dev\n\n# The projects.", "    environment: dev\n  - name: datenbank-dev\n    environment: test\n\n# The projects.", 1)
+	want = strings.Replace(want, "    account: privat\n\n# The projects.", "    account: privat\n  - name: datenbank-dev\n    environment: test\n    account: privat\n\n# The projects.", 1)
 	if string(got.Data) != want {
 		t.Fatalf("got:\n%s\nwant:\n%s", got.Data, want)
 	}
@@ -85,6 +92,9 @@ func shortHome(t *testing.T) string {
 	return home
 }
 
+// withPrivat is a minimal file with the account privat.
+const withPrivat = "version: 1\nbackend:\n  onepassword:\n    accounts:\n      - name: privat\n"
+
 func TestEditTable(t *testing.T) {
 	shortHome(t)
 	tmpl, err := Template()
@@ -98,10 +108,10 @@ func TestEditTable(t *testing.T) {
 		wantErr string
 		wantIn  []string
 	}{
-		{"duplicate vault", commented, func(s string) (Edit, error) { return AddVault([]byte(s), "beispiel.app.k8s-dev", EnvDev) }, "in the list already", nil},
-		{"unknown environment", commented, func(s string) (Edit, error) { return AddVault([]byte(s), "x", "staging") }, "not dev, test or prod", nil},
-		{"empty environment", commented, func(s string) (Edit, error) { return AddVault([]byte(s), "x", "") }, "not dev, test or prod", nil},
-		{"bad name", commented, func(s string) (Edit, error) { return AddVault([]byte(s), "a/b", EnvDev) }, "slash", nil},
+		{"duplicate vault", commented, func(s string) (Edit, error) { return AddVault([]byte(s), "beispiel.app.k8s-dev", EnvDev, "privat") }, "in the list already", nil},
+		{"unknown environment", commented, func(s string) (Edit, error) { return AddVault([]byte(s), "x", "staging", "privat") }, "not dev, test or prod", nil},
+		{"empty environment", commented, func(s string) (Edit, error) { return AddVault([]byte(s), "x", "", "privat") }, "not dev, test or prod", nil},
+		{"bad name", commented, func(s string) (Edit, error) { return AddVault([]byte(s), "a/b", EnvDev, "privat") }, "slash", nil},
 		{"remove unknown vault", commented, func(s string) (Edit, error) { return RemoveVault([]byte(s), "nope") }, "not in the list", nil},
 		{"remove vault in use", commented, func(s string) (Edit, error) { return RemoveVault([]byte(s), "beispiel.app.k8s-dev") }, `"beispielprojekt"`, nil},
 		{"project unknown vault", commented, func(s string) (Edit, error) {
@@ -121,22 +131,47 @@ func TestEditTable(t *testing.T) {
 			return AddProject([]byte(s), "p2", []string{"/srv/beispielprojekt"}, []string{"beispiel.app.k8s-dev"})
 		}, "also belongs", nil},
 		{"project remove unknown", commented, func(s string) (Edit, error) { return RemoveProject([]byte(s), "nope") }, "not in the list", nil},
-		{"broken file", "version: 2\n", func(s string) (Edit, error) { return AddVault([]byte(s), "x", EnvDev) }, "fix it first", nil},
-		{"crlf", strings.ReplaceAll(commented, "\n", "\r\n"), func(s string) (Edit, error) { return AddVault([]byte(s), "x", EnvDev) }, "CRLF", nil},
-		{"add vault to template (flow list)", string(tmpl), func(s string) (Edit, error) { return AddVault([]byte(s), "datenbank-dev", EnvDev) }, "",
-			[]string{"vaults:\n  - name: datenbank-dev\n    environment: dev\n\n# The projects."}},
+		{"broken file", "version: 2\n", func(s string) (Edit, error) { return AddVault([]byte(s), "x", EnvDev, "privat") }, "fix it first", nil},
+		{"crlf", strings.ReplaceAll(commented, "\n", "\r\n"), func(s string) (Edit, error) { return AddVault([]byte(s), "x", EnvDev, "privat") }, "CRLF", nil},
+		{"add vault to template (flow list)", string(tmpl), func(s string) (Edit, error) {
+			e, err := AddAccount([]byte(s), "privat", TokenSourceKeychain, "")
+			if err != nil {
+				return e, err
+			}
+			return AddVault(e.Data, "datenbank-dev", EnvDev, "privat")
+		}, "", []string{"vaults:\n  - name: datenbank-dev\n    environment: dev\n    account: privat\n\n# The projects."}},
 		{"add project to template", string(tmpl), func(s string) (Edit, error) {
-			e, err := AddVault([]byte(s), "v", EnvDev)
+			e, err := AddAccount([]byte(s), "privat", TokenSourceKeychain, "")
+			if err != nil {
+				return e, err
+			}
+			e, err = AddVault(e.Data, "v", EnvDev, "privat")
 			if err != nil {
 				return e, err
 			}
 			return AddProject(e.Data, "p", []string{"~/develop/p", "/srv/p"}, []string{"v"})
 		}, "", []string{"projects:\n  - name: p\n    paths:\n      - ~/develop/p\n      - /srv/p\n    vaults:\n      - v\n"}},
-		{"key absent", "version: 1\n", func(s string) (Edit, error) { return AddVault([]byte(s), "v", EnvProd) }, "",
-			[]string{"\nvaults:\n  - name: v\n    environment: prod\n"}},
-		{"key null", "version: 1\nvaults:\n", func(s string) (Edit, error) { return AddVault([]byte(s), "v", EnvProd) }, "",
-			[]string{"vaults:\n  - name: v\n    environment: prod\n"}},
-		{"flow items are not edited", "version: 1\nvaults: [{name: a, environment: dev}]\n", func(s string) (Edit, error) { return AddVault([]byte(s), "v", EnvProd) }, "a style that a38 does not edit", nil},
+		{"key absent", withPrivat, func(s string) (Edit, error) { return AddVault([]byte(s), "v", EnvProd, "privat") }, "",
+			[]string{"\nvaults:\n  - name: v\n    environment: prod\n    account: privat\n"}},
+		{"key null", withPrivat + "vaults:\n", func(s string) (Edit, error) { return AddVault([]byte(s), "v", EnvProd, "privat") }, "",
+			[]string{"vaults:\n  - name: v\n    environment: prod\n    account: privat\n"}},
+		{"flow items are not edited", withPrivat + "vaults: [{name: a, environment: dev, account: privat}]\n", func(s string) (Edit, error) { return AddVault([]byte(s), "v", EnvProd, "privat") }, "a style that a38 does not edit", nil},
+		// T43 (part): a vault names an account of the list (D70).
+		{"vault without account", commented, func(s string) (Edit, error) { return AddVault([]byte(s), "v", EnvDev, "") }, "each vault names its 1Password account", nil},
+		{"vault with unknown account", commented, func(s string) (Edit, error) { return AddVault([]byte(s), "v", EnvDev, "firma") }, `the account "firma" is not in backend.onepassword.accounts; add it first (a38 config account add)`, nil},
+		{"add account", commented, func(s string) (Edit, error) {
+			return AddAccount([]byte(s), "firma", TokenSourceFile, "~/a38/onepassword-token-firma")
+		}, "", []string{"      - name: privat # the private account\n      - name: firma\n        token_source: file\n        token_file: ~/a38/onepassword-token-firma\n"}},
+		{"add account keychain", commented, func(s string) (Edit, error) { return AddAccount([]byte(s), "firma", TokenSourceKeychain, "") }, "",
+			[]string{"      - name: firma\n        token_source: keychain\n"}},
+		{"add account twice", commented, func(s string) (Edit, error) { return AddAccount([]byte(s), "privat", TokenSourceKeychain, "") }, "in the list already", nil},
+		{"add account bad name", commented, func(s string) (Edit, error) { return AddAccount([]byte(s), "Firma", TokenSourceKeychain, "") }, "lower-case", nil},
+		{"add account reserved name", commented, func(s string) (Edit, error) { return AddAccount([]byte(s), LegacyAccount, TokenSourceKeychain, "") }, "reserved", nil},
+		{"add account token file with keychain", commented, func(s string) (Edit, error) { return AddAccount([]byte(s), "firma", TokenSourceKeychain, "/tmp/t") }, "only with the token source file", nil},
+		{"add account without section", "version: 1\n", func(s string) (Edit, error) { return AddAccount([]byte(s), "privat", TokenSourceKeychain, "") }, "",
+			[]string{"backend:\n  onepassword:\n    accounts:\n      - name: privat\n        token_source: keychain\n"}},
+		{"remove account in use", commented, func(s string) (Edit, error) { return RemoveAccount([]byte(s), "privat") }, `"beispiel.app.k8s-dev"`, nil},
+		{"remove unknown account", commented, func(s string) (Edit, error) { return RemoveAccount([]byte(s), "firma") }, "not in the list", nil},
 		{"missing path is a note", commented, func(s string) (Edit, error) {
 			return AddProject([]byte(s), "p2", []string{"/nonexistent-a38/p2"}, []string{"beispiel.app.k8s-dev"})
 		}, "", []string{"- /nonexistent-a38/p2"}},
@@ -191,11 +226,10 @@ func TestTemplateLoadsWithDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !in.Present["backend.onepassword.token_source"] {
-		t.Error("the token source is not written out")
-	}
-	if in.Present["backend.onepassword.token_file"] {
-		t.Error("token_file is written, but it should be a comment")
+	// D71: the template has the list of the accounts, empty; the human
+	// adds an account with "a38 config account add".
+	if !in.Present["backend.onepassword.accounts"] || in.Present["backend.onepassword.token_source"] {
+		t.Errorf("template keys = %v, want backend.onepassword.accounts and no token_source", in.Present)
 	}
 }
 

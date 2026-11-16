@@ -40,8 +40,8 @@ neue Entscheidung. Die alte Entscheidung erhält den Status „ersetzt“.
 |---|---|
 | UC | {{ ref("UC1") }}–{{ ref("UC16") }} |
 | D | {{ ref("D1") }}–{{ ref("D77") }} |
-| F | {{ ref("F1") }}–{{ ref("F24") }} |
-| T | {{ ref("T1") }}–{{ ref("T42") }} |
+| F | {{ ref("F1") }}–{{ ref("F26") }} |
+| T | {{ ref("T1") }}–{{ ref("T48") }} |
 | G | {{ ref("G1") }}–{{ ref("G49") }} |
 | RI | {{ ref("RI1") }}–{{ ref("RI14") }} |
 
@@ -72,6 +72,11 @@ Eine Entscheidung hat eine von zwei Herkünften:
   Reisepass). Stefan hat den Entwurf am 2026-11-15 im
   [Pull Request 109](https://github.com/seletz/passierschein/pull/109)
   gewählt.
+- **In Lauf 2 für mehrere 1Password-Konten:** {{ ref("D70") }} hat Stefan am
+  2026-11-15 entschieden: Jeder Vault nennt sein Konto. {{ ref("D71") }} bis
+  {{ ref("D75") }} kommen aus
+  [Issue 88](https://github.com/seletz/passierschein/issues/88); Stefan hat
+  sie am 2026-11-16 in PR 114 bestätigt. {{ ref("D72") }} ersetzt {{ ref("D51") }}.
 - **Aus der Umsetzung des exec-Wegs, bestätigt:** {{ ref("D76") }} (Laufzeit
   0 in jeder Umgebung) und {{ ref("D77") }} (drei Auslegungen im Daemon).
   Stefan hat sie am 2026-11-16 zum

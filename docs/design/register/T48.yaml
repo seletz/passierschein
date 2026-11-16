@@ -1,0 +1,9 @@
+id: T48
+zustand: eingeloest
+titel: Freigabeanfrage, Audit-Log und a38 tui nennen das Konto des Vaults
+bezug: '#88'
+schluessel: '#88/t-anzeige'
+lauf: '2.0'
+branch: feat/88-mehrere-konten
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'

@@ -10,7 +10,7 @@ import (
 )
 
 const configVaultUsage = `Usage:
-  a38 config vault add NAME --environment dev|test|prod [--config FILE]
+  a38 config vault add NAME --environment dev|test|prod --account ACCOUNT [--config FILE]
   a38 config vault remove NAME [--config FILE]
   a38 config vault list [--config FILE] [--json]
 
@@ -21,10 +21,35 @@ a temporary file next to the original and rename it, so a reader never sees
 a part of the file. They refuse to write through a symbolic link, and they
 fail if another program changes the file at the same time.
 
-"add" fails if the name is in the list or the environment is not dev,
-test or prod. "remove" fails if a project still uses the vault, and it
-names the projects.
+"add" fails if the name is in the list, the environment is not dev, test
+or prod, or the account is not in backend.onepassword.accounts. Each vault
+names its 1Password account; there is no default account (D70). "remove"
+fails if a project still uses the vault, and it names the projects.
 
+A running daemon reads the file only at its start. Restart it after a change.
+`
+
+const configAccountUsage = `Usage:
+  a38 config account add NAME [--token-source keychain|file] [--token-file FILE] [--config FILE]
+  a38 config account remove NAME [--config FILE]
+  a38 config account list [--config FILE] [--json]
+
+"add" and "remove" change the list backend.onepassword.accounts in the
+configuration file, with the same rules as "a38 config vault" (D71). Each
+account has its own 1Password service account and token.
+
+NAME has 1 to 32 characters: lower-case letters, digits and hyphens. The
+name "service-account" is reserved. The token source is keychain (the
+default) or file; --token-file is allowed only with the source file and
+has the default ~/.config/a38/onepassword-token-NAME.
+
+"remove" fails if a vault still names the account. It does not delete the
+keychain item; run "a38 config onepassword-token delete --account NAME".
+
+"list" shows each account with its token source and its vaults. It never
+reads a token.
+
+After "add", store the token: a38 config onepassword-token set --account NAME
 A running daemon reads the file only at its start. Restart it after a change.
 `
 
@@ -59,6 +84,12 @@ var vaultCommands = cmdTable{name: "config vault", usage: configVaultUsage, cmds
 	{"list", "List the vaults", runVaultList},
 }}
 
+var accountCommands = cmdTable{name: "config account", usage: configAccountUsage, cmds: []command{
+	{"add", "Add a 1Password account", runAccountAdd},
+	{"remove", "Remove a 1Password account", runAccountRemove},
+	{"list", "List the 1Password accounts", runAccountList},
+}}
+
 var projectCommands = cmdTable{name: "config project", usage: configProjectUsage, cmds: []command{
 	{"add", "Add a project", runProjectAdd},
 	{"add-path", "Add a path to a project", runProjectAddPath},
@@ -68,6 +99,9 @@ var projectCommands = cmdTable{name: "config project", usage: configProjectUsage
 
 func runVault(args []string, stdout, stderr io.Writer) int {
 	return vaultCommands.run(args, stdout, stderr)
+}
+func runAccount(args []string, stdout, stderr io.Writer) int {
+	return accountCommands.run(args, stdout, stderr)
 }
 func runProject(args []string, stdout, stderr io.Writer) int {
 	return projectCommands.run(args, stdout, stderr)
@@ -104,12 +138,13 @@ func applyEdit(cmd string, configPath string, stdout, stderr io.Writer, change f
 
 func runVaultAdd(args []string, stdout, stderr io.Writer) int {
 	var (
-		af  adminFlags
-		env string
+		af           adminFlags
+		env, account string
 	)
 	fs := newFlagSet("config vault add", stderr)
 	af.register(fs)
 	fs.StringVar(&env, "environment", "", "environment of the vault: dev, test or prod")
+	fs.StringVar(&account, "account", "", "1Password account of the vault (backend.onepassword.accounts)")
 	pos, code, done := parseCmd(fs, configVaultUsage, args, stdout, stderr)
 	if done {
 		return code
@@ -120,10 +155,13 @@ func runVaultAdd(args []string, stdout, stderr io.Writer) int {
 	if env == "" {
 		return usageError(stderr, "vault add", configVaultUsage, "--environment is necessary (dev, test or prod)")
 	}
+	if account == "" {
+		return usageError(stderr, "vault add", configVaultUsage, "--account is necessary; each vault names its 1Password account (a38 config account list)")
+	}
 	name := pos[0]
 	return applyEdit("vault add", af.configPath, stdout, stderr, func(b []byte) (config.Edit, error) {
-		return config.AddVault(b, name, config.Environment(env))
-	}, fmt.Sprintf("Added the vault %q (environment %s)", name, env))
+		return config.AddVault(b, name, config.Environment(env), account)
+	}, fmt.Sprintf("Added the vault %q (environment %s, account %s)", name, env, account))
 }
 
 func runVaultRemove(args []string, stdout, stderr io.Writer) int {
@@ -160,7 +198,7 @@ func runVaultList(args []string, stdout, stderr io.Writer) int {
 	}
 	vaults := []showVault{}
 	for _, v := range cfg.Vaults {
-		vaults = append(vaults, showVault{Name: v.Name, Environment: string(v.Environment)})
+		vaults = append(vaults, showVault{Name: v.Name, Environment: string(v.Environment), Account: v.Account})
 	}
 	if af.asJSON {
 		if err := writeJSON(stdout, vaults); err != nil {
@@ -169,11 +207,103 @@ func runVaultList(args []string, stdout, stderr io.Writer) int {
 		return exitOK
 	}
 	if len(vaults) == 0 {
-		_, _ = fmt.Fprintln(stdout, "No vaults. Add one with: a38 config vault add NAME --environment dev")
+		_, _ = fmt.Fprintln(stdout, "No vaults. Add one with: a38 config vault add NAME --environment dev --account ACCOUNT")
 		return exitOK
 	}
+	_, _ = fmt.Fprintf(stdout, "%-30s %-11s %s\n", "VAULT", "ENVIRONMENT", "ACCOUNT")
 	for _, v := range vaults {
-		_, _ = fmt.Fprintf(stdout, "%-30s %s\n", v.Name, v.Environment)
+		_, _ = fmt.Fprintf(stdout, "%-30s %-11s %s\n", v.Name, v.Environment, v.Account)
+	}
+	return exitOK
+}
+
+func runAccountAdd(args []string, stdout, stderr io.Writer) int {
+	var (
+		af                adminFlags
+		source, tokenFile string
+	)
+	fs := newFlagSet("config account add", stderr)
+	af.register(fs)
+	fs.StringVar(&source, "token-source", string(config.DefaultTokenSource), "source of the token: keychain or file")
+	fs.StringVar(&tokenFile, "token-file", "", "token file of the account (only with --token-source file)")
+	pos, code, done := parseCmd(fs, configAccountUsage, args, stdout, stderr)
+	if done {
+		return code
+	}
+	if len(pos) != 1 {
+		return usageError(stderr, "account add", configAccountUsage, "give exactly one account name")
+	}
+	name := pos[0]
+	rc := applyEdit("account add", af.configPath, stdout, stderr, func(b []byte) (config.Edit, error) {
+		return config.AddAccount(b, name, config.TokenSource(source), tokenFile)
+	}, fmt.Sprintf("Added the account %q (token source %s)", name, source))
+	if rc == exitOK && config.TokenSource(source) == config.TokenSourceKeychain {
+		_, _ = fmt.Fprintf(stdout, "Next step: store the token of the account in a terminal: a38 config onepassword-token set --account %s\n", name)
+	}
+	return rc
+}
+
+func runAccountRemove(args []string, stdout, stderr io.Writer) int {
+	var af adminFlags
+	fs := newFlagSet("config account remove", stderr)
+	af.register(fs)
+	pos, code, done := parseCmd(fs, configAccountUsage, args, stdout, stderr)
+	if done {
+		return code
+	}
+	if len(pos) != 1 {
+		return usageError(stderr, "account remove", configAccountUsage, "give exactly one account name")
+	}
+	name := pos[0]
+	rc := applyEdit("account remove", af.configPath, stdout, stderr, func(b []byte) (config.Edit, error) {
+		return config.RemoveAccount(b, name)
+	}, fmt.Sprintf("Removed the account %q", name))
+	if rc == exitOK {
+		_, _ = fmt.Fprintf(stdout, "The keychain item of the account stays. Delete it with: a38 config onepassword-token delete --account %s\n", name)
+	}
+	return rc
+}
+
+func runAccountList(args []string, stdout, stderr io.Writer) int {
+	var af adminFlags
+	fs := newFlagSet("config account list", stderr)
+	af.register(fs)
+	pos, code, done := parseCmd(fs, configAccountUsage, args, stdout, stderr)
+	if done {
+		return code
+	}
+	if len(pos) != 0 {
+		return usageError(stderr, "account list", configAccountUsage, "unexpected argument")
+	}
+	_, _, cfg, err := loadConfigFile(af.configPath)
+	if err != nil {
+		return fail(stderr, "account list", err)
+	}
+	accounts := []showAccount{}
+	for _, a := range cfg.Backend.OnePassword.Accounts {
+		vaults := cfg.VaultsOf(a.Name)
+		if vaults == nil {
+			vaults = []string{}
+		}
+		accounts = append(accounts, showAccount{Name: a.Name, TokenSource: string(a.TokenSource), TokenFile: a.TokenFile, Vaults: vaults})
+	}
+	if af.asJSON {
+		if err := writeJSON(stdout, accounts); err != nil {
+			return fail(stderr, "account list", err)
+		}
+		return exitOK
+	}
+	if len(accounts) == 0 {
+		_, _ = fmt.Fprintln(stdout, "No accounts. Add one with: a38 config account add NAME")
+		return exitOK
+	}
+	_, _ = fmt.Fprintf(stdout, "%-20s %-9s %s\n", "ACCOUNT", "SOURCE", "VAULTS")
+	for _, a := range accounts {
+		vaults := strings.Join(a.Vaults, ", ")
+		if vaults == "" {
+			vaults = "(none: the daemon does not read its token)"
+		}
+		_, _ = fmt.Fprintf(stdout, "%-20s %-9s %s\n", a.Name, a.TokenSource, vaults)
 	}
 	return exitOK
 }

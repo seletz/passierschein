@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,14 +24,15 @@ const tokenMarker = "ops_beispiel-token-marker-5c1e"
 func TestMain(m *testing.M) {
 	// Issue 59: no test of this package touches the keychain. A test that
 	// needs a store installs a fake one.
-	newTokenStore = func() (token.Store, error) {
+	newTokenStore = func(string) (token.Store, error) {
 		return nil, errors.New("test: no token store installed")
 	}
 	os.Exit(m.Run())
 }
 
-// fakeStore is a token store in memory.
+// fakeStore is a token store in memory for one account.
 type fakeStore struct {
+	account  string
 	mu       sync.Mutex
 	value    *string
 	readable bool
@@ -44,11 +44,15 @@ type fakeStore struct {
 	reads    int
 }
 
-func newFakeStore() *fakeStore {
-	return &fakeStore{readable: true, sig: token.Signature{Path: "/x/a38", Kind: token.SignatureAdhoc, CDHash: "abcd"}}
+// newFakeStore returns an empty store of the account privat.
+func newFakeStore() *fakeStore { return newFakeStoreFor("privat") }
+
+// newFakeStoreFor returns an empty store of the account.
+func newFakeStoreFor(account string) *fakeStore {
+	return &fakeStore{account: account, readable: true, sig: token.Signature{Path: "/x/a38", Kind: token.SignatureAdhoc, CDHash: "abcd"}}
 }
 
-func (f *fakeStore) Name() string { return "a38-test-fake/a38-test" }
+func (f *fakeStore) Name() string { return "a38-test-fake/" + f.account }
 func (f *fakeStore) Token() (token.Token, error) {
 	if f.block != nil {
 		<-f.block
@@ -107,7 +111,11 @@ func (f *fakeStore) Signature() (token.Signature, error) { return f.sig, nil }
 // tokenEnv runs the token commands with a fake store, a configuration
 // with the given source and a token file in a temporary directory.
 type tokenEnv struct {
+	// store is the item of the account privat; stores holds each item by
+	// account, also the item of the configuration with one token.
 	store    *fakeStore
+	stores   map[string]*fakeStore
+	cfgDir   string
 	cfgPath  string
 	file     string
 	terminal bool
@@ -118,12 +126,25 @@ type tokenEnv struct {
 func newTokenEnv(t *testing.T, source config.TokenSource) *tokenEnv {
 	t.Helper()
 	dir := t.TempDir()
-	e := &tokenEnv{store: newFakeStore(), cfgPath: filepath.Join(dir, "config.yaml"), file: filepath.Join(dir, "onepassword-token"), terminal: true}
-	data := fmt.Sprintf("version: 1\nbackend:\n  onepassword:\n    token_source: %s\n    token_file: %s\n", source, e.file)
+	// The token file of the configuration with one token lies below
+	// XDG_CONFIG_HOME; the test never looks at the one of the human.
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	e := &tokenEnv{store: newFakeStore(), cfgDir: dir, cfgPath: filepath.Join(dir, "config.yaml"), file: filepath.Join(dir, "onepassword-token-privat"), terminal: true}
+	e.stores = map[string]*fakeStore{"privat": e.store}
+	data := fmt.Sprintf("version: 1\nvaults:\n  - {name: beispiel.app.k8s-dev, environment: dev, account: privat}\n"+
+		"backend:\n  onepassword:\n    accounts:\n      - name: privat\n        token_source: %s\n        token_file: %s\n", source, e.file)
 	if err := os.WriteFile(e.cfgPath, []byte(data), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return e
+}
+
+// storeOf returns the item of the account and creates it if necessary.
+func (e *tokenEnv) storeOf(account string) *fakeStore {
+	if e.stores[account] == nil {
+		e.stores[account] = newFakeStoreFor(account)
+	}
+	return e.stores[account]
 }
 
 func (e *tokenEnv) run(args ...string) (int, string, string) {
@@ -133,7 +154,7 @@ func (e *tokenEnv) run(args ...string) (int, string, string) {
 			e.prompts++
 			return []byte(e.typed), nil
 		},
-		newStore: func() (token.Store, error) { return e.store, nil },
+		newStore: func(account string) (token.Store, error) { return e.storeOf(account), nil },
 		lstat:    os.Lstat,
 	}
 	if len(args) > 0 {
@@ -183,7 +204,7 @@ func TestTokenSet(t *testing.T) {
 		wantStored string
 		wantPrompt bool
 	}{
-		{"terminal", false, tokenMarker, nil, 0, "Stored the token in the keychain item a38-test-fake/a38-test.", "", tokenMarker, true},
+		{"terminal", false, tokenMarker, nil, 0, `Stored the token of the account "privat" in the keychain item a38-test-fake/privat.`, "", tokenMarker, true},
 		{"empty", false, "", nil, 1, "", "the token is empty", "", true},
 		{"inner space", false, "ops_beispiel token-marker-5c1e", nil, 1, "", "white space", "", true},
 		{"control character", false, "ops_beispiel\x1btoken-marker-5c1e", nil, 1, "", "control character", "", true},
@@ -203,7 +224,7 @@ func TestTokenSet(t *testing.T) {
 				e.store.value = &old
 			}
 			e.typed = tt.typed
-			code, out, errOut := e.run(append([]string{"set"}, tt.args...)...)
+			code, out, errOut := e.run(append([]string{"set", "--account", "privat"}, tt.args...)...)
 			if code != tt.wantCode {
 				t.Errorf("exit code = %d, want %d; stderr %q", code, tt.wantCode, errOut)
 			}
@@ -234,7 +255,7 @@ func TestTokenSetRefusesNonTerminal(t *testing.T) {
 	// a terminal the command reads nothing and ends with 2.
 	e := newTokenEnv(t, config.TokenSourceKeychain)
 	e.terminal, e.typed = false, tokenMarker
-	code, out, errOut := e.run("set")
+	code, out, errOut := e.run("set", "--account", "privat")
 	if code != 2 || !strings.Contains(errOut, "standard input is not a terminal") || out != "" {
 		t.Errorf("code %d, stdout %q, stderr %q", code, out, errOut)
 	}
@@ -246,7 +267,7 @@ func TestTokenSetRefusesNonTerminal(t *testing.T) {
 func TestTokenSetNotesFileSource(t *testing.T) {
 	e := newTokenEnv(t, config.TokenSourceFile)
 	e.typed = tokenMarker
-	code, out, errOut := e.run("set")
+	code, out, errOut := e.run("set", "--account", "privat")
 	if code != 0 || !strings.Contains(errOut, "token_source: file") {
 		t.Errorf("code %d, stderr %q", code, errOut)
 	}
@@ -257,7 +278,7 @@ func TestTokenSetStoreError(t *testing.T) {
 	e := newTokenEnv(t, config.TokenSourceKeychain)
 	e.store.putErr = errors.New("keychain: SecItemAdd: status -25308 (User interaction is not allowed.)")
 	e.typed = tokenMarker
-	code, out, errOut := e.run("set")
+	code, out, errOut := e.run("set", "--account", "privat")
 	if code != 1 || !strings.Contains(errOut, "nothing stored") || !strings.Contains(errOut, "-25308") {
 		t.Errorf("code %d, stderr %q", code, errOut)
 	}
@@ -276,13 +297,13 @@ func TestTokenStatus(t *testing.T) {
 		want     []string
 	}{
 		{"no item", config.TokenSourceKeychain, func(*testing.T, *tokenEnv) {}, 1,
-			[]string{"Source:      keychain", "no item a38-test-fake/a38-test", "a38 config onepassword-token set", "Signature:   ad-hoc", "each new build of a38 needs a confirmation", "does not exist"}},
+			[]string{"Account privat: vaults beispiel.app.k8s-dev", "Source:      keychain", "no item a38-test-fake/privat", "a38 config onepassword-token set --account privat", "Signature:   ad-hoc", "each new build of a38 needs a confirmation", "does not exist"}},
 		{"item of this build", config.TokenSourceKeychain, func(_ *testing.T, e *tokenEnv) { v := tokenMarker; e.store.value = &v }, 0,
-			[]string{"item a38-test-fake/a38-test exists (value not read)", "2026-11-12T08:00:00Z", "Trusted:   /x/a38", "cdhash:abcd"}},
+			[]string{"item a38-test-fake/privat exists (value not read)", "2026-11-12T08:00:00Z", "Trusted:   /x/a38", "cdhash:abcd"}},
 		{"item of another build", config.TokenSourceKeychain, func(_ *testing.T, e *tokenEnv) {
 			v := tokenMarker
 			e.store.value, e.store.readable = &v, false
-		}, 0, []string{"exists", "this build of a38 did not store the item", "set --replace"}},
+		}, 0, []string{"exists", "this build of a38 did not store the item", "set --account privat --replace"}},
 		{"item trusts another program", config.TokenSourceKeychain, func(_ *testing.T, e *tokenEnv) {
 			v := tokenMarker
 			e.store.value, e.store.readable, e.store.trusted = &v, false, []string{"/usr/bin/security"}
@@ -335,7 +356,7 @@ func TestTokenStatus(t *testing.T) {
 			if err := json.Unmarshal([]byte(js), &st); err != nil {
 				t.Fatalf("--json: %v\n%s", err, js)
 			}
-			if st.Source != tt.source || st.OK != (code == 0) {
+			if len(st.Accounts) != 1 || st.Accounts[0].Source != tt.source || st.OK != (code == 0) {
 				t.Errorf("--json: %+v", st)
 			}
 			if e.store.reads != 0 {
@@ -351,7 +372,7 @@ func TestTokenStatusWithoutConfiguration(t *testing.T) {
 	e := newTokenEnv(t, config.TokenSourceKeychain)
 	e.cfgPath = "/tmp/a38-missing/config.yaml"
 	code, out, _ := e.run("status")
-	if code != 1 || !strings.Contains(out, "Source:      keychain") || !strings.Contains(out, "did not load") {
+	if code != 1 || !strings.Contains(out, "does not load") {
 		t.Errorf("code %d, stdout:\n%s", code, out)
 	}
 }
@@ -366,8 +387,8 @@ func TestTokenDelete(t *testing.T) {
 		wantOut  string
 		wantErr  string
 	}{
-		{"keychain source", config.TokenSourceKeychain, true, 0, "next start with the 1Password backend fails until you run \"a38 config onepassword-token set\"", ""},
-		{"file source", config.TokenSourceFile, true, 0, "uses the token file", ""},
+		{"keychain source", config.TokenSourceKeychain, true, 0, "the vaults of the account \"privat\" are locked until you run \"a38 config onepassword-token set --account privat\"", ""},
+		{"file source", config.TokenSourceFile, true, 0, "uses its token file", ""},
 		{"no item", config.TokenSourceKeychain, false, 1, "", "has no item"},
 	}
 	for _, tt := range tests {
@@ -377,7 +398,7 @@ func TestTokenDelete(t *testing.T) {
 				v := tokenMarker
 				e.store.value = &v
 			}
-			code, out, errOut := e.run("delete")
+			code, out, errOut := e.run("delete", "--account", "privat")
 			if code != tt.wantCode || !strings.Contains(out, tt.wantOut) || !strings.Contains(errOut, tt.wantErr) {
 				t.Errorf("code %d, stdout %q, stderr %q", code, out, errOut)
 			}
@@ -388,7 +409,7 @@ func TestTokenDelete(t *testing.T) {
 		})
 	}
 	e := newTokenEnv(t, config.TokenSourceKeychain)
-	if code, _, errOut := e.run("delete", "now"); code != 2 || !strings.Contains(errOut, "unexpected argument") {
+	if code, _, errOut := e.run("delete", "--account", "privat", "now"); code != 2 || !strings.Contains(errOut, "unexpected argument") {
 		t.Errorf("argument: code %d, stderr %q", code, errOut)
 	}
 }
@@ -409,11 +430,11 @@ func TestTokenStoreUnavailable(t *testing.T) {
 	for _, sub := range []string{"set", "status", "delete"} {
 		deps := tokenDeps{
 			terminal: true,
-			newStore: func() (token.Store, error) { return nil, fmt.Errorf("the keychain is %w", token.ErrUnavailable) },
+			newStore: func(string) (token.Store, error) { return nil, fmt.Errorf("the keychain is %w", token.ErrUnavailable) },
 			lstat:    os.Lstat,
 		}
 		var o, er bytes.Buffer
-		if code := runTokenWith([]string{sub, "--config", "/tmp/a38-missing/config.yaml"}, &o, &er, deps); code != 1 || !strings.Contains(er.String(), "not available on this platform") {
+		if code := runTokenWith([]string{sub, "--account", "privat", "--config", "/tmp/a38-missing/config.yaml"}, &o, &er, deps); code != 1 || !strings.Contains(er.String(), "not available on this platform") && !strings.Contains(er.String(), "does not load") {
 			t.Errorf("%s: code %d, stderr %q", sub, code, er.String())
 		}
 	}
@@ -430,12 +451,12 @@ func TestKeychainSource(t *testing.T) {
 		want    string
 	}{
 		{"item", func() *fakeStore { s := newFakeStore(); s.value = &v; return s }, time.Second, ""},
-		{"no item", newFakeStore, time.Second, `has no item a38-test-fake/a38-test (backend.onepassword.token_source: keychain, the default); store the token with "a38 config onepassword-token set", or set backend.onepassword.token_source: file`},
+		{"no item", newFakeStore, time.Second, `has no item a38-test-fake/privat (token_source: keychain, the default); store the token with "a38 config onepassword-token set --account privat", or set token_source: file for the account`},
 		{"interaction", func() *fakeStore {
 			s := newFakeStore()
 			s.getErr = fmt.Errorf("keychain: %w", token.ErrInteraction)
 			return s
-		}, time.Second, "a38 config onepassword-token set --replace"},
+		}, time.Second, "a38 config onepassword-token set --account privat --replace"},
 		{"other error", func() *fakeStore { s := newFakeStore(); s.getErr = errors.New("keychain: status -50"); return s }, time.Second, "cannot be read: keychain: status -50"},
 		{"empty", func() *fakeStore { s := newFakeStore(); e := ""; s.value = &e; return s }, time.Second, "is empty"},
 		{"dialog", func() *fakeStore { s := newFakeStore(); s.value = &v; s.block = make(chan struct{}); return s }, 20 * time.Millisecond, "gave no token within"},
@@ -443,7 +464,7 @@ func TestKeychainSource(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := tt.store()
-			src := keychainSource{newStore: func() (token.Store, error) { return s, nil }, timeout: tt.timeout}
+			src := keychainSource{account: "privat", newStore: func(string) (token.Store, error) { return s, nil }, timeout: tt.timeout}
 			tok, err := src.Token()
 			if s.block != nil {
 				close(s.block)
@@ -460,30 +481,140 @@ func TestKeychainSource(t *testing.T) {
 			noToken(t, err.Error())
 		})
 	}
-	src := keychainSource{newStore: func() (token.Store, error) { return nil, errors.New("not available on this platform") }, timeout: time.Second}
+	src := keychainSource{account: "privat", newStore: func(string) (token.Store, error) { return nil, errors.New("not available on this platform") }, timeout: time.Second}
 	if _, err := src.Token(); err == nil || !strings.Contains(err.Error(), "not available") {
 		t.Errorf("no store: %v", err)
 	}
 }
 
-func TestTokenSourceSelection(t *testing.T) {
-	// D51, issue 59: keychain is the default source; file is the fallback.
-	for _, tt := range []struct {
-		source config.TokenSource
-		want   string
-	}{
-		{"", "main.keychainSource"},
-		{config.TokenSourceKeychain, "main.keychainSource"},
-		{config.TokenSourceFile, "main.fileSource"},
-	} {
-		cfg := &config.Config{Backend: config.Backend{OnePassword: config.OnePassword{TokenSource: tt.source, TokenFile: "/tmp/a38-missing/onepassword-token"}}}
-		if got := fmt.Sprintf("%T", tokenSource(cfg)); got != tt.want {
-			t.Errorf("%q: %s, want %s", tt.source, got, tt.want)
+func TestTokenAccounts(t *testing.T) {
+	// T44: the token commands need the account and show for each account
+	// only metadata (D72). No test touches the item a38.onepassword.
+	newEnv := func(t *testing.T) *tokenEnv {
+		e := newTokenEnv(t, config.TokenSourceKeychain)
+		firmaFile := filepath.Join(e.cfgDir, "onepassword-token-firma")
+		data := fmt.Sprintf("version: 1\nvaults:\n"+
+			"  - {name: beispiel.app.k8s-dev, environment: dev, account: privat}\n"+
+			"  - {name: datenbank-dev, environment: dev, account: firma}\n"+
+			"backend:\n  onepassword:\n    accounts:\n"+
+			"      - name: privat\n        token_file: %s\n"+
+			"      - name: firma\n        token_source: file\n        token_file: %s\n", e.file, firmaFile)
+		if err := os.WriteFile(e.cfgPath, []byte(data), 0o600); err != nil {
+			t.Fatal(err)
 		}
+		writeMode(t, firmaFile, 0o600)
+		return e
 	}
-	// The file source names the configuration keys.
-	cfg := &config.Config{Backend: config.Backend{OnePassword: config.OnePassword{TokenSource: config.TokenSourceFile, TokenFile: "/tmp/a38-missing/onepassword-token"}}}
-	if _, err := tokenSource(cfg).Token(); err == nil || !strings.Contains(err.Error(), "token_source: file") || !errors.Is(err, fs.ErrNotExist) && !strings.Contains(err.Error(), "does not exist") {
-		t.Errorf("file source: %v", err)
-	}
+
+	t.Run("set without account", func(t *testing.T) {
+		e := newEnv(t)
+		e.typed = tokenMarker
+		code, out, errOut := e.run("set")
+		if code != 2 || !strings.Contains(errOut, "--account NAME") || out != "" || e.prompts != 0 {
+			t.Errorf("code %d, prompts %d, stderr %q", code, e.prompts, errOut)
+		}
+	})
+	t.Run("set with unknown account", func(t *testing.T) {
+		e := newEnv(t)
+		e.typed = tokenMarker
+		code, _, errOut := e.run("set", "--account", "unbekannt")
+		if code != 1 || !strings.Contains(errOut, `the account "unbekannt" is not in backend.onepassword.accounts`) || e.prompts != 0 {
+			t.Errorf("code %d, prompts %d, stderr %q", code, e.prompts, errOut)
+		}
+		if len(e.stores) != 1 || e.store.value != nil {
+			t.Error("the command touched a store")
+		}
+	})
+	t.Run("set never echoes an invalid account name", func(t *testing.T) {
+		// T44: a human can paste the token after --account by mistake.
+		// The command checks the name first and never shows a value
+		// that fails the check.
+		e := newEnv(t)
+		e.typed = tokenMarker
+		code, out, errOut := e.run("set", "--account", tokenMarker)
+		if code != 2 || e.prompts != 0 || !strings.Contains(errOut, "the account name") {
+			t.Errorf("code %d, prompts %d, stderr %q", code, e.prompts, errOut)
+		}
+		if strings.Contains(out+errOut, tokenMarker) || strings.Contains(out+errOut, "ops_") {
+			t.Errorf("the output shows the value of --account: stdout %q, stderr %q", out, errOut)
+		}
+		if e.store.value != nil {
+			t.Error("the command stored a value")
+		}
+	})
+	t.Run("set stores the item of the account", func(t *testing.T) {
+		e := newEnv(t)
+		e.typed = tokenMarker
+		code, out, errOut := e.run("set", "--account", "privat")
+		if code != 0 || e.store.value == nil || *e.store.value != tokenMarker {
+			t.Fatalf("code %d, stderr %q", code, errOut)
+		}
+		if e.stores["firma"] != nil && e.stores["firma"].value != nil {
+			t.Error("the item of firma changed")
+		}
+		noToken(t, out, errOut)
+		noDerived(t, out, errOut)
+	})
+	t.Run("status of all accounts and the old item", func(t *testing.T) {
+		e := newEnv(t)
+		v, old := tokenMarker, tokenMarker
+		e.store.value = &v
+		e.storeOf(config.LegacyAccount).value = &old
+		code, out, errOut := e.run("status")
+		if code != 0 {
+			t.Errorf("code %d, stdout:\n%s\nstderr: %s", code, out, errOut)
+		}
+		for _, want := range []string{
+			"Account privat: vaults beispiel.app.k8s-dev",
+			"item a38-test-fake/privat exists (value not read)",
+			"Account firma: vaults datenbank-dev",
+			"Source:      file",
+			"onepassword-token-firma exists (content not read)",
+			"Old item:    a38-test-fake/service-account exists",
+			"a38 config onepassword-token delete --legacy",
+		} {
+			if !strings.Contains(out, want) {
+				t.Errorf("stdout lacks %q:\n%s", want, out)
+			}
+		}
+		for _, s := range e.stores {
+			if s.reads != 0 {
+				t.Errorf("status read the token of %s", s.account)
+			}
+		}
+		noToken(t, out, errOut)
+		noDerived(t, out, errOut)
+	})
+	t.Run("status of one account", func(t *testing.T) {
+		e := newEnv(t)
+		code, out, _ := e.run("status", "--account", "firma")
+		if code != 0 || !strings.Contains(out, "Account firma") || strings.Contains(out, "Account privat") || strings.Contains(out, "Old item") {
+			t.Errorf("code %d, stdout:\n%s", code, out)
+		}
+	})
+	t.Run("status fails for an account without token", func(t *testing.T) {
+		e := newEnv(t)
+		code, out, _ := e.run("status")
+		if code != 1 || !strings.Contains(out, `"a38 config onepassword-token set --account privat"`) {
+			t.Errorf("code %d, stdout:\n%s", code, out)
+		}
+	})
+	t.Run("delete one item and the old item", func(t *testing.T) {
+		e := newEnv(t)
+		v, old := tokenMarker, tokenMarker
+		e.store.value = &v
+		legacy := e.storeOf(config.LegacyAccount)
+		legacy.value = &old
+		if code, _, errOut := e.run("delete", "--legacy"); code != 0 || legacy.value != nil || e.store.value == nil {
+			t.Errorf("delete --legacy: code %d, stderr %q", code, errOut)
+		}
+		if code, _, errOut := e.run("delete", "--account", "privat"); code != 0 || e.store.value != nil {
+			t.Errorf("delete --account privat: code %d, stderr %q", code, errOut)
+		}
+		for _, args := range [][]string{{"delete"}, {"delete", "--account", "privat", "--legacy"}, {"delete", "--account", "Privat"}} {
+			if code, _, _ := e.run(args...); code != 2 {
+				t.Errorf("%v: code %d, want 2", args, code)
+			}
+		}
+	})
 }

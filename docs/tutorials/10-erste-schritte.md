@@ -68,7 +68,8 @@ cd /tmp/a38-tutorial
 ```
 
 Schreibe die Konfiguration.
-Sie nennt einen Vault der Umgebung `dev` und ein Projekt, das ihn nutzen darf:
+Sie nennt einen Vault der Umgebung `dev` mit seinem 1Password-Konto und ein Projekt, das den Vault nutzen darf.
+Jeder Vault nennt sein Konto, auch mit dem Fake-Backend:
 
 ```sh
 cat > config.yaml <<'EOF'
@@ -76,6 +77,7 @@ version: 1
 vaults:
   - name: beispiel.app.k8s-dev
     environment: dev
+    account: privat
 projects:
   - name: beispielprojekt
     paths:
@@ -85,6 +87,10 @@ projects:
 paths:
   socket_dir: /tmp/a38-tutorial/run
   audit_file: /tmp/a38-tutorial/audit.db
+backend:
+  onepassword:
+    accounts:
+      - name: privat
 EOF
 ```
 

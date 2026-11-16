@@ -120,10 +120,13 @@ Der Name muss mit `a38-test-` beginnen.
 
 ```sh
 export A38_TEST_KEYCHAIN_SERVICE=a38-test-versuch
-bin/a38 config onepassword-token set
-bin/a38 config onepassword-token status
-bin/a38 config onepassword-token delete
+bin/a38 config onepassword-token set --account privat
+bin/a38 config onepassword-token status --account privat
+bin/a38 config onepassword-token delete --account privat
 ```
+
+`set` verlangt, dass das Konto `privat` in der Konfiguration steht (`--config` nennt eine Datei zum Testen).
+Der Eintrag hat den Dienst `a38-test-versuch` und das Konto `privat`.
 
 Ein neuer Build von `bin/a38` liest den Eintrag eines alten Builds nur nach einem Dialog.
 Lösche den Testeintrag deshalb mit demselben Build, der ihn angelegt hat.

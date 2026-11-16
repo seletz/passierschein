@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -203,14 +204,18 @@ func TestTokenSetFromPseudoTerminal(t *testing.T) {
 	controller, term := openPTY(t)
 	store := newFakeStore()
 	oldStore, oldStdin := newTokenStore, os.Stdin
-	newTokenStore = func() (token.Store, error) { return store, nil }
+	newTokenStore = func(string) (token.Store, error) { return store, nil }
 	os.Stdin = term
 	t.Cleanup(func() { newTokenStore, os.Stdin = oldStore, oldStdin })
+	cfg := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(cfg, []byte("version: 1\nbackend:\n  onepassword:\n    accounts:\n      - name: privat\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 
 	var stdout, stderr bytes.Buffer
 	done := make(chan int, 1)
 	go func() {
-		done <- runConfig([]string{"onepassword-token", "set", "--config", "/tmp/a38-missing/config.yaml"}, &stdout, &stderr)
+		done <- runConfig([]string{"onepassword-token", "set", "--account", "privat", "--config", cfg}, &stdout, &stderr)
 	}()
 	deadline := time.Now().Add(5 * time.Second)
 	for {
@@ -237,7 +242,7 @@ func TestTokenSetFromPseudoTerminal(t *testing.T) {
 	if store.value == nil || *store.value != tokenMarker {
 		t.Error("the token is not stored")
 	}
-	if stdout.String() != "Stored the token in the keychain item a38-test-fake/a38-test.\n" {
+	if stdout.String() != "Stored the token of the account \"privat\" in the keychain item a38-test-fake/privat.\n" {
 		t.Errorf("stdout = %q", stdout.String())
 	}
 	noToken(t, stdout.String(), stderr.String())
