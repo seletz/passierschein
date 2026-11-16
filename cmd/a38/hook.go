@@ -37,12 +37,15 @@ var hookExecutable = func() (string, error) {
 }
 
 const hookUsage = `Usage:
-  a38 hook op-guard                 Read a hook input (JSON) on stdin and decide
-  a38 hook op-guard --print-config [--scope project|user]
+  a38 hook op-guard [--strict]      Read a hook input (JSON) on stdin and decide
+  a38 hook op-guard --print-config [--scope project|user] [--strict]
                                     Print the hooks block for the settings.json of Claude Code
 
 op-guard blocks a Bash command of the agent that runs the 1Password CLI "op"
 or reads the 1Password token of a38. It is a hint, not a protection.
+If the guard cannot inspect a command, it lets the command run. With
+--strict it blocks such a command if the command has the word "op".
+For all projects, use --print-config --scope user.
 Exit codes: 0 allow (no output), 2 block (message for the agent on stderr),
 1 error (the agent tool lets the command run).
 `
@@ -69,6 +72,7 @@ func runOpGuard(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("a38 hook op-guard", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	printConfig := fs.Bool("print-config", false, "print the hooks block for Claude Code")
+	strict := fs.Bool("strict", false, "block a case of doubt if the command has the word op")
 	scope := fs.String("scope", "project", "project or user")
 	if err := fs.Parse(args); err != nil {
 		if err == flag.ErrHelp {
@@ -83,14 +87,14 @@ func runOpGuard(args []string, stdout, stderr io.Writer) int {
 		return hookError
 	}
 	if *printConfig {
-		return printOpGuardConfig(*scope, stdout, stderr)
+		return printOpGuardConfig(*scope, *strict, stdout, stderr)
 	}
 	if *scope != "project" {
 		_, _ = fmt.Fprintf(stderr, "a38 hook op-guard: --scope needs --print-config\n%s", hookUsage)
 		return hookError
 	}
 
-	d := opguard.Decide(hookStdin)
+	d := opguard.Decide(hookStdin, opguard.Options{Strict: *strict})
 	if d.Blocked() {
 		_, _ = fmt.Fprint(stderr, opguard.Message(d.Rule))
 		return hookBlock
@@ -104,8 +108,9 @@ func runOpGuard(args []string, stdout, stderr io.Writer) int {
 
 // printOpGuardConfig prints the hooks block. Project scope uses the bare
 // name "a38" (the file can be shared); user scope uses the absolute path of
-// the running a38 (independent of the PATH of the agent tool).
-func printOpGuardConfig(scope string, stdout, stderr io.Writer) int {
+// the running a38 (independent of the PATH of the agent tool). With strict,
+// the hook in the block has the switch --strict.
+func printOpGuardConfig(scope string, strict bool, stdout, stderr io.Writer) int {
 	command := "a38"
 	switch scope {
 	case "project":
@@ -120,7 +125,7 @@ func printOpGuardConfig(scope string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "a38 hook op-guard: --scope must be project or user, not %q\n", scope)
 		return hookError
 	}
-	out, err := opguard.ClaudeCodeSettings(command)
+	out, err := opguard.ClaudeCodeSettings(command, strict)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "a38 hook op-guard: %v\n", err)
 		return exitFailure

@@ -409,7 +409,7 @@ Er ruft kein Netz: Der Kern lehnt das Token vorher ab.
 
 ## a38 hook
 
-`a38 hook op-guard` ist ein Hook für das Agent-Werkzeug ({{ ref("F16") }}, {{ ref("D58") }}).
+`a38 hook op-guard` ist ein Hook für das Agent-Werkzeug ({{ ref("F16") }}, {{ ref("F24") }}, {{ ref("D58") }}, {{ ref("D67") }}).
 Das Agent-Werkzeug startet ihn vor jedem Befehl des Werkzeugs `Bash`.
 Der Mensch richtet ihn ein ([Hook gegen den direkten Aufruf von op einrichten](../how-to/23-hook-gegen-op-einrichten.md)).
 
@@ -418,6 +418,8 @@ Der Mensch richtet ihn ein ([Hook gegen den direkten Aufruf von op einrichten](.
 | `a38 hook op-guard` | Liest die Eingabe des Hooks (JSON) von stdin und entscheidet. Führt den Befehl der Eingabe nie aus. |
 | `a38 hook op-guard --print-config` | Gibt den Block `hooks` für die `settings.json` von Claude Code aus, mit dem Namen `a38` (`--scope project`, Standard). |
 | `a38 hook op-guard --print-config --scope user` | Derselbe Block mit dem absoluten Pfad des laufenden `a38`. |
+| `a38 hook op-guard --strict` | Wie oben. Ein Befehl, den der Hook nicht prüfen kann, blockiert, wenn er `op` als eigenes Wort enthält ({{ ref("D67") }}). |
+| `a38 hook op-guard --print-config --strict` | Der Block mit dem Schalter `--strict` im Aufruf des Hooks. Kombinierbar mit `--scope user`. |
 
 Der Befehl liest weder die Konfigurationsdatei noch den Daemon.
 Er ändert keine Datei.
@@ -426,7 +428,7 @@ Die Exit-Codes folgen dem Vertrag des Agent-Werkzeugs, nicht der Tabelle oben:
 
 | Code | Bedeutung |
 |---|---|
-| 0 | Durchlassen. Keine Ausgabe. Auch bei einer Eingabe, die kein JSON ist, größer als 1 MiB ist oder deren Befehl kein Parser versteht; dann steht nur der Grund auf stderr, nie ein Teil der Eingabe. |
+| 0 | Durchlassen. Keine Ausgabe. Auch bei einer Eingabe, die kein JSON ist, größer als 1 MiB ist oder deren Befehl kein Parser versteht; dann steht nur der Grund auf stderr, nie ein Teil der Eingabe. Mit `--strict` blockiert ein Befehl, den der Hook nicht prüfen kann, wenn er `op` als eigenes Wort enthält. |
 | 2 | Blockieren. Die Meldung für den Agent steht auf stderr, stdout bleibt leer. |
 | 1 | Falscher Aufruf, zum Beispiel ein unbekannter Schalter. Das Agent-Werkzeug lässt den Befehl dann durch. |
 

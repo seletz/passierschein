@@ -9,11 +9,16 @@ const HookTimeout = 10
 
 // ClaudeCodeSettings returns the "hooks" block for a settings.json file of
 // Claude Code: a PreToolUse hook on the Bash tool that runs
-// "<executable> hook op-guard" in exec form (no shell).
+// "<executable> hook op-guard" in exec form (no shell). With strict, the
+// arguments end with "--strict" (D67, point 3).
 //
 // Reference: https://code.claude.com/docs/en/hooks (configuration,
 // matcher, exec form with "args", "timeout"), read on 2026-11-12.
-func ClaudeCodeSettings(executable string) ([]byte, error) {
+func ClaudeCodeSettings(executable string, strict bool) ([]byte, error) {
+	args := []string{"hook", "op-guard"}
+	if strict {
+		args = append(args, "--strict")
+	}
 	type handler struct {
 		Type    string   `json:"type"`
 		Command string   `json:"command"`
@@ -31,7 +36,7 @@ func ClaudeCodeSettings(executable string) ([]byte, error) {
 				Hooks: []handler{{
 					Type:    "command",
 					Command: executable,
-					Args:    []string{"hook", "op-guard"},
+					Args:    args,
 					Timeout: HookTimeout,
 				}},
 			}},
