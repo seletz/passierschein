@@ -8,7 +8,9 @@ import "fmt"
 // A decision with the outcome approved is valid only if the request ID
 // matches, the approved IDs are not empty, unique and part of the request,
 // and the lifetime is more than zero and not more than the proposed
-// lifetime. An approval with no approved ID becomes a denial. The outcome
+// lifetime. For a request of the exec way, the approval covers every
+// entry, and the lifetime is one of the offered lifetimes, or 0 for one
+// command (D63, D65). An approval with no approved ID becomes a denial. The outcome
 // error is an error. A decision with another outcome carries no entries.
 func ValidateDecision(req Request, d Decision) (Decision, error) {
 	if d.Version != Version {
@@ -54,6 +56,12 @@ func ValidateDecision(req Request, d Decision) (Decision, error) {
 			return Decision{}, fmt.Errorf("the decision approves an entry twice")
 		}
 		seen[id] = true
+	}
+	if req.Exec != nil {
+		if err := validateExecDecision(req, d); err != nil {
+			return Decision{}, err
+		}
+		return d, nil
 	}
 	if d.TTLSeconds <= 0 || d.TTLSeconds > req.Grant.TTLSeconds {
 		return Decision{}, fmt.Errorf("the lifetime %d is not valid", d.TTLSeconds)

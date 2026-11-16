@@ -51,7 +51,9 @@ extension Decision {
 
 /// Checks the last barrier before the app writes a decision: an approval
 /// needs a passed authentication, at least one entry, IDs of the request
-/// and a lifetime that is not longer than the proposal. A release build
+/// and a lifetime that is not longer than the proposal. A command (exec
+/// way) needs every entry and an offered lifetime, or no lifetime for
+/// "only this command". A release build
 /// also needs the policy of Touch ID. Each other approval becomes an
 /// internal error, never an approval.
 public func guardApproval(_ decision: Decision, request: ApprovalRequest?,
@@ -72,6 +74,22 @@ public func guardApproval(_ decision: Decision, request: ApprovalRequest?,
     guard Set(decision.approvedCredentialIDs).count == decision.approvedCredentialIDs.count,
           decision.approvedCredentialIDs.allSatisfy(known.contains) else {
         return reject("an entry is not in the request")
+    }
+    if let exec = request.exec {
+        // D65, D63: a command needs every variable. A grant needs one of
+        // the offered lifetimes; "only this command" has no lifetime.
+        guard Set(decision.approvedCredentialIDs) == known else {
+            return reject("the approval of a command does not cover every variable")
+        }
+        switch exec.approval.kind {
+        case .once:
+            guard (decision.ttlSeconds ?? 0) == 0 else { return reject("the lifetime is not valid") }
+        case .grant:
+            guard let ttl = decision.ttlSeconds, ttl > 0, exec.approval.lifetimeChoices.contains(ttl) else {
+                return reject("the lifetime is not valid")
+            }
+        }
+        return decision
     }
     guard let ttl = decision.ttlSeconds, ttl > 0, ttl <= request.grant.ttlSeconds else {
         return reject("the lifetime is not valid")

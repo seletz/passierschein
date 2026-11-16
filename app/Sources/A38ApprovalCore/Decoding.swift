@@ -22,6 +22,18 @@ public enum Limits {
     public static let maxIDLength = 128
     /// The longest text of one field.
     public static let maxTextBytes = 8 * 1024
+    /// The longest path of a program or a working directory, in bytes
+    /// (Go: protocol.MaxPathLength).
+    public static let maxPathBytes = 1024
+    /// The most arguments of a command (Go: protocol.MaxExecArgs).
+    public static let maxExecArgs = 256
+    /// The longest arguments of a command together, in bytes (Go:
+    /// protocol.MaxExecArgsSize).
+    public static let maxExecArgsBytes = 16 * 1024
+    /// The most variables of a command (Go: protocol.MaxReferences).
+    public static let maxExecVariables = 100
+    /// The longest lifetime of a grant in seconds (D66: 24 h).
+    public static let maxGrantSeconds: Int64 = 24 * 3600
 }
 
 /// A request that the app does not accept.
@@ -108,7 +120,21 @@ private func decodeRequest(_ root: Reader) throws(ProtocolError) -> ApprovalRequ
     let existing = try root.optionalObject("existing_grant").map { reader throws(ProtocolError) in
         try decodeExistingGrant(reader)
     }
+    let exec = try root.optionalObject("exec").map { reader throws(ProtocolError) in
+        try decodeExec(reader, credentials: credentials, ttl: grant.ttlSeconds)
+    }
     try root.finish()
+
+    if exec == nil {
+        // D62: a value outside dev never goes as an MCP answer. A plain
+        // request outside dev never reaches the approval (fail closed).
+        if let index = credentials.firstIndex(where: { $0.environment != "dev" }) {
+            throw .invalid("credentials[\(index)].environment: a request outside dev needs the exec way")
+        }
+        guard grant.ttlSeconds > 0 else {
+            throw .invalid("grant.ttl_seconds: the lifetime is not more than zero")
+        }
+    }
 
     // existing_grant marks a deviation. Then each entry names its kind of
     // deviation; without it no entry does (internal/approval, D8).
@@ -121,7 +147,8 @@ private func decodeRequest(_ root: Reader) throws(ProtocolError) -> ApprovalRequ
         }
     }
     return ApprovalRequest(requestID: requestID, timeoutSeconds: Int(timeout), verified: verified,
-                           claims: claims, credentials: credentials, grant: grant, existingGrant: existing)
+                           claims: claims, credentials: credentials, grant: grant, existingGrant: existing,
+                           exec: exec)
 }
 
 private func decodeFacts(_ r: Reader) throws(ProtocolError) -> Facts {
@@ -161,14 +188,9 @@ private func decodeCredential(_ r: Reader) throws(ProtocolError) -> Credential {
     let title = try r.text("title")
     let field = try r.text("field")
     let environment = try r.string("environment")
-    switch environment {
-    case "dev":
-        break
-    case "test", "prod":
-        // D24, G26: in the MVP a request outside dev never reaches the
-        // approval. The app does not show it (fail closed).
-        throw .invalid("\(r.path).environment: a request outside dev is not allowed in the MVP")
-    default:
+    // D62: test and prod reach the approval only with the exec way. The
+    // check is in decodeRequest, after the object exec.
+    guard ExecEnvironment(rawValue: environment) != nil else {
         throw .invalid("\(r.path).environment: the environment is not dev, test or prod")
     }
     var deviation: Deviation?
@@ -201,13 +223,173 @@ private func decodeScope(_ r: Reader) throws(ProtocolError) -> GrantScope {
 }
 
 private func decodeGrantProposal(_ r: Reader) throws(ProtocolError) -> GrantProposal {
+    // 0 is valid only for "only this command" (exec way, prod). The
+    // request checks it with the object exec.
     let ttl = try r.int("ttl_seconds")
-    guard ttl > 0 else {
-        throw .invalid("grant.ttl_seconds: the lifetime is not more than zero")
+    guard ttl >= 0 else {
+        throw .invalid("grant.ttl_seconds: the lifetime is negative")
     }
     let scope = try decodeScope(try r.object("scope"))
     try r.finish()
     return GrantProposal(ttlSeconds: ttl, scope: scope)
+}
+
+/// Decodes the object exec (D65). The rules follow the Go function
+/// approval.Request.Validate.
+private func decodeExec(_ r: Reader, credentials: [Credential], ttl: Int64) throws(ProtocolError) -> ExecCommand {
+    let envText = try r.string("environment")
+    guard let environment = ExecEnvironment(rawValue: envText) else {
+        throw .invalid("exec.environment: the environment is not dev, test or prod")
+    }
+    let strictest = credentials.compactMap { ExecEnvironment(rawValue: $0.environment) }.max()
+    guard environment == strictest else {
+        throw .invalid("exec.environment: the environment is not the strictest environment of the credentials")
+    }
+    let program = try execPath(r, "program")
+    let rawArgs = try r.array("args", allowNull: true)
+    guard rawArgs.count <= Limits.maxExecArgs else {
+        throw .invalid("exec.args: more than \(Limits.maxExecArgs) arguments")
+    }
+    var args: [String] = []
+    var size = 0
+    for (index, raw) in rawArgs.enumerated() {
+        guard let arg = raw as? String else {
+            throw .invalid("exec.args[\(index)]: the value is not a string")
+        }
+        size += arg.utf8.count
+        guard size <= Limits.maxExecArgsBytes else {
+            throw .invalid("exec.args: the arguments are longer than \(Limits.maxExecArgsBytes) bytes together")
+        }
+        // A line break and a tab are allowed (Go: protocol.checkArgs); the
+        // view shows them as \\n and \\t.
+        guard arg.unicodeScalars.allSatisfy({ $0 == "\n" || $0 == "\t" || !isHidden($0) }) else {
+            throw .invalid("exec.args[\(index)]: the argument contains a control character")
+        }
+        args.append(arg)
+    }
+    let cwd = try execPath(r, "cwd")
+    let rawEnv = try r.array("env")
+    guard !rawEnv.isEmpty, rawEnv.count <= Limits.maxExecVariables else {
+        throw .invalid("exec.env: the command needs 1 to \(Limits.maxExecVariables) variables")
+    }
+    let known = Set(credentials.map(\.id))
+    var names: Set<String> = []
+    var used: Set<String> = []
+    var env: [ExecVariable] = []
+    for (index, raw) in rawEnv.enumerated() {
+        let v = try Reader(raw, path: "exec.env[\(index)]")
+        let name = try v.string("name")
+        guard isEnvName(name) else {
+            throw .invalid("exec.env[\(index)].name: the name is not a valid or allowed variable name")
+        }
+        guard names.insert(name).inserted else {
+            throw .invalid("exec.env[\(index)].name: the name appears twice")
+        }
+        let id = try v.id("credential_id")
+        guard known.contains(id) else {
+            throw .invalid("exec.env[\(index)].credential_id: the credential is not in the request")
+        }
+        used.insert(id)
+        try v.finish()
+        env.append(ExecVariable(name: name, credentialID: id))
+    }
+    if let index = credentials.firstIndex(where: { !used.contains($0.id) }) {
+        throw .invalid("credentials[\(index)]: the credential has no variable")
+    }
+    let approval = try decodeExecApproval(try r.object("approval"), environment: environment, ttl: ttl)
+    try r.finish()
+    return ExecCommand(environment: environment, program: program, args: args, cwd: cwd, env: env, approval: approval)
+}
+
+private func decodeExecApproval(_ r: Reader, environment: ExecEnvironment, ttl: Int64) throws(ProtocolError) -> ExecApproval {
+    guard let kind = ExecApprovalKind(rawValue: try r.string("kind")) else {
+        throw .invalid("exec.approval.kind: the kind is not grant or once")
+    }
+    guard let binding = GrantBinding(rawValue: try r.string("binding")) else {
+        throw .invalid("exec.approval.binding: the binding is not none, program or command")
+    }
+    let rawChoices = try r.optionalArray("lifetime_choices_seconds")
+    try r.finish()
+    switch kind {
+    case .once:
+        guard environment == .prod else {
+            throw .invalid("exec.approval.kind: once is for prod only")
+        }
+        guard binding == .command else {
+            throw .invalid("exec.approval.binding: once needs the binding command")
+        }
+        guard ttl == 0, rawChoices?.isEmpty ?? true else {
+            throw .invalid("exec.approval: once has no lifetime and no lifetime choices")
+        }
+        return ExecApproval(kind: .once, binding: .command, lifetimeChoices: [])
+    case .grant:
+        guard environment != .prod else {
+            throw .invalid("exec.approval.kind: prod allows only the kind once")
+        }
+        guard !(environment == .test && binding == .none) else {
+            throw .invalid("exec.approval.binding: test does not allow the binding none")
+        }
+        guard ttl > 0, ttl <= Limits.maxGrantSeconds else {
+            throw .invalid("grant.ttl_seconds: a grant needs a lifetime of 1 to \(Limits.maxGrantSeconds) seconds")
+        }
+        var choices: [Int64] = []
+        for raw in rawChoices ?? [] {
+            guard let value = integer(raw) else {
+                throw .invalid("exec.approval.lifetime_choices_seconds: a value is not an integer")
+            }
+            choices.append(value)
+        }
+        guard choices.first == ttl,
+              zip(choices, choices.dropFirst()).allSatisfy({ $1 > 0 && $1 < $0 }) else {
+            throw .invalid("exec.approval.lifetime_choices_seconds: the choices are not the lifetime and shorter lifetimes in descending order")
+        }
+        return ExecApproval(kind: .grant, binding: binding, lifetimeChoices: choices)
+    }
+}
+
+/// Reads an absolute, clean path without a control character.
+private func execPath(_ r: Reader, _ key: String) throws(ProtocolError) -> String {
+    let path = try r.string(key)
+    guard !path.isEmpty, path.utf8.count <= Limits.maxPathBytes,
+          !path.unicodeScalars.contains(where: isHidden) else {
+        throw .invalid("exec.\(key): the path is empty, too long or contains a control character")
+    }
+    guard path.hasPrefix("/"), isCleanPath(path) else {
+        throw .invalid("exec.\(key): the path is not absolute and clean")
+    }
+    return path
+}
+
+/// True for a path as Go path.Clean writes it: no empty element, no "."
+/// and no "..", no "/" at the end (except the root).
+func isCleanPath(_ path: String) -> Bool {
+    if path == "/" { return true }
+    let parts = path.split(separator: "/", omittingEmptySubsequences: false).dropFirst()
+    return parts.allSatisfy { !$0.isEmpty && $0 != "." && $0 != ".." }
+}
+
+/// The rule of protocol.CheckEnvName (D64): [A-Z_][A-Z0-9_]*, not one of
+/// the forbidden names, no forbidden prefix.
+func isEnvName(_ name: String) -> Bool {
+    guard let first = name.unicodeScalars.first, first == "_" || ("A"..."Z").contains(first),
+          name.unicodeScalars.allSatisfy({ $0 == "_" || ("A"..."Z").contains($0) || ("0"..."9").contains($0) }) else {
+        return false
+    }
+    let forbidden: Set<String> = ["PATH", "HOME", "USER", "LOGNAME", "SHELL", "PWD", "TMPDIR", "IFS"]
+    let prefixes = ["DYLD_", "LD_", "A38_"]
+    return !forbidden.contains(name) && !prefixes.contains(where: name.hasPrefix)
+}
+
+/// True for a character that must not appear in a text that a human reads
+/// (Go: protocol.IsControl): a control character, a format character, a
+/// line or paragraph separator, or U+FFFD.
+func isHidden(_ c: Unicode.Scalar) -> Bool {
+    switch c.properties.generalCategory {
+    case .control, .format, .lineSeparator, .paragraphSeparator:
+        return true
+    default:
+        return c == "\u{FFFD}"
+    }
 }
 
 private func decodeExistingGrant(_ r: Reader) throws(ProtocolError) -> ExistingGrant {
@@ -342,6 +524,15 @@ final class Reader {
             throw .invalid("\(name(key)): the value is not an integer")
         }
         return n
+    }
+
+    /// An optional list. A missing field and null are nil.
+    func optionalArray(_ key: String) throws(ProtocolError) -> [Any]? {
+        guard let v = value(key), !(v is NSNull) else { return nil }
+        guard let a = v as? [Any] else {
+            throw .invalid("\(name(key)): the value is not a list")
+        }
+        return a
     }
 
     func object(_ key: String) throws(ProtocolError) -> Reader {
