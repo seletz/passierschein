@@ -1,0 +1,9 @@
+id: D77
+zustand: eingeloest
+titel: Drei Auslegungen des exec-Wegs im Daemon
+bezug: '#99'
+schluessel: '#99/auslegungen-daemon'
+lauf: '2.0'
+branch: feat/99-broker-exec
+reserviert_am: '2026-11-16'
+eingeloest_am: '2026-11-16'

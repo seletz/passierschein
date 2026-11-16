@@ -39,7 +39,7 @@ neue Entscheidung. Die alte Entscheidung erhält den Status „ersetzt“.
 | Familie | Bereich |
 |---|---|
 | UC | {{ ref("UC1") }}–{{ ref("UC16") }} |
-| D | {{ ref("D1") }}–{{ ref("D68") }} |
+| D | {{ ref("D1") }}–{{ ref("D77") }} |
 | F | {{ ref("F1") }}–{{ ref("F24") }} |
 | T | {{ ref("T1") }}–{{ ref("T41") }} |
 | G | {{ ref("G1") }}–{{ ref("G47") }} |
@@ -68,6 +68,12 @@ Eine Entscheidung hat eine von zwei Herkünften:
   mit dem [Pull Request 94](https://github.com/seletz/passierschein/pull/94)
   bestätigt. Sie ersetzen {{ ref("D10") }}, {{ ref("D24") }}, {{ ref("D32") }}
   und {{ ref("D41") }}.
+- **Aus der Umsetzung des exec-Wegs, bestätigt:** {{ ref("D76") }} (Laufzeit
+  0 in jeder Umgebung) und {{ ref("D77") }} (drei Auslegungen im Daemon).
+  Stefan hat sie am 2026-11-16 zum
+  [Pull Request 115](https://github.com/seletz/passierschein/pull/115)
+  bestätigt. Sie ergänzen {{ ref("D61") }}, {{ ref("D63") }} und
+  {{ ref("D65") }}.
 
 Drei Entscheidungen ruhen auf Spikes: {{ ref("D39") }} (1Password-SDK),
 {{ ref("D31") }} und {{ ref("D45") }} (Freigabe-UI), {{ ref("D46") }}

@@ -369,6 +369,18 @@ Der Daemon muss nicht laufen.
 `stats --json` gibt ein Objekt aus; die Felder heißen wie im Paket `internal/auditstats` (`popups`, `denied`, `denial_share`, `deviations`, `deliveries_under_grant`, `days`, `top_sessions` …).
 Die Definitionen der Kennzahlen stehen in der Anleitung [Freigaben auswerten](../how-to/29-freigaben-auswerten.md#was-die-kennzahlen-bedeuten).
 
+### Kommando im Audit-Log
+
+Ein Eintrag des exec-Wegs trägt das Kommando: Weg `exec`, Programm, Argumente (höchstens 4 KiB, mit Kürzungsvermerk), Arbeitsverzeichnis und Namen der Variablen ({{ ref("D65") }}).
+Ein Eintrag ohne Kommando gehört zum Weg `mcp` ({{ ref("D77") }}).
+Das Ereignis `execution` nennt Exit-Code, Dauer, Zeitüberschreitung und Zahl der Maskierungen. Diese Angaben stammen von `a38 mcp` und sind nicht geprüft.
+Ein Wert und die Ausgabe des Kommandos stehen nie im Audit-Log.
+
+Bekannte Grenze ({{ ref("G46") }}): Schreibt ein Agent einen Wert in ein Argument oder in das Arbeitsverzeichnis, stehen Wert und Kommando in den Einträgen `request`, `decision` und `grant`.
+Diese Einträge entstehen vor dem Lesen der Werte.
+Der Daemon findet den Wert danach, liefert nicht aus und schreibt die Ablehnung mit dem Code `invalid_request` ohne das Kommando.
+Der Skill verbietet einen Wert im Kommando.
+
 ## a38 tui
 
 `a38 tui` zeigt das Audit-Log im Terminal ({{ ref("F13") }}, {{ ref("UC6") }}).

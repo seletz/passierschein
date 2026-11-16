@@ -4,12 +4,19 @@ id: 'G47'
 titel: 'Eine Laufzeit 0 in dev oder test lässt sich nicht freigeben'
 bereich: 'Grants und Auslieferung'
 lauf: '2.0'
-stand: '2026-11-15'
+stand: '2026-11-16'
 order: 9
 headless: true
 type: Gap
 kind: design
-status: offen
+status: geschlossen
+beleg:
+  wer: Stefan
+  datum: '2026-11-16'
+  durch: [D76]
+  quelle: ['#115']
+redaktion:
+  - {datum: '2026-11-16', issue: '#99'}
 register:
   owner: Stefan
 ---
@@ -27,5 +34,7 @@ Offene Fragen:
 
 - Soll die Konfiguration `0s` nur bei prod erlauben?
 - Oder soll die Art `once` auch für dev und test gelten, wenn die Laufzeit 0 ist?
+
+**Ergebnis (Stefan, 2026-11-16):** Die Art `once` gilt auch für dev und test, wenn die Laufzeit 0 ist. Eine Konfiguration mit `0s` fragt dort bei jedem Kommando. {{ ref("D76") }} hält das fest.
 
 **Quelle:** [Issue 99](https://github.com/seletz/passierschein/issues/99), Umsetzung des Brokers für den exec-Weg.

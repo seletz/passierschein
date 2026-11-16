@@ -4,12 +4,18 @@ id: 'G46'
 titel: 'Entscheidung und Grant nennen ein Kommando mit einem Wert, bevor der Daemon die Werte prüft'
 bereich: 'Grants und Auslieferung'
 lauf: '2.0'
-stand: '2026-11-15'
+stand: '2026-11-16'
 order: 8
 headless: true
 type: Gap
 kind: design
-status: offen
+status: geschlossen
+beleg:
+  wer: Stefan
+  datum: '2026-11-16'
+  quelle: ['#115']
+redaktion:
+  - {datum: '2026-11-16', issue: '#99'}
 register:
   owner: Stefan
 ---
@@ -32,5 +38,7 @@ Offene Fragen:
 - Akzeptiert Stefan den Wert in Entscheidung und Grant als Teil von {{ ref("RI14") }}?
 - Oder sollen Entscheidung und Grant das Kommando ohne Argumente nennen und nur die Anfrage das ganze Kommando?
 - Soll ein Grant nach einem Fund enden, weil das Kommando den Wert in der Prozessliste zeigen würde?
+
+**Ergebnis (Stefan, 2026-11-16):** Stefan akzeptiert den Wert in Entscheidung und Grant als bekannte Grenze von {{ ref("RI14") }}. Die Umsetzung aus Issue 99 bleibt. Die Referenz des Audit-Logs und die Anleitung zu `run_with_credentials` nennen die Grenze. Der Skill verbietet einen Wert im Kommando.
 
 **Quelle:** [Issue 99](https://github.com/seletz/passierschein/issues/99), Umsetzung des Brokers für den exec-Weg.
