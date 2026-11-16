@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"unicode/utf8"
 
 	"github.com/seletz/passierschein/internal/config"
@@ -94,11 +95,13 @@ type ExecApproval struct {
 	LifetimeChoicesSeconds []int64 `json:"lifetime_choices_seconds,omitempty"`
 }
 
-// ExecLifetimeChoices returns the lifetimes that the approval request of a
-// command offers for the configured lifetime ttl: ttl, half of ttl
-// (rounded down to minutes), 15 minutes and 5 minutes. Each value is at
-// least five minutes and shorter than ttl, except ttl itself. The result is
-// in descending order. It is nil for a ttl of 0 or less.
+// ExecLifetimeChoices returns the lifetimes that an approval request
+// offers for the configured lifetime ttl: ttl, half of ttl (rounded down to
+// minutes), 15 minutes and 5 minutes. Each value other than ttl is at least
+// five minutes and shorter than ttl. The result has no duplicates and is in
+// descending order. It is nil for a ttl of 0 or less. The approval app
+// uses the same rule for a plain request (lifetimeChoices in
+// app/Sources/A38ApprovalCore/Display.swift).
 func ExecLifetimeChoices(ttl int64) []int64 {
 	if ttl <= 0 {
 		return nil
@@ -106,10 +109,12 @@ func ExecLifetimeChoices(ttl int64) []int64 {
 	out := []int64{ttl}
 	half := (ttl / 2) / 60 * 60
 	for _, c := range []int64{half, 15 * 60, 5 * 60} {
-		if c >= 5*60 && c < out[len(out)-1] {
+		if c >= 5*60 && c < ttl && !slices.Contains(out, c) {
 			out = append(out, c)
 		}
 	}
+	slices.Sort(out)
+	slices.Reverse(out)
 	return out
 }
 

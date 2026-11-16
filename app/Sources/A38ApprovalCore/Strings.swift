@@ -119,8 +119,6 @@ public enum UIText {
 
     public static let lifetimeLabel = "Valid for"
     public static let lifetimeProposed = "proposed"
-    public static let lifetimeShorter = "Shorter…"
-    public static let lifetimeKeep = "Done"
     public static func lifetimeChoice(_ text: String, proposed: Bool) -> String {
         proposed ? "\(text) (\(lifetimeProposed))" : text
     }

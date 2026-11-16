@@ -212,13 +212,14 @@ struct ApprovalViewModelTests {
         #expect(SystemLanguage.from(preferredLanguages: []) == .english)
     }
 
-    // MARK: Lifetime (D32)
+    // MARK: Lifetime (D32, D63)
 
+    // One rule for both windows and for Go (approval.ExecLifetimeChoices).
     nonisolated static let lifetimeCases: [(Int64, [Int64])] = [
-        (14400, [14400, 7200, 900]),
-        (3600, [3600, 1800, 900]),
-        (1800, [1800, 900]),
-        (1200, [1200, 900, 600]),
+        (14400, [14400, 7200, 900, 300]),
+        (3600, [3600, 1800, 900, 300]),
+        (1800, [1800, 900, 300]),
+        (1200, [1200, 900, 600, 300]),
         (600, [600, 300]),
         (90, [90]),
         (30, [30]),
@@ -242,15 +243,14 @@ struct ApprovalViewModelTests {
         #expect(m.lifetime == 14400, "longer than the proposal")
         m.selectLifetime(1234)
         #expect(m.lifetime == 14400, "not in the set")
-        m.openLifetimeChoice()
-        #expect(m.lifetimeChoiceOpen)
+        // The fixed set is always visible: no step opens it.
+        #expect(m.lifetimeChoices == [14400, 7200, 900, 300])
         m.selectLifetime(900)
         #expect(m.lifetimeText == "15 min")
         armed(m)
         m.setSelected("c1", true)
         await m.confirm()
         #expect(rec.decisions.first?.ttlSeconds == 900)
-        #expect(!m.lifetimeChoiceOpen)
     }
 
     // MARK: Decisions

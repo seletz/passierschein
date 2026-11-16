@@ -89,7 +89,7 @@ Ohne `exec` bleibt die Freigabeanfrage unverändert.
 
 Bei `once` ist `grant.ttl_seconds` 0.
 Bei `grant` liegt `grant.ttl_seconds` zwischen 1 und 86400 Sekunden ({{ ref("D66") }}).
-`approval.ExecLifetimeChoices` bildet die Auswahl: die Laufzeit, ihre Hälfte (auf Minuten abgerundet), 15 min und 5 min; jeder kürzere Wert ist mindestens 5 min.
+`approval.ExecLifetimeChoices` bildet die Auswahl nach der Regel aus [Laufzeit](#laufzeit).
 Bei 30 min sind das 30, 15 und 5 min.
 
 ### Darstellung
@@ -100,7 +100,7 @@ Bei 30 min sind das 30, 15 und 5 min.
 - Hat das Kommando mehr als 480 Zeichen, rollt nur der Rahmen des Kommandos (Höhe 220 pt). Darunter stehen die Zahl der Argumente und der Zeichen.
 - Je Eintrag gibt es ein Häkchen mit den Namen der Variablen und darunter „Vault › Item › Feld“ mit den Namen des Backends.
 - Die Bestätigung ist erst aktiv, wenn jede Variable angehakt ist („Select every variable“, dann „Run with Touch ID“).
-- Bei `grant` zeigt die App die Laufzeit mit „Shorter…“ und die Werte aus `lifetime_choices_seconds`, dazu die Bindung als Satz („Applies to: …“).
+- Bei `grant` zeigt die App die Werte aus `lifetime_choices_seconds` als feste Auswahl, wie bei einer gewöhnlichen Freigabeanfrage, dazu die Bindung als Satz („Applies to: …“).
 - Bei `once` zeigt die App „Approval: Only this command, one time“ ohne Wahl der Laufzeit.
 
 ## Aufbau des Popups
@@ -141,17 +141,23 @@ Die Tests prüfen sie ohne Fenster.
 
 ## Laufzeit
 
-Das Popup zeigt die vorgeschlagene Laufzeit, zum Beispiel „Valid for: 4 h (proposed)“.
-„Shorter…“ öffnet die Auswahl.
-Die Auswahl ist eine feste Menge ({{ ref("D32") }}):
+Das Popup zeigt die Laufzeit immer als feste Menge in einer Auswahl mit Segmenten, zum Beispiel „Valid for: [4 h | 2 h | 15 min | 5 min]“.
+Ein Schritt zum Öffnen der Auswahl entfällt.
+Beide Fenster nutzen dieselbe Auswahl und dieselbe Regel ({{ ref("D32") }}, {{ ref("D63") }}):
 
 - die vorgeschlagene Laufzeit,
 - die Hälfte davon, abgerundet auf ganze Minuten,
-- 15 Minuten.
+- 15 Minuten,
+- 5 Minuten.
 
-Jeder Wert ist mindestens eine Minute und nie länger als der Vorschlag.
+Jeder Wert außer dem Vorschlag ist mindestens 5 Minuten und kürzer als der Vorschlag.
 Doppelte Werte entfallen.
-Beispiele: 4 h ergibt 4 h, 2 h, 15 min. 20 min ergibt 20 min, 15 min, 10 min. 10 min ergibt 10 min, 5 min.
+Der Vorschlag ist beim Start ausgewählt.
+Beispiele: 4 h ergibt 4 h, 2 h, 15 min, 5 min. 20 min ergibt 20 min, 15 min, 10 min, 5 min. 10 min ergibt 10 min, 5 min. 4 min ergibt nur 4 min.
+
+Bei einer gewöhnlichen Freigabeanfrage bildet die App die Menge selbst (`lifetimeChoices` in `Display.swift`).
+Bei einem Kommando schickt der Daemon sie mit (`lifetime_choices_seconds`, gebildet mit `approval.ExecLifetimeChoices`).
+Beide Funktionen folgen derselben Regel.
 
 Der Text zum Umfang lautet: „The grant covers only the selected credentials, for this session and project …“.
 Ein Grant umfasst genau die angehakten Einträge ({{ ref("D32") }}, {{ ref("G26") }}).
@@ -290,7 +296,6 @@ Er lehnt jeden Schalter mit Exit-Code 64 ab.
 | `--no-window` | läuft ohne Fenster (Tests) |
 | `--demo-select <ids>` | wählt Einträge beim Start aus, `all` wählt alle (nur für Screenshots) |
 | `--demo-scroll-end` | rollt eine lange Liste ans Ende |
-| `--demo-lifetime-open` | öffnet die Auswahl der Laufzeit |
 | `--demo-arm-delay <s>` | ändert die Sperre der Bestätigung |
 | `--demo-confirm` | klickt die Bestätigung, sobald sie aktiv ist (mit `--no-window`) |
 | `--debug-window` | schreibt die Eigenschaften des Fensters auf die Standardfehlerausgabe |
