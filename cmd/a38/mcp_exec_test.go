@@ -173,12 +173,18 @@ func TestMCPRunWithCredentialsEndToEnd(t *testing.T) {
 			}
 		}
 	}
+	// The audit log names the resolved program (D63): on Linux /bin/sh is
+	// often a link to dash.
+	sh, err := filepath.EvalSymlinks("/bin/sh")
+	if err != nil {
+		t.Fatal(err)
+	}
 	var executions, deliveries int
 	for _, e := range entries {
 		switch e.Type {
 		case audit.EventDelivery:
 			deliveries++
-			if e.Command == nil || e.Command.Way != audit.WayExec || e.Command.Program != "/bin/sh" {
+			if e.Command == nil || e.Command.Way != audit.WayExec || e.Command.Program != sh {
 				t.Errorf("delivery without the command: %+v", e)
 			}
 		case audit.EventExecution:
