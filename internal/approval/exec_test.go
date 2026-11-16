@@ -156,10 +156,22 @@ func TestRequestValidateExec(t *testing.T) {
 			r.Grant.TTLSeconds = 300
 			r.Exec.Approval = ExecApproval{Kind: ExecApprovalGrant, Binding: BindingCommand, LifetimeChoicesSeconds: []int64{300}}
 		}, wantErr: "prod"},
+		// D76: with the lifetime 0, dev and test also use the kind once.
 		{name: "test with once", env: config.EnvTest, mutate: func(r *Request) {
 			r.Grant.TTLSeconds = 0
 			r.Exec.Approval = ExecApproval{Kind: ExecApprovalOnce, Binding: BindingCommand}
-		}, wantErr: "once"},
+		}},
+		{name: "dev with once", env: config.EnvDev, mutate: func(r *Request) {
+			r.Grant.TTLSeconds = 0
+			r.Exec.Approval = ExecApproval{Kind: ExecApprovalOnce, Binding: BindingCommand}
+		}},
+		{name: "test once with lifetime", env: config.EnvTest, mutate: func(r *Request) {
+			r.Exec.Approval = ExecApproval{Kind: ExecApprovalOnce, Binding: BindingCommand}
+		}, wantErr: "lifetime"},
+		{name: "dev once with binding none", env: config.EnvDev, mutate: func(r *Request) {
+			r.Grant.TTLSeconds = 0
+			r.Exec.Approval = ExecApproval{Kind: ExecApprovalOnce, Binding: BindingNone}
+		}, wantErr: "binding"},
 		{name: "once with lifetime", env: config.EnvProd, mutate: func(r *Request) { r.Grant.TTLSeconds = 60 }, wantErr: "lifetime"},
 		{name: "once with choices", env: config.EnvProd, mutate: func(r *Request) { r.Exec.Approval.LifetimeChoicesSeconds = []int64{60} }, wantErr: "lifetime"},
 		{name: "once with binding program", env: config.EnvProd, mutate: func(r *Request) { r.Exec.Approval.Binding = BindingProgram }, wantErr: "binding"},
@@ -269,6 +281,8 @@ func TestValidateDecisionExec(t *testing.T) {
 		{name: "test zero lifetime", req: execRequest(config.EnvTest), d: approved([]string{"c1"}, 0), wantErr: true},
 		{name: "prod once", req: execRequest(config.EnvProd), d: approved([]string{"c1"}, 0), wantTTL: 0},
 		{name: "prod with lifetime", req: execRequest(config.EnvProd), d: approved([]string{"c1"}, 60), wantErr: true},
+		{name: "test once", req: onceIn(config.EnvTest), d: approved([]string{"c1"}, 0), wantTTL: 0},
+		{name: "dev once with lifetime", req: onceIn(config.EnvDev), d: approved([]string{"c1"}, 300), wantErr: true},
 		{name: "all variables", req: two(config.EnvTest), d: approved([]string{"c2", "c1"}, 1800), wantTTL: 1800},
 		{name: "part of the variables", req: two(config.EnvTest), d: approved([]string{"c1"}, 1800), wantErr: true},
 	}
@@ -283,4 +297,13 @@ func TestValidateDecisionExec(t *testing.T) {
 			}
 		})
 	}
+}
+
+// onceIn returns the request of execRequest with the kind once (D76: the
+// lifetime of the environment is 0).
+func onceIn(env config.Environment) Request {
+	r := execRequest(env)
+	r.Grant.TTLSeconds = 0
+	r.Exec.Approval = ExecApproval{Kind: ExecApprovalOnce, Binding: BindingCommand}
+	return r
 }

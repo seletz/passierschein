@@ -631,3 +631,58 @@ func TestExecAnswerHidesValueInJSON(t *testing.T) {
 		t.Error("json.Marshal of the answer shows the value")
 	}
 }
+
+// T36 (D76): with grant_lifetime 0s, dev and test ask the human for each
+// command. The approval request has the kind once; the grant covers one
+// delivery and grant_status never shows it. request_credentials in dev
+// with the lifetime 0 ends with exec_required.
+func TestExecOnceInDevAndTest(t *testing.T) {
+	s := sess("s-1", "beispielprojekt")
+	tests := []struct {
+		name   string
+		config string
+		ref    string
+		value  string
+	}{
+		{"dev", "environments:\n  dev:\n    grant_lifetime: 0s\n", refPass, marker},
+		{"test", "environments:\n  test:\n    grant_lifetime: 0s\n", refTest, valueTest},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newHarness(t, withLifetime(""), withConfig(tt.config))
+			for i := range 2 {
+				h.rec.Enqueue(fakeui.ReplyApproveAll())
+				r := h.exec(s, execReq(t, "/usr/bin/true", nil, "DB_PASSWORD", tt.ref))
+				if r.err != nil || r.value("DB_PASSWORD") != tt.value {
+					t.Fatalf("command %d: %v; want the value", i+1, r.err)
+				}
+				if h.approvals() != i+1 {
+					t.Errorf("command %d: approvals = %d, want %d", i+1, h.approvals(), i+1)
+				}
+				a := h.lastApproval()
+				if err := a.Validate(); err != nil {
+					t.Errorf("the approval request is not valid: %v", err)
+				}
+				if a.Exec.Approval.Kind != approval.ExecApprovalOnce || a.Exec.Approval.Binding != approval.BindingCommand ||
+					a.Grant.TTLSeconds != 0 || len(a.Exec.Approval.LifetimeChoicesSeconds) != 0 {
+					t.Errorf("approval = %+v, ttl %d; want once", a.Exec.Approval, a.Grant.TTLSeconds)
+				}
+				if g := h.grants(); len(g) != 0 {
+					t.Errorf("grant_status = %v, want no grant", g)
+				}
+			}
+			if n := len(h.eventsOf(audit.EventExpiry)); n != 2 {
+				t.Errorf("expiry events = %d, want 2", n)
+			}
+		})
+	}
+	t.Run("dev request_credentials", func(t *testing.T) {
+		h := newHarness(t, withLifetime(""), withConfig(tests[0].config))
+		if r := h.do(s, refPass); r.code() != protocol.CodeExecRequired || r.creds != nil {
+			t.Fatalf("result = %v, %v; want exec_required", r.creds, r.err)
+		}
+		if h.approvals() != 0 || h.be.Resolves() != 0 {
+			t.Errorf("approvals %d, resolves %d; want 0", h.approvals(), h.be.Resolves())
+		}
+	})
+}

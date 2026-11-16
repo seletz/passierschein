@@ -88,6 +88,17 @@ environments:
   test:
     delivery: []
 `
+	const devOnce = `
+environments:
+  dev:
+    grant_lifetime: 0s
+`
+	const devOnceMCPOnly = `
+environments:
+  dev:
+    grant_lifetime: 0s
+    delivery: [mcp]
+`
 	tests := []struct {
 		name   string
 		extra  string
@@ -110,6 +121,11 @@ environments:
 		{"test switched off", devExecOnly, config.DeliveryMCP, []string{"beispiel.app.k8s-test"}, protocol.CodeNotAllowed},
 		{"not allowed for the project", "", config.DeliveryExec, []string{"beispiel.infra.k8s-dev"}, protocol.CodeNotAllowed},
 		{"unknown way", "", config.Delivery("file"), []string{"beispiel.app.k8s-dev"}, protocol.CodeNotAllowed},
+		// D76: the lifetime 0 gives one delivery per command; the MCP
+		// answer has no command.
+		{"dev mcp, lifetime 0", devOnce, config.DeliveryMCP, []string{"beispiel.app.k8s-dev"}, protocol.CodeExecRequired},
+		{"dev exec, lifetime 0", devOnce, config.DeliveryExec, []string{"beispiel.app.k8s-dev"}, ""},
+		{"dev mcp only, lifetime 0", devOnceMCPOnly, config.DeliveryMCP, []string{"beispiel.app.k8s-dev"}, protocol.CodeNotAllowed},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

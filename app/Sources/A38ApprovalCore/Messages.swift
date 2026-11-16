@@ -143,9 +143,11 @@ public enum ExecEnvironment: String, Sendable, Equatable, Comparable {
 
 /// The kind of approval for a command (D65, D63).
 public enum ExecApprovalKind: String, Sendable, Equatable {
-    /// A grant with a lifetime and a binding (dev, test).
+    /// A grant with a lifetime and a binding (dev, test with a lifetime
+    /// more than 0).
     case grant
-    /// Only this command, one time (prod). No choice of the lifetime.
+    /// Only this command, one time (lifetime 0: prod, and dev or test with
+    /// the lifetime 0s, D76). No choice of the lifetime.
     case once
 }
 

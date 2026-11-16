@@ -43,7 +43,8 @@ projects: []
 # never a longer one. The fixed rules: mcp only for dev; prod only with the
 # lifetime 0s and the binding command; test never with the binding none.
 # Binding: none (any command), program (same program), command (same
-# program, arguments and working directory).
+# program, arguments and working directory). The lifetime 0s in dev or
+# test means: each command needs its own approval, as in prod.
 environments:
   dev:
     delivery: [mcp, exec]

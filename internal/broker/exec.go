@@ -195,7 +195,8 @@ func (b *Broker) inProject(project, cwd string) bool {
 
 // execTerms returns the strictest environment of the references, the
 // strictest binding and the shortest lifetime of their environments (D62,
-// D63). prod has the lifetime 0 and the binding command. For a program
+// D63). prod has the lifetime 0. The lifetime 0 has the binding command,
+// also in dev and test (D76). For a program
 // without a statement the binding program becomes command.
 func (b *Broker) execTerms(refs []protocol.Reference, program string) (config.Environment, config.Binding, time.Duration) {
 	env := policy.Strictest(b.cfg, refs)
@@ -210,7 +211,7 @@ func (b *Broker) execTerms(refs []protocol.Reference, program string) (config.En
 			ttl = l
 		}
 	}
-	if env == config.EnvProd || ttl < 0 {
+	if env == config.EnvProd || ttl <= 0 {
 		ttl, binding = 0, config.BindingCommand
 	}
 	if binding == config.BindingProgram && programsWithoutStatement[path.Base(program)] {
@@ -414,7 +415,7 @@ func (b *Broker) execApprovalRequest(c *call, x *execCall, canon []protocol.Refe
 	for _, v := range x.req.Env {
 		cmd.Env = append(cmd.Env, approval.ExecVariable{Name: v.Name, CredentialID: ids[c.canon[v.Reference]]})
 	}
-	if x.env == config.EnvProd {
+	if x.ttl == 0 {
 		cmd.Approval = approval.ExecApproval{Kind: approval.ExecApprovalOnce, Binding: approval.BindingCommand}
 	} else {
 		cmd.Approval = approval.ExecApproval{

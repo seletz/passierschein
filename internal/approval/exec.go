@@ -50,10 +50,11 @@ type ExecApprovalKind string
 // The kinds of approval for a command.
 const (
 	// ExecApprovalGrant: the approval creates a grant with a lifetime and
-	// a binding (dev, test).
+	// a binding (dev, test with a lifetime more than 0).
 	ExecApprovalGrant ExecApprovalKind = "grant"
 	// ExecApprovalOnce: the approval is for this command only, one time
-	// (prod, lifetime 0). The human selects no lifetime.
+	// (lifetime 0: always in prod, in dev and test if the configuration
+	// sets the lifetime 0). The human selects no lifetime.
 	ExecApprovalOnce ExecApprovalKind = "once"
 )
 
@@ -244,9 +245,6 @@ func (e *ExecCommand) checkEnv(creds []Credential) error {
 func (a ExecApproval) check(env config.Environment, ttl int64) error {
 	switch a.Kind {
 	case ExecApprovalOnce:
-		if env != config.EnvProd {
-			return errors.New("exec.approval.kind: once is for prod only")
-		}
 		if a.Binding != BindingCommand {
 			return errors.New("exec.approval.binding: once needs the binding command")
 		}

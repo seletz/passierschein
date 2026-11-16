@@ -223,8 +223,8 @@ private func decodeScope(_ r: Reader) throws(ProtocolError) -> GrantScope {
 }
 
 private func decodeGrantProposal(_ r: Reader) throws(ProtocolError) -> GrantProposal {
-    // 0 is valid only for "only this command" (exec way, prod). The
-    // request checks it with the object exec.
+    // 0 is valid only for "only this command" (exec way, lifetime 0,
+    // D76). The request checks it with the object exec.
     let ttl = try r.int("ttl_seconds")
     guard ttl >= 0 else {
         throw .invalid("grant.ttl_seconds: the lifetime is negative")
@@ -312,9 +312,7 @@ private func decodeExecApproval(_ r: Reader, environment: ExecEnvironment, ttl: 
     try r.finish()
     switch kind {
     case .once:
-        guard environment == .prod else {
-            throw .invalid("exec.approval.kind: once is for prod only")
-        }
+        // D76: "only this command" in each environment with the lifetime 0.
         guard binding == .command else {
             throw .invalid("exec.approval.binding: once needs the binding command")
         }

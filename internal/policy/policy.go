@@ -37,7 +37,8 @@ func Check(cfg *config.Config, project string, refs []protocol.Reference) *proto
 //   - the project allows the vault (D28),
 //   - the environment of the vault is dev, test or prod (D47),
 //   - the environment of each vault allows the way (D62, D66). The way mcp
-//     is for dev only; the configuration cannot change this rule.
+//     is for dev only; the configuration cannot change this rule. The way
+//     mcp needs a grant lifetime more than 0 (D76).
 //
 // It returns config_invalid for each request of a project with an invalid
 // configuration. For the way mcp, it returns exec_required if each vault
@@ -75,10 +76,16 @@ func CheckWay(cfg *config.Config, project string, refs []protocol.Reference, way
 }
 
 // allowsAll reports whether each environment allows the way. The fixed
-// rule of D62 holds also here: mcp only for dev.
+// rule of D62 holds also here: mcp only for dev. The way mcp also needs a
+// lifetime more than 0 (D76).
 func allowsAll(cfg *config.Config, envs []config.Environment, way config.Delivery) bool {
 	for _, env := range envs {
 		if way == config.DeliveryMCP && env != config.EnvDev {
+			return false
+		}
+		// D76: the lifetime 0 gives one delivery for one command. The MCP
+		// answer has no command, so it needs a grant with a lifetime.
+		if way == config.DeliveryMCP && cfg.GrantLifetime(env) <= 0 {
 			return false
 		}
 		if !cfg.DeliveryAllowed(env, way) {
