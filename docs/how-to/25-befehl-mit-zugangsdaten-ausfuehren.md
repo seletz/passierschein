@@ -11,12 +11,6 @@ Das Kommando erhält den Wert als Umgebungsvariable.
 Der Agent erhält nur den Exit-Code und die Ausgabe, nie den Wert ({{ ref("UC15") }}, {{ ref("D61") }}).
 Diese Anleitung zeigt, wie der Agent das Werkzeug nutzt und was du dabei siehst.
 
-!!! note "Stand"
-    Der Daemon liefert über diesen Weg erst mit dem Broker für den exec-Weg aus
-    ([Issue 99](https://github.com/seletz/passierschein/issues/99)).
-    Bis dahin antwortet er auf `run_with_credentials` mit `not_allowed`.
-    Der Skill beschreibt schon das endgültige Verhalten.
-
 ## Welcher Weg wann gilt
 
 Der Skill aus `a38 llm --skill` gibt dem Agent die Regeln ({{ ref("D68") }}).
@@ -120,6 +114,19 @@ Prüfe vor der Freigabe:
   Die Maskierung erkennt nur den exakten Wert ({{ ref("RI13") }}).
 - Stehen die Argumente ohne Wert da?
 
+## Ein Wert im Kommando
+
+Ein Wert gehört nie in ein Argument oder in das Arbeitsverzeichnis.
+Der Skill verbietet das.
+Der Daemon prüft es nach der Freigabe.
+Findet er einen Wert, liefert er nicht aus, und der Agent erhält `invalid_request`.
+
+Diese Prüfung kommt spät; das ist eine bekannte Grenze ({{ ref("G46") }}).
+Der Daemon darf einen Wert erst nach der Freigabe lesen.
+Schreibt ein Agent trotzdem einen Wert in ein Argument, steht der Wert schon in der Freigabeanfrage.
+Er steht auch in den Einträgen `request`, `decision` und `grant` des Audit-Logs ([Kommando im Audit-Log](../reference/80-befehle-fuer-den-menschen.md#kommando-im-audit-log)).
+Siehst du einen Wert im Kommando, lehne ab.
+
 ## Grants
 
 Ein Grant gilt so lange, wie du es erlaubst ({{ ref("D63") }}).
@@ -127,6 +134,7 @@ Ein Grant gilt so lange, wie du es erlaubst ({{ ref("D63") }}).
 - In dev kann er einige Stunden gelten.
 - In test ist er kurz und gilt nur für dasselbe Programm.
 - In prod gibt es keinen Grant. Jedes Kommando braucht eine neue Freigabe.
+- Steht die Laufzeit von dev oder test auf `0s`, gilt dort dasselbe wie in prod ({{ ref("D76") }}). Die Freigabeanfrage zeigt dann „Only this command, one time“. In dev antwortet `request_credentials` dann mit `exec_required`.
 
 ## Hook gegen op
 

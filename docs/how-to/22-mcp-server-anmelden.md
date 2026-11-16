@@ -1,6 +1,7 @@
 ---
 title: a38 als MCP-Server anmelden
 description: "a38 mcp im Agent-Werkzeug anmelden und den Namen der Sitzung je Sitzung festlegen."
+render_macros: true
 ---
 # a38 als MCP-Server anmelden
 
@@ -100,20 +101,7 @@ Der Name stammt aus der Anfrage `initialize`.
 Der Daemon zeigt ihn als unbestätigte Angabe des Agents.
 Er braucht keine Einstellung.
 
-## Kommandos mit `run_with_credentials`
-
-Der Agent nennt Programm, Argumente, Arbeitsverzeichnis und je Variable eine Referenz.
-Der Wert kommt nur in die Umgebung des Kommandos.
-Die Ausgabe zeigt jeden Wert als `[masked:NAME]`.
-
-Ein Wert gehört nie in ein Argument oder in das Arbeitsverzeichnis.
-Der Skill verbietet das.
-Der Daemon prüft es nach der Freigabe und liefert dann nicht aus (`invalid_request`).
-Diese Prüfung kommt spät ({{ ref("G46") }}):
-Schreibt ein Agent trotzdem einen Wert in ein Argument, steht der Wert schon im Popup und in den Einträgen `request`, `decision` und `grant` des Audit-Logs.
-Lehne eine solche Freigabeanfrage ab.
-
-Steht die Laufzeit einer Umgebung auf `0s`, fragt das Popup bei jedem Kommando ({{ ref("D76") }}).
+Die Anleitung [Befehl mit Zugangsdaten ausführen lassen](25-befehl-mit-zugangsdaten-ausfuehren.md) beschreibt `run_with_credentials`.
 
 ## Verhalten ohne Daemon
 
