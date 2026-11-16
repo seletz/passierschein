@@ -46,6 +46,10 @@ func helper(args []string) int {
 	case "stdin":
 		b, _ := io.ReadAll(os.Stdin)
 		fmt.Printf("stdin=%d\n", len(b))
+	case "exe":
+		// Writes the path of the started file and argv[0].
+		exe, _ := os.Executable()
+		fmt.Printf("%s\n%s", exe, os.Args[0])
 	case "pwd":
 		dir, _ := os.Getwd()
 		fmt.Print(dir)
