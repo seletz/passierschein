@@ -61,12 +61,23 @@ CREATE TABLE IF NOT EXISTS entries (
 	lifetime_s   INTEGER NOT NULL,
 	detail       TEXT    NOT NULL,
 	prev_hash    TEXT    NOT NULL,
-	hash         TEXT    NOT NULL
+	hash         TEXT    NOT NULL,
+	command      TEXT    NOT NULL DEFAULT '',
+	execution    TEXT    NOT NULL DEFAULT ''
 );`
+
+// execColumns are the columns of the exec way (D65). An audit file of an
+// earlier version does not have them; Open adds them.
+var execColumns = []string{"command", "execution"}
 
 const columns = `seq, time_ns, type, session_id, origin, project, peer_pid, peer_uid,
 	process, cwd, session_name, agent, task, reason, refs, code, request_id,
-	grant_id, lifetime_s, detail, prev_hash, hash`
+	grant_id, lifetime_s, detail, prev_hash, hash, command, execution`
+
+// oldColumns reads a file without the columns of the exec way.
+const oldColumns = `seq, time_ns, type, session_id, origin, project, peer_pid, peer_uid,
+	process, cwd, session_name, agent, task, reason, refs, code, request_id,
+	grant_id, lifetime_s, detail, prev_hash, hash, '' AS command, '' AS execution`
 
 // Option configures a [Store].
 type Option func(*Store)
@@ -82,6 +93,9 @@ type Store struct {
 	db       *sql.DB
 	clock    clock.Clock
 	readOnly bool
+	// selectColumns is the column list of each query: columns, or
+	// oldColumns for a read-only file of an earlier version.
+	selectColumns string
 
 	// mu serialises Append, so that the numbers and the hashes follow
 	// each other without a gap.
@@ -114,6 +128,10 @@ func Open(path string, opts ...Option) (*Store, error) {
 		_ = s.db.Close()
 		return nil, fmt.Errorf("audit: cannot prepare the audit file: %w", err)
 	}
+	if err := s.upgrade(); err != nil {
+		_ = s.db.Close()
+		return nil, err
+	}
 	if err := s.loadLast(context.Background()); err != nil {
 		_ = s.db.Close()
 		return nil, err
@@ -136,7 +154,61 @@ func OpenReadOnly(path string, opts ...Option) (*Store, error) {
 		_ = s.db.Close()
 		return nil, errors.New("audit: the file is not an audit log")
 	}
+	missing, err := s.missingColumns()
+	if err != nil {
+		_ = s.db.Close()
+		return nil, err
+	}
+	if len(missing) == len(execColumns) {
+		s.selectColumns = oldColumns
+	} else if len(missing) > 0 {
+		_ = s.db.Close()
+		return nil, errors.New("audit: the file is not an audit log")
+	}
 	return s, nil
+}
+
+// missingColumns returns the columns of the exec way that the file does
+// not have.
+func (s *Store) missingColumns() ([]string, error) {
+	rows, err := s.db.Query(`SELECT name FROM pragma_table_info('entries')`)
+	if err != nil {
+		return nil, fmt.Errorf("audit: cannot read the audit file: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	have := map[string]bool{}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, fmt.Errorf("audit: cannot read the audit file: %w", err)
+		}
+		have[name] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("audit: cannot read the audit file: %w", err)
+	}
+	var missing []string
+	for _, c := range execColumns {
+		if !have[c] {
+			missing = append(missing, c)
+		}
+	}
+	return missing, nil
+}
+
+// upgrade adds the columns of the exec way to a file of an earlier
+// version. The old entries keep their content and their hashes.
+func (s *Store) upgrade() error {
+	missing, err := s.missingColumns()
+	if err != nil {
+		return err
+	}
+	for _, c := range missing {
+		if _, err := s.db.Exec(`ALTER TABLE entries ADD COLUMN ` + c + ` TEXT NOT NULL DEFAULT ''`); err != nil {
+			return fmt.Errorf("audit: cannot prepare the audit file: %w", err)
+		}
+	}
+	return nil
 }
 
 func open(path string, readOnly bool, opts []Option) (*Store, error) {
@@ -154,7 +226,7 @@ func open(path string, readOnly bool, opts []Option) (*Store, error) {
 	// One connection: Append is serialised anyway, and it keeps the
 	// pragmas of the connection in force.
 	db.SetMaxOpenConns(1)
-	s := &Store{db: db, clock: clock.System{}, readOnly: readOnly, lastHash: genesisHash}
+	s := &Store{db: db, clock: clock.System{}, readOnly: readOnly, lastHash: genesisHash, selectColumns: columns}
 	for _, o := range opts {
 		o(s)
 	}
@@ -218,12 +290,20 @@ func (s *Store) Append(ctx context.Context, ev audit.Event) (audit.Entry, error)
 	if err != nil {
 		return audit.Entry{}, err
 	}
-	_, err = s.db.ExecContext(ctx, `INSERT INTO entries (`+columns+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+	command, err := encodeJSON(e.Command)
+	if err != nil {
+		return audit.Entry{}, err
+	}
+	execution, err := encodeJSON(e.Execution)
+	if err != nil {
+		return audit.Entry{}, err
+	}
+	_, err = s.db.ExecContext(ctx, `INSERT INTO entries (`+columns+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		e.Seq, e.Time.UnixNano(), string(e.Type), string(e.Verified.SessionID), string(e.Verified.Origin),
 		e.Verified.Project, e.Verified.PeerPID, e.Verified.PeerUID, e.Verified.Process, e.Verified.Cwd,
 		e.Claims.SessionName, e.Claims.Agent, e.Claims.Task, e.Claims.Reason, refs,
 		string(e.Result.Code), e.Result.RequestID, e.Result.GrantID, e.Result.LifetimeSeconds,
-		e.Result.Detail, e.PrevHash, e.Hash)
+		e.Result.Detail, e.PrevHash, e.Hash, command, execution)
 	if err != nil {
 		return audit.Entry{}, fmt.Errorf("audit: cannot write the entry: %w", err)
 	}
@@ -252,19 +332,53 @@ func (s *Store) Probe(ctx context.Context) (err error) {
 		}
 	}()
 	// The number 0 is never the number of an entry.
-	if _, err := tx.ExecContext(ctx, `INSERT INTO entries (`+columns+`) VALUES (0,0,'','','','',0,0,'','','','','','','','','','',0,'','','')`); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO entries (`+columns+`) VALUES (0,0,'','','','',0,0,'','','','','','','','','','',0,'','','','','')`); err != nil {
 		return fmt.Errorf("audit: cannot write the audit file: %w", err)
 	}
 	return nil
 }
 
 func cloneEvent(ev audit.Event) audit.Event {
+	if ev.Command != nil {
+		c := *ev.Command
+		c.Args = append([]string(nil), c.Args...)
+		c.Env = append([]audit.EnvVar(nil), c.Env...)
+		ev.Command = &c
+	}
+	if ev.Execution != nil {
+		x := *ev.Execution
+		ev.Execution = &x
+	}
 	if len(ev.References) == 0 {
 		ev.References = nil
 		return ev
 	}
 	ev.References = append([]protocol.Reference(nil), ev.References...)
 	return ev
+}
+
+// encodeJSON returns the JSON text of v, or the empty text for nil.
+func encodeJSON[T any](v *T) (string, error) {
+	if v == nil {
+		return "", nil
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return "", fmt.Errorf("audit: cannot encode the entry: %w", err)
+	}
+	return string(b), nil
+}
+
+// decodeJSON reads the JSON text of encodeJSON. The empty text is nil.
+func decodeJSON[T any](text string) (*T, error) {
+	if text == "" {
+		return nil, nil
+	}
+	v := new(T)
+	if err := json.Unmarshal([]byte(text), v); err != nil {
+		return nil, err
+	}
+	return v, nil
 }
 
 type storedRef struct {
@@ -307,11 +421,12 @@ type scanner interface{ Scan(dest ...any) error }
 // valid; Verify reports that as a finding and List as an error.
 func scanEntry(r scanner) (e audit.Entry, refsErr error, err error) {
 	var timeNS int64
-	var typ, origin, sid, code, refs string
+	var typ, origin, sid, code, refs, command, execution string
 	err = r.Scan(&e.Seq, &timeNS, &typ, &sid, &origin, &e.Verified.Project, &e.Verified.PeerPID,
 		&e.Verified.PeerUID, &e.Verified.Process, &e.Verified.Cwd, &e.Claims.SessionName,
 		&e.Claims.Agent, &e.Claims.Task, &e.Claims.Reason, &refs, &code, &e.Result.RequestID,
-		&e.Result.GrantID, &e.Result.LifetimeSeconds, &e.Result.Detail, &e.PrevHash, &e.Hash)
+		&e.Result.GrantID, &e.Result.LifetimeSeconds, &e.Result.Detail, &e.PrevHash, &e.Hash,
+		&command, &execution)
 	if err != nil {
 		return e, nil, err
 	}
@@ -321,6 +436,12 @@ func scanEntry(r scanner) (e audit.Entry, refsErr error, err error) {
 	e.Verified.Origin = session.Origin(origin)
 	e.Result.Code = protocol.Code(code)
 	e.References, refsErr = decodeRefs(refs)
+	if refsErr == nil {
+		e.Command, refsErr = decodeJSON[audit.Command](command)
+	}
+	if refsErr == nil {
+		e.Execution, refsErr = decodeJSON[audit.Execution](execution)
+	}
 	return e, refsErr, nil
 }
 
@@ -361,7 +482,7 @@ func (s *Store) List(ctx context.Context, f audit.Filter) ([]audit.Entry, error)
 	if !f.Until.IsZero() {
 		add("time_ns < ?", f.Until.UnixNano())
 	}
-	q := `SELECT ` + columns + ` FROM entries`
+	q := `SELECT ` + s.selectColumns + ` FROM entries`
 	if len(where) > 0 {
 		q += " WHERE " + strings.Join(where, " AND ")
 	}
@@ -404,7 +525,7 @@ func (s *Store) List(ctx context.Context, f audit.Filter) ([]audit.Entry, error)
 // missing entry, because that is the first place where the log is wrong.
 // Entries that are removed at the end cannot be seen (known limit).
 func (s *Store) Verify(ctx context.Context) (audit.Verification, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT `+columns+` FROM entries ORDER BY seq`)
+	rows, err := s.db.QueryContext(ctx, `SELECT `+s.selectColumns+` FROM entries ORDER BY seq`)
 	if err != nil {
 		return audit.Verification{}, fmt.Errorf("audit: cannot read the entries: %w", err)
 	}

@@ -8,7 +8,7 @@ stand: '2026-11-15'
 order: 5
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F23, D65]
 ---
 # T38 — Freigabeanfrage und Audit-Log nennen das Kommando und enthalten nie einen Wert oder die Ausgabe

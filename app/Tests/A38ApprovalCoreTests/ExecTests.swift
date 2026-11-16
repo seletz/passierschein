@@ -37,10 +37,24 @@ func prodTree() -> [String: Any] {
     return tree
 }
 
+/// The exec tree in the environment with "only this command" (lifetime 0,
+/// D76).
+func onceTree(_ environment: String) -> [String: Any] {
+    var tree = execTree()
+    setPath(&tree, ["credentials"][...], [
+        ["id": "c1", "vault": "beispiel.app.k8s-" + environment, "title": "datenbank-" + environment,
+         "field": "password", "environment": environment],
+    ])
+    setPath(&tree, ["grant", "ttl_seconds"][...], 0)
+    setPath(&tree, ["exec", "environment"][...], environment)
+    setPath(&tree, ["exec", "approval"][...], ["kind": "once", "binding": "command"])
+    return tree
+}
+
 @Suite("Exec request: decoding")
 struct ExecDecodingTests {
     @Test("T38 part (window): the exec samples decode with environment, command and variables",
-          arguments: [("exec-dev", "dev"), ("exec-test", "test"), ("exec-prod", "prod"), ("exec-long", "test")])
+          arguments: [("exec-dev", "dev"), ("exec-test", "test"), ("exec-prod", "prod"), ("exec-long", "test"), ("exec-dev-once", "dev")])
     func samples(name: String, environment: String) throws {
         let r = try Fixtures.sampleRequest(name)
         let exec = try #require(r.exec)
@@ -49,8 +63,8 @@ struct ExecDecodingTests {
         #expect(exec.cwd == "/Users/beispiel/develop/beispielprojekt")
         #expect(!exec.env.isEmpty)
         #expect(r.credentials.allSatisfy { $0.environment == environment })
-        switch environment {
-        case "prod":
+        switch (environment, name) {
+        case ("prod", _), (_, "exec-dev-once"):
             #expect(exec.approval.kind == .once)
             #expect(exec.approval.lifetimeChoices.isEmpty)
             #expect(r.grant.ttlSeconds == 0)
@@ -124,10 +138,6 @@ struct ExecDecodingTests {
         .init(name: "kind unknown", code: .invalidRequest, change: change(["exec", "approval", "kind"], "always")),
         .init(name: "binding unknown", code: .invalidRequest, change: change(["exec", "approval", "binding"], "argument")),
         .init(name: "test with binding none", code: .invalidRequest, change: change(["exec", "approval", "binding"], "none")),
-        .init(name: "test with once", code: .invalidRequest, change: { tree in
-            setPath(&tree, ["grant", "ttl_seconds"][...], 0)
-            setPath(&tree, ["exec", "approval"][...], ["kind": "once", "binding": "command"])
-        }),
         .init(name: "grant without lifetime", code: .invalidRequest, change: change(["grant", "ttl_seconds"], 0)),
         .init(name: "no choices", code: .invalidRequest, change: change(["exec", "approval", "lifetime_choices_seconds"], nil)),
         .init(name: "first choice is not the lifetime", code: .invalidRequest,
@@ -162,6 +172,25 @@ struct ExecDecodingTests {
         .init(name: "once with choices", code: .invalidRequest, change: change(["exec", "approval", "lifetime_choices_seconds"], [60])),
         .init(name: "once with binding program", code: .invalidRequest, change: change(["exec", "approval", "binding"], "program")),
     ]
+
+    @Test("T36 part (window, D76): with the lifetime 0, dev and test use \"only this command\"",
+          arguments: ["dev", "test"])
+    func onceOutsideProd(environment: String) throws {
+        let r = try decodeMessage(Fixtures.json(onceTree(environment)))
+        guard case let .request(req) = r else {
+            Issue.record("not a request")
+            return
+        }
+        #expect(req.exec?.approval == ExecApproval(kind: .once, binding: .command, lifetimeChoices: []))
+        #expect(req.grant.ttlSeconds == 0)
+    }
+
+    @Test("T36 part (window, D76): \"only this command\" in test keeps its rules", arguments: invalidProd.dropFirst())
+    func rejectsOnceInTest(_ c: DecodingTests.Invalid) {
+        var tree = onceTree("test")
+        c.change(&tree)
+        #expect(throws: ProtocolError.self, "\(c.name)") { try decodeMessage(Fixtures.json(tree)) }
+    }
 
     @Test("T38 part (window): prod allows only \"only this command\"", arguments: invalidProd)
     func rejectsProd(_ c: DecodingTests.Invalid) {
@@ -356,6 +385,14 @@ struct ExecGuardTests {
     ])
     func once(ttl: Int64?, passes: Bool) {
         let checked = guardApproval(Self.approval(ttl: ttl), request: Self.request(prodTree()), testSwitches: false)
+        #expect((checked.outcome == .approved) == passes)
+    }
+
+    @Test("T36 part (window, D76): \"only this command\" in dev has no lifetime", arguments: [
+        (Int64?(nil), true), (0, true), (60, false),
+    ])
+    func onceInDev(ttl: Int64?, passes: Bool) {
+        let checked = guardApproval(Self.approval(ttl: ttl), request: Self.request(onceTree("dev")), testSwitches: false)
         #expect((checked.outcome == .approved) == passes)
     }
 

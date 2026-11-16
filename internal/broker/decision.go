@@ -27,7 +27,10 @@ type verdict struct {
 //     authentication is present, passed and not "skipped",
 //   - each approved ID is an entry of the request, and no ID repeats,
 //   - the lifetime is more than zero and not more than the proposed
-//     lifetime of the configuration.
+//     lifetime of the configuration,
+//   - for a command of the exec way: the approval covers every entry, and
+//     the lifetime is one of the offered lifetimes, or 0 for one command
+//     (D63, G44, approval.ValidateDecision).
 //
 // An approval with no approved ID is a denial. The outcome error and each
 // unknown outcome are invalid. An invalid decision creates no grant.
@@ -76,6 +79,18 @@ func checkApproval(req approval.Request, d approval.Decision, authRequired bool)
 			return invalidDecision("the decision approves an entry twice")
 		}
 		seen[id] = true
+	}
+	if req.Exec != nil {
+		// A command (D63, G44): every entry, and a lifetime that the
+		// request offers, or 0 for one command.
+		if _, err := approval.ValidateDecision(req, d); err != nil {
+			return invalidDecision(err.Error())
+		}
+		return verdict{
+			outcome:    approval.OutcomeApproved,
+			ids:        append([]string(nil), d.ApprovedCredentialIDs...),
+			ttlSeconds: d.TTLSeconds,
+		}
 	}
 	if d.TTLSeconds <= 0 || d.TTLSeconds > req.Grant.TTLSeconds {
 		return invalidDecision("the lifetime of the decision is not valid")

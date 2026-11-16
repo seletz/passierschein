@@ -18,6 +18,13 @@ type call struct {
 	s      session.Session
 	req    *protocol.RequestCredentials
 	claims session.Claims
+	// refs lists the references of the request in its sequence: the
+	// references of request_credentials or the references of the
+	// variables of request_exec.
+	refs []protocol.Reference
+	// command is the command of a request of the exec way for the audit
+	// events, or nil for the MCP way.
+	command *audit.Command
 	// canon maps each reference of the request to the reference with
 	// the names of the backend. A grant and the audit events after the
 	// request use these references.
@@ -59,6 +66,7 @@ func (b *Broker) admit(c *call) *protocol.Error {
 		return b.reject(c, audit.EventDenial, nil, asProtocolError(err))
 	}
 	c.claims = c.s.Claims(c.req.Task, c.req.Reason)
+	c.refs = c.req.References
 	if e := b.record(b.event(c, audit.EventRequest, c.req.References, audit.Result{})); e != nil {
 		return e
 	}
@@ -78,7 +86,7 @@ func (b *Broker) admit(c *call) *protocol.Error {
 func (b *Broker) resolve(ctx context.Context, c *call) *protocol.Error {
 	c.canon = map[protocol.Reference]protocol.Reference{}
 	c.names = map[protocol.Reference]backend.Names{}
-	for _, ref := range c.req.References {
+	for _, ref := range c.refs {
 		if _, done := c.canon[ref]; done {
 			continue
 		}
@@ -86,7 +94,7 @@ func (b *Broker) resolve(ctx context.Context, c *call) *protocol.Error {
 		if err != nil {
 			if ctx.Err() != nil {
 				// The connection ended, not the backend.
-				return b.requestEnded(c, c.req.References)
+				return b.requestEnded(c, c.refs)
 			}
 			return b.backendFailed(c, err)
 		}
@@ -95,7 +103,7 @@ func (b *Broker) resolve(ctx context.Context, c *call) *protocol.Error {
 		// give the name that the policy checked.
 		if names.Vault != ref.Vault || canon.Validate() != nil {
 			b.log.Warn("the backend returned names that do not fit the reference")
-			return b.reject(c, audit.EventError, c.req.References,
+			return b.reject(c, audit.EventError, c.refs,
 				protocol.Errorf(protocol.CodeBackendUnavailable, "the backend returned invalid names"))
 		}
 		c.canon[ref], c.names[canon] = canon, names
@@ -108,11 +116,11 @@ func (b *Broker) backendFailed(c *call, err error) *protocol.Error {
 	code := backend.Code(err)
 	if code == protocol.CodeNotFound {
 		// D27: an unknown item or field in an allowed vault.
-		return b.reject(c, audit.EventDenial, c.req.References,
+		return b.reject(c, audit.EventDenial, c.refs,
 			protocol.Errorf(protocol.CodeNotFound, "a credential of the request does not exist"))
 	}
 	b.log.Warn("the backend failed", "code", string(code))
-	return b.reject(c, audit.EventError, c.req.References, protocol.Errorf(code, "the backend failed: %s", code))
+	return b.reject(c, audit.EventError, c.refs, protocol.Errorf(code, "the backend failed: %s", code))
 }
 
 // plan is the result of the step that sorts the references of a request.
@@ -270,7 +278,7 @@ func (b *Broker) event(c *call, t audit.EventType, refs []protocol.Reference, r 
 	if claims == (session.Claims{}) {
 		claims = c.s.Claims("", "")
 	}
-	return audit.Event{Type: t, Verified: c.s.Facts, Claims: claims, References: refs, Result: r}
+	return audit.Event{Type: t, Verified: c.s.Facts, Claims: claims, References: refs, Result: r, Command: c.command}
 }
 
 // notifyInvalidProject tells the human once per project and daemon run

@@ -30,8 +30,8 @@ func TestPolicyRejectsBeforeBackendAndHuman(t *testing.T) {
 		{"vault only in the backend", b, []string{"op://k8s-beispiel/datenbank-dev/password"}},
 		// T3: vault not in the allowlist of the project.
 		{"vault not allowed for the project", b, []string{refExtern}},
-		// T3: environment test and prod.
-		{"environment test", b, []string{"op://beispiel.app.k8s-test/datenbank-test/password"}},
+		// T3, T35: environment prod; the exec way for prod is off by
+		// default. The environment test is in TestExecRequiredOutsideDev.
 		{"environment prod", b, []string{"op://beispiel.app.k8s-prod/datenbank-prod/password"}},
 		// T22: no comparison of names: "beispiel-dev" has the environment prod.
 		{"name says dev, environment prod", b, []string{"op://beispiel-dev/datenbank/password"}},

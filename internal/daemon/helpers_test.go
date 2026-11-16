@@ -99,6 +99,20 @@ func credentialsFor(req *protocol.RequestCredentials) *protocol.Credentials {
 	return out
 }
 
+func (b *fakeBroker) RequestExec(_ context.Context, s session.Session, req *protocol.RequestExec) (*protocol.ExecCredentials, *protocol.Error) {
+	b.record(s)
+	out := &protocol.ExecCredentials{ID: "wrong", TimeoutSeconds: 120, OutputLimit: 2048}
+	for _, v := range req.Env {
+		out.Values = append(out.Values, protocol.ExecValue{Name: v.Name, Value: protocol.NewSecret("beispiel-wert")})
+	}
+	return out, nil
+}
+
+func (b *fakeBroker) ExecResult(_ context.Context, s session.Session, _ *protocol.ExecResult) (*protocol.ExecRecorded, *protocol.Error) {
+	b.record(s)
+	return &protocol.ExecRecorded{ID: "wrong"}, nil
+}
+
 func (b *fakeBroker) GrantStatus(_ context.Context, s session.Session, _ *protocol.GrantStatus) (*protocol.Grants, *protocol.Error) {
 	b.record(s)
 	return &protocol.Grants{Grants: []protocol.Grant{}}, nil

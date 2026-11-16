@@ -309,8 +309,9 @@ func slicesEqual(a, b []string) bool {
 
 func TestMCPRunWithCredentialsWiring(t *testing.T) {
 	// T34 step 5 (part): "a38 mcp" checks cwd against the projects of the
-	// configuration. A cwd in the project reaches the daemon, which
-	// answers not_allowed until the broker supports the exec way.
+	// configuration. A cwd in the project reaches the daemon; the test
+	// handler answers daemon_faulted. The end-to-end test with the broker
+	// is TestMCPRunWithCredentialsEndToEnd.
 	cfgPath, _, _ := writeConfig(t)
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
@@ -351,7 +352,7 @@ func TestMCPRunWithCredentialsWiring(t *testing.T) {
 		cwd  string
 		want protocol.Code
 	}{
-		{"", protocol.CodeNotAllowed},
+		{"", protocol.CodeDaemonFaulted},
 		{outside, protocol.CodeInvalidRequest},
 	} {
 		args := map[string]any{

@@ -22,6 +22,16 @@ func (Faulted) RequestCredentials(context.Context, session.Session, *protocol.Re
 	return nil, errNoBroker()
 }
 
+// RequestExec returns daemon_faulted.
+func (Faulted) RequestExec(context.Context, session.Session, *protocol.RequestExec) (*protocol.ExecCredentials, *protocol.Error) {
+	return nil, errNoBroker()
+}
+
+// ExecResult returns daemon_faulted.
+func (Faulted) ExecResult(context.Context, session.Session, *protocol.ExecResult) (*protocol.ExecRecorded, *protocol.Error) {
+	return nil, errNoBroker()
+}
+
 // GrantStatus returns daemon_faulted.
 func (Faulted) GrantStatus(context.Context, session.Session, *protocol.GrantStatus) (*protocol.Grants, *protocol.Error) {
 	return nil, errNoBroker()

@@ -217,6 +217,17 @@ func self(t *testing.T) string {
 	return p
 }
 
+// realSelf returns the path of the helper program after the symbolic
+// links are resolved: the path that a38 mcp sends and starts.
+func realSelf(t *testing.T) string {
+	t.Helper()
+	p, err := filepath.EvalSymlinks(self(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
 // runArgs returns the arguments of run_with_credentials for the helper.
 func runArgs(t *testing.T, helperArgs ...string) map[string]any {
 	return map[string]any{
@@ -315,7 +326,7 @@ func TestRunWithCredentialsDeliversTheValue(t *testing.T) {
 		t.Errorf("stdout = %q, want %q", got.Stdout, want)
 	}
 	req := s.daemon.lastRequest(t)
-	if req.Program != self(t) || req.Cwd != s.project || len(req.Args) != 3 || req.Args[0] != helperArg {
+	if req.Program != realSelf(t) || req.Cwd != s.project || len(req.Args) != 3 || req.Args[0] != helperArg {
 		t.Errorf("request_exec = program %q cwd %q args %q", req.Program, req.Cwd, req.Args)
 	}
 	if len(req.Env) != 1 || req.Env[0].Name != "DB_PASSWORD" || req.Env[0].Reference.String() != refOK {
@@ -369,7 +380,8 @@ func TestRunWithCredentialsUnknownProgram(t *testing.T) {
 
 func TestRunWithCredentialsFindsTheProgram(t *testing.T) {
 	// T32 (part): a name without "/" follows the PATH of a38 mcp; a path
-	// with "/" is relative to cwd; a symbolic link stays (D61).
+	// with "/" is relative to cwd. a38 mcp resolves the symbolic links and
+	// sends and starts the resolved path (G48).
 	s := newExecSetup(t, func(o *a38mcp.Options) {
 		o.Environ = func() []string { return []string{"PATH=relativ:/usr/bin:/bin"} }
 	})
@@ -380,8 +392,16 @@ func TestRunWithCredentialsFindsTheProgram(t *testing.T) {
 	if got.Stdout != "beispiel-ausgabe" {
 		t.Errorf("stdout = %q", got.Stdout)
 	}
-	if p := s.daemon.lastRequest(t).Program; !filepath.IsAbs(p) || filepath.Base(p) != "sh" {
-		t.Errorf("program = %q, want the absolute path of sh", p)
+	sh := "/usr/bin/sh"
+	if !fileExists(sh) {
+		sh = "/bin/sh"
+	}
+	wantSh, err := filepath.EvalSymlinks(sh)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p := s.daemon.lastRequest(t).Program; p != wantSh {
+		t.Errorf("program = %q, want the resolved path of sh %q", p, wantSh)
 	}
 
 	sub := filepath.Join(s.project, "werkzeug")
@@ -399,9 +419,47 @@ func TestRunWithCredentialsFindsTheProgram(t *testing.T) {
 	if got.Stdout != sub {
 		t.Errorf("working directory = %q, want %q", got.Stdout, sub)
 	}
-	if p := s.daemon.lastRequest(t).Program; p != link {
-		t.Errorf("program = %q, want the link %q", p, link)
+	if p := s.daemon.lastRequest(t).Program; p != realSelf(t) {
+		t.Errorf("program = %q, want the resolved path %q, not the link", p, realSelf(t))
 	}
+}
+
+func TestRunWithCredentialsStartsTheResolvedProgram(t *testing.T) {
+	// T32 (part, G48): a38 mcp resolves the link before request_exec. The
+	// request carries the resolved path, and a38 mcp starts exactly that
+	// path: a change of the link after the check has no effect.
+	s := newExecSetup(t, nil)
+	link := filepath.Join(s.project, "hilfe")
+	if err := os.Symlink(self(t), link); err != nil {
+		t.Fatal(err)
+	}
+	args := runArgs(t, "exe")
+	args["command"] = link
+	got := runOK(t, s, args)
+	if p := s.daemon.lastRequest(t).Program; p != realSelf(t) {
+		t.Errorf("request_exec program = %q, want %q", p, realSelf(t))
+	}
+	// argv[0] stays the command of the agent: a program can depend on
+	// the name that started it.
+	if want := realSelf(t) + "\n" + link; got.Stdout != want {
+		t.Errorf("started path and argv[0] = %q, want %q", got.Stdout, want)
+	}
+
+	// A link that does not resolve is a program that a38 mcp cannot find.
+	dangling := filepath.Join(s.project, "kaputt")
+	if err := os.Symlink(filepath.Join(s.project, "gibt-es-nicht"), dangling); err != nil {
+		t.Fatal(err)
+	}
+	args["command"] = dangling
+	if got := errCode(t, callWithin(t, s.cs, args, testTimeout)); got != protocol.CodeInvalidRequest {
+		t.Errorf("dangling link: code = %q, want invalid_request", got)
+	}
+}
+
+// fileExists reports whether the path exists.
+func fileExists(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
 }
 
 func TestRunWithCredentialsMasksTheValue(t *testing.T) {

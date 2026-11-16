@@ -14,9 +14,11 @@
 package grant
 
 import (
+	"maps"
 	"slices"
 	"time"
 
+	"github.com/seletz/passierschein/internal/config"
 	"github.com/seletz/passierschein/internal/protocol"
 	"github.com/seletz/passierschein/internal/session"
 )
@@ -37,6 +39,49 @@ type Grant struct {
 	GrantedAt time.Time
 	// ExpiresAt is the end of the lifetime.
 	ExpiresAt time.Time
+	// Binding is the binding of a grant of the exec way (D63). The empty
+	// binding of a grant of the MCP way is the binding none.
+	Binding config.Binding
+	// Command is the approved command of a grant of the exec way. The
+	// binding says which of its fields a command must repeat.
+	Command Command
+}
+
+// Command is the part of a command of the exec way that a binding
+// compares (D63).
+type Command struct {
+	// Program is the absolute path of the program.
+	Program string
+	// Args are the arguments without the program.
+	Args []string
+	// Cwd is the working directory.
+	Cwd string
+	// Env maps each name of an environment variable to the reference
+	// whose value it gets, with the names of the backend. The bindings
+	// program and command compare the whole mapping: the same names with
+	// the same references (D63).
+	Env map[string]protocol.Reference
+}
+
+// unbound reports whether the grant covers each way and each command.
+func (g Grant) unbound() bool { return g.Binding == "" || g.Binding == config.BindingNone }
+
+// CoversCommand reports whether the binding of the grant allows cmd. It
+// does not check the references. The binding none allows each command and
+// each mapping of names to references (D63). The bindings program and
+// command allow only the approved mapping.
+func (g Grant) CoversCommand(cmd Command) bool {
+	switch {
+	case g.unbound():
+		return true
+	case g.Binding == config.BindingProgram:
+		return g.Command.Program == cmd.Program && maps.Equal(g.Command.Env, cmd.Env)
+	case g.Binding == config.BindingCommand:
+		return g.Command.Program == cmd.Program && g.Command.Cwd == cmd.Cwd &&
+			slices.Equal(g.Command.Args, cmd.Args) && maps.Equal(g.Command.Env, cmd.Env)
+	}
+	// Fail closed: an unknown binding covers nothing.
+	return false
 }
 
 // Live reports whether the grant is live at now.
@@ -56,15 +101,28 @@ func NewStore() *Store { return &Store{} }
 // Add adds g. The caller gives each grant a unique ID.
 func (s *Store) Add(g Grant) {
 	g.Refs = slices.Clone(g.Refs)
+	g.Command.Args = slices.Clone(g.Command.Args)
+	g.Command.Env = maps.Clone(g.Command.Env)
 	s.grants = append(s.grants, g)
 }
 
-// Cover returns the newest live grant of the session that covers ref. A
-// grant of a different session never covers a request.
+// Cover returns the newest live grant of the session that covers ref for
+// the MCP way. Only a grant with the binding none covers the MCP way (D63).
+// A grant of a different session never covers a request.
 func (s *Store) Cover(sid session.ID, ref protocol.Reference, now time.Time) (Grant, bool) {
+	return s.find(sid, ref, now, func(g Grant) bool { return g.unbound() })
+}
+
+// CoverCommand returns the newest live grant of the session that covers
+// ref for the command cmd of the exec way (D63).
+func (s *Store) CoverCommand(sid session.ID, ref protocol.Reference, cmd Command, now time.Time) (Grant, bool) {
+	return s.find(sid, ref, now, func(g Grant) bool { return g.CoversCommand(cmd) })
+}
+
+func (s *Store) find(sid session.ID, ref protocol.Reference, now time.Time, ok func(Grant) bool) (Grant, bool) {
 	for i := len(s.grants) - 1; i >= 0; i-- {
 		g := s.grants[i]
-		if g.Facts.SessionID == sid && g.Live(now) && g.Covers(ref) {
+		if g.Facts.SessionID == sid && g.Live(now) && g.Covers(ref) && ok(g) {
 			return g, true
 		}
 	}

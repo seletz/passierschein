@@ -8,7 +8,7 @@ stand: '2026-11-15'
 order: 13
 headless: true
 status: aktiv
-umsetzung: zu-bauen
+umsetzung: vorhanden
 beweist: [F22, D65]
 ---
 # T39 — Der Daemon liefert nicht aus, wenn das Kommando einen der Werte enthält

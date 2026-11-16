@@ -221,11 +221,28 @@ func (s *Server) checkCwd(cwd string) (string, *protocol.Error) {
 	return cwd, nil
 }
 
-// findProgram returns the absolute, clean path of the program (D61). A
-// command with "/" is relative to cwd. A name without "/" follows the
-// PATH; an empty or relative entry of the PATH does not count. Symbolic
-// links stay.
+// findProgram returns the absolute path of the program (D61) with the
+// symbolic links resolved. A command with "/" is relative to cwd. A name
+// without "/" follows the PATH; an empty or relative entry of the PATH
+// does not count. a38 mcp sends the resolved path to the daemon and starts
+// exactly this path: a link that changes after the check of the daemon has
+// no effect (G48). A link that does not resolve is a program that a38 mcp
+// cannot find.
 func findProgram(name, cwd, path string) (string, *protocol.Error) {
+	found, perr := lookProgram(name, cwd, path)
+	if perr != nil {
+		return "", perr
+	}
+	real, err := filepath.EvalSymlinks(found)
+	if err != nil || !filepath.IsAbs(real) || !executable(real) {
+		return "", protocol.Errorf(protocol.CodeInvalidRequest, "command is not an executable file")
+	}
+	return filepath.Clean(real), nil
+}
+
+// lookProgram returns the absolute, clean path of the program as the PATH
+// or cwd gives it, with the symbolic links.
+func lookProgram(name, cwd, path string) (string, *protocol.Error) {
 	if name == "" {
 		return "", protocol.Errorf(protocol.CodeInvalidRequest, "command is empty")
 	}

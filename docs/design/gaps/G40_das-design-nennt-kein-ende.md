@@ -4,12 +4,18 @@ id: 'G40'
 titel: 'Das Design nennt kein Ende der Prozessgruppe nach dem Kommando und keine Quelle für die Prüfung des Arbeitsverzeichnisses in a38 mcp'
 bereich: 'Grants und Auslieferung'
 lauf: '2.0'
-stand: '2026-11-15'
+stand: '2026-11-16'
 order: 7
 headless: true
 type: Gap
 kind: design
-status: offen
+status: geschlossen
+beleg:
+  wer: Stefan
+  datum: '2026-11-16'
+  quelle: ['#97', '#115']
+redaktion:
+  - {datum: '2026-11-16', issue: '#99'}
 register:
   owner: Stefan
 ---
@@ -31,5 +37,7 @@ Offene Fragen:
 
 - Bestätigt Stefan das Ende der Prozessgruppe nach dem Kommando, oder soll ein Kindprozess weiterlaufen dürfen?
 - Bestätigt Stefan die Pfade der Projekte aus der Konfiguration als Quelle der Prüfung in `a38 mcp`?
+
+**Ergebnis (Stefan, 2026-11-16):** Stefan bestätigt den Vorschlag. `a38 mcp` beendet die Prozessgruppe auch nach dem Ende des Kommandos und prüft das Arbeitsverzeichnis mit den Pfaden der Projekte aus der Konfiguration.
 
 **Quelle:** [Issue 97](https://github.com/seletz/passierschein/issues/97), Umsetzung des Werkzeugs `run_with_credentials`.

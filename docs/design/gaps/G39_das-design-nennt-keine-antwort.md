@@ -4,12 +4,18 @@ id: 'G39'
 titel: 'Das Design nennt keine Antwort des Daemons auf exec_result und keine Meldung eines gescheiterten Starts'
 bereich: 'Grants und Auslieferung'
 lauf: '2.0'
-stand: '2026-11-15'
+stand: '2026-11-16'
 order: 6
 headless: true
 type: Gap
 kind: design
-status: offen
+status: geschlossen
+beleg:
+  wer: Stefan
+  datum: '2026-11-16'
+  quelle: ['#95', '#115']
+redaktion:
+  - {datum: '2026-11-16', issue: '#99'}
 register:
   owner: Stefan
 ---
@@ -34,5 +40,7 @@ Offene Fragen:
 
 - Bestätigt Stefan den Vorschlag, oder soll `exec_result` ohne Antwort bleiben?
 - Soll ein Fehler des Audit-Logs bei `exec_result` `a38 mcp` erreichen, oder nur das Log des Daemons?
+
+**Ergebnis (Stefan, 2026-11-16):** Stefan bestätigt den Vorschlag. `exec_result` erhält die Antwort `exec_recorded`; ein gescheiterter Start kommt als Feld `error` mit dem Code `exec_failed`.
 
 **Quelle:** [Issue 95](https://github.com/seletz/passierschein/issues/95), Umsetzung des Protokolls für den exec-Weg.

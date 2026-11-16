@@ -96,7 +96,8 @@ type RequestExec struct {
 	// ID is the correlation ID. The sender selects it.
 	ID string `json:"id"`
 	// Program is the absolute, clean path of the program, as "a38 mcp"
-	// found it. "a38 mcp" starts exactly this path. Symbolic links stay.
+	// found it, with the symbolic links resolved (G48). "a38 mcp" starts
+	// exactly this path. The daemon resolves it again.
 	Program string `json:"program"`
 	// Args are the arguments without the program. "a38 mcp" passes them
 	// unchanged. At most MaxExecArgs arguments and MaxExecArgsSize bytes

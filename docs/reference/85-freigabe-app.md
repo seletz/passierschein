@@ -83,7 +83,7 @@ Ohne `exec` bleibt die Freigabeanfrage unverändert.
 | `exec.args` | `ExecCommand.Args` | Liste, auch leer oder `null`; höchstens 256 Argumente, zusammen höchstens 16 KiB; Zeilenumbruch und Tabulator erlaubt, sonst kein Steuerzeichen |
 | `exec.cwd` | `ExecCommand.Cwd` | absoluter, bereinigter Pfad wie `program` |
 | `exec.env` | `ExecCommand.Env` | Liste `{"name", "credential_id"}`, 1 bis 100 Einträge; Name nach `protocol.CheckEnvName`, jeder Name einmal; `credential_id` ist die Kennung eines Eintrags von `credentials`; jeder Eintrag hat mindestens eine Variable |
-| `exec.approval.kind` | `ExecApproval.Kind` | `grant` bei dev und test, `once` bei prod |
+| `exec.approval.kind` | `ExecApproval.Kind` | `once` bei `grant.ttl_seconds` 0: immer in prod, in dev und test bei der Laufzeit `0s` ({{ ref("D76") }}); sonst `grant` |
 | `exec.approval.binding` | `ExecApproval.Binding` | `none`, `program` oder `command`; bei test nicht `none`; bei `once` nur `command`. Der Daemon schreibt die wirksame Bindung: bei einem Programm ohne Aussage `command` ({{ ref("D63") }}) |
 | `exec.approval.lifetime_choices_seconds` | `ExecApproval.LifetimeChoicesSeconds` | nur bei `grant`: der erste Wert ist `grant.ttl_seconds`, jeder weitere Wert ist kürzer, absteigend und größer als 0; fehlt bei `once` |
 
@@ -413,6 +413,7 @@ Zum Entwickeln nutzt du ein selbst gebautes `a38` (`mise run build`).
 | `exec-dev.json` | Kommando in dev, Grant mit 4 h und Bindung `none` |
 | `exec-test.json` | Kommando in test, Grant mit 30 min und Bindung `program` |
 | `exec-prod.json` | Kommando in prod, „nur dieses Kommando“, zwei Variablen |
+| `exec-dev-once.json` | Kommando in dev mit der Laufzeit `0s`, „nur dieses Kommando“ ({{ ref("D76") }}) |
 | `exec-long.json` | sehr langes Kommando in test mit 16 Argumenten, Zeilenumbruch und Anführungszeichen |
 | `notice-daemon-fault.json` | Meldung einer Störung des Daemons |
 | `notice-project-config-invalid.json` | Meldung einer fehlerhaften Konfiguration eines Projekts |

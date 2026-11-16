@@ -1,0 +1,9 @@
+id: G49
+zustand: eingeloest
+titel: exec_result ohne Auslieferung und verworfene offene Auslieferungen haben keine Grenze
+bezug: '#115'
+schluessel: '#115/grenze-exec-result'
+lauf: '2.0'
+branch: feat/99-broker-exec
+reserviert_am: '2026-11-16'
+eingeloest_am: '2026-11-16'

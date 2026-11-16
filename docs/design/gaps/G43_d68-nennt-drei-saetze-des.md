@@ -4,12 +4,18 @@ id: 'G43'
 titel: 'D68 nennt drei Sätze des Skills nicht, die mit dem exec-Weg falsch werden'
 bereich: 'Oberflächen'
 lauf: '2.0'
-stand: '2026-11-15'
+stand: '2026-11-16'
 order: 3
 headless: true
 type: Gap
 kind: design
-status: offen
+status: geschlossen
+beleg:
+  wer: Stefan
+  datum: '2026-11-16'
+  quelle: ['#101', '#115']
+redaktion:
+  - {datum: '2026-11-16', issue: '#99'}
 register:
   owner: Stefan
 ---
@@ -34,5 +40,7 @@ Ein Agent, der diese Sätze liest, wählt den falschen Weg oder deutet `not_allo
 Offene Fragen:
 
 - Bestätigt Stefan die drei Änderungen?
+
+**Ergebnis (Stefan, 2026-11-16):** Stefan bestätigt die drei Änderungen am Skill.
 
 **Quelle:** [Issue 101](https://github.com/seletz/passierschein/issues/101), Umsetzung von {{ ref("D68") }}.

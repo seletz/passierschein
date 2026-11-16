@@ -1,0 +1,9 @@
+id: D76
+zustand: eingeloest
+titel: Laufzeit 0 heißt in jeder Umgebung „nur dieses Kommando“
+bezug: '#99'
+schluessel: '#99/once-jede-umgebung'
+lauf: '2.0'
+branch: feat/99-broker-exec
+reserviert_am: '2026-11-16'
+eingeloest_am: '2026-11-16'

@@ -258,7 +258,7 @@ func TestBundleOpenButExpiredOpensNewBundle(t *testing.T) {
 	h.waitOpen(s, 1)
 
 	late := &call{s: s, req: newRequest(t, refPass)}
-	late.claims = s.Claims("", "")
+	late.claims, late.refs = s.Claims("", ""), late.req.References
 	if e := h.b.resolve(ctx, late); e != nil {
 		t.Fatal(e)
 	}

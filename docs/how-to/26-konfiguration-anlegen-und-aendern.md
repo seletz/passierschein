@@ -107,6 +107,7 @@ environments:
 - Die Umgebung `prod` ist im Standard aus (`delivery: []`). Mit `[exec]` schaltest du sie ein. Jedes Kommando braucht dann eine eigene Freigabe.
 - `mcp` gilt nur für dev. In test und prod geht ein Wert nie in eine MCP-Antwort.
 - In prod sind die Laufzeit `0s` und die Bindung `command` fest.
+- Die Laufzeit `0s` in dev oder test heißt: Jedes Kommando braucht eine eigene Freigabe, wie in prod ({{ ref("D76") }}). `request_credentials` antwortet dann in dev mit `exec_required`.
 - In test ist die Bindung `none` verboten.
 - Die Referenz nennt alle Schlüssel und Grenzen: [Umgebungen und exec-Weg](../reference/80-befehle-fuer-den-menschen.md#umgebungen-und-exec-weg).
 

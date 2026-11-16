@@ -33,6 +33,13 @@ type AgentHandler interface {
 	// window, the approval and the delivery. It returns when each
 	// reference has a value or an error.
 	RequestCredentials(ctx context.Context, s session.Session, req *protocol.RequestCredentials) (*protocol.Credentials, *protocol.Error)
+	// RequestExec runs one request of the exec way through the policy, the
+	// check of the command, the approval and the delivery (D61 to D65).
+	// It returns the values of all variables or an error, never a part.
+	RequestExec(ctx context.Context, s session.Session, req *protocol.RequestExec) (*protocol.ExecCredentials, *protocol.Error)
+	// ExecResult records the result of a command that "a38 mcp" reports
+	// after a delivery of RequestExec (D65, G39).
+	ExecResult(ctx context.Context, s session.Session, req *protocol.ExecResult) (*protocol.ExecRecorded, *protocol.Error)
 	// GrantStatus returns the grants of the session, without values.
 	GrantStatus(ctx context.Context, s session.Session, req *protocol.GrantStatus) (*protocol.Grants, *protocol.Error)
 	// SessionEnded tells the broker that the connection of the session
