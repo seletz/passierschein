@@ -213,6 +213,22 @@ func (m *StatusResult) Validate() error {
 		if err := checkText("backend reason", m.Backend.Reason, MaxClaimLength, true); err != nil {
 			return err
 		}
+		for _, a := range m.Backend.Accounts {
+			switch a.State {
+			case BackendOK, BackendLocked, BackendUnreachable:
+			default:
+				return invalid("the state of an account is not a known state")
+			}
+			if a.Name == "" {
+				return invalid("an account of the backend has no name")
+			}
+			if err := firstError(
+				checkText("account name", a.Name, MaxClaimLength, false),
+				checkText("account reason", a.Reason, MaxClaimLength, true),
+			); err != nil {
+				return err
+			}
+		}
 	}
 	if m.UI != nil {
 		if err := firstError(

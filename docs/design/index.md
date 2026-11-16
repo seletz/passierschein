@@ -39,9 +39,9 @@ neue Entscheidung. Die alte Entscheidung erhält den Status „ersetzt“.
 | Familie | Bereich |
 |---|---|
 | UC | {{ ref("UC1") }}–{{ ref("UC16") }} |
-| D | {{ ref("D1") }}–{{ ref("D75") }} |
+| D | {{ ref("D1") }}–{{ ref("D79") }} |
 | F | {{ ref("F1") }}–{{ ref("F26") }} |
-| T | {{ ref("T1") }}–{{ ref("T48") }} |
+| T | {{ ref("T1") }}–{{ ref("T50") }} |
 | G | {{ ref("G1") }}–{{ ref("G45") }} |
 | RI | {{ ref("RI1") }}–{{ ref("RI14") }} |
 
@@ -77,6 +77,11 @@ Eine Entscheidung hat eine von zwei Herkünften:
   {{ ref("D75") }} kommen aus
   [Issue 88](https://github.com/seletz/passierschein/issues/88); Stefan hat
   sie am 2026-11-16 in PR 114 bestätigt. {{ ref("D72") }} ersetzt {{ ref("D51") }}.
+- **In Lauf 2 vorgeschlagen, wartet auf Stefan:** {{ ref("D78") }} (Status je
+  1Password-Konto, schließt {{ ref("G45") }}) und {{ ref("D79") }} (Tokens beim
+  Start nebeneinander lesen) aus
+  [Issue 119](https://github.com/seletz/passierschein/issues/119). Beide sind
+  Annahmen, bis Stefan sie bestätigt.
 
 Drei Entscheidungen ruhen auf Spikes: {{ ref("D39") }} (1Password-SDK),
 {{ ref("D31") }} und {{ ref("D45") }} (Freigabe-UI), {{ ref("D46") }}

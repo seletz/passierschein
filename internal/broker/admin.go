@@ -2,6 +2,8 @@ package broker
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/seletz/passierschein/internal/audit"
@@ -155,11 +157,20 @@ func (b *Broker) Status(ctx context.Context, req *protocol.Status) (res *protoco
 	return resp, nil
 }
 
+// accountStatusLimit is the time limit of each account for the status
+// (D78). It is shorter than the time limit of a38 doctor for the whole
+// status (5 s), so that a hanging account does not hide the others.
+const accountStatusLimit = 3 * time.Second
+
 // backendStatus asks the backend for its vaults. It reads no value. The
-// state is ok, locked or unreachable.
+// state is ok, locked or unreachable. A backend with more than one
+// account gives the state of each account (D78).
 func (b *Broker) backendStatus(ctx context.Context) *protocol.BackendStatus {
-	_, err := b.be.Vaults(ctx)
 	kind := string(b.backendKind)
+	if c, ok := b.be.(backend.AccountChecker); ok {
+		return accountsStatus(kind, c.Check(ctx, accountStatusLimit))
+	}
+	_, err := b.be.Vaults(ctx)
 	switch {
 	case err == nil:
 		return &protocol.BackendStatus{Kind: kind, State: protocol.BackendOK}
@@ -168,6 +179,40 @@ func (b *Broker) backendStatus(ctx context.Context) *protocol.BackendStatus {
 	default:
 		return &protocol.BackendStatus{Kind: kind, State: protocol.BackendUnreachable, Reason: "The backend does not answer."}
 	}
+}
+
+// accountsStatus returns the status of a backend with more than one
+// account (D78). The backend is ok while one account answers. Else it is
+// locked if one account is locked, because only the human can help, and
+// unreachable if no account answers.
+func accountsStatus(kind string, states []backend.AccountState) *protocol.BackendStatus {
+	out := &protocol.BackendStatus{Kind: kind, State: protocol.BackendUnreachable, Accounts: []protocol.AccountStatus{}}
+	anyOK, anyLocked := false, false
+	for _, st := range states {
+		a := protocol.AccountStatus{Name: st.Name, State: protocol.BackendOK, VaultsConfigured: st.Configured, VaultsVisible: st.Visible}
+		switch {
+		case st.Err == nil:
+			anyOK = true
+		case backend.Code(st.Err) == protocol.CodeBackendLocked:
+			anyLocked = true
+			a.State, a.VaultsVisible, a.Reason = protocol.BackendLocked, 0, st.Err.Error()
+		case errors.Is(st.Err, context.DeadlineExceeded) || errors.Is(st.Err, context.Canceled):
+			a.State, a.VaultsVisible = protocol.BackendUnreachable, 0
+			a.Reason = fmt.Sprintf("the account gave no answer within the time of the status (%s)", accountStatusLimit)
+		default:
+			a.State, a.VaultsVisible, a.Reason = protocol.BackendUnreachable, 0, st.Err.Error()
+		}
+		out.Accounts = append(out.Accounts, a)
+	}
+	switch {
+	case anyOK:
+		out.State = protocol.BackendOK
+	case anyLocked:
+		out.State, out.Reason = protocol.BackendLocked, "No account of the backend answers, and at least one account is locked. The accounts name the cause."
+	default:
+		out.Reason = "No account of the backend answers. The accounts name the cause."
+	}
+	return out
 }
 
 // liveGrants returns the number of live grants of all sessions.

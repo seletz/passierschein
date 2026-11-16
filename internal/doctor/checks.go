@@ -11,6 +11,7 @@ import (
 
 	"github.com/seletz/passierschein/internal/backend"
 	"github.com/seletz/passierschein/internal/config"
+	"github.com/seletz/passierschein/internal/protocol"
 )
 
 // configCheck checks that the configuration loads, and each project.
@@ -280,7 +281,42 @@ func (c backendCheck) Run(_ context.Context, st *State) []Result {
 			next = "check the network connection; the daemon tries again by itself; each request ends with backend_unavailable until then"
 		}
 	}
-	return component(c.Name(), comp, next)
+	if b := st.Status.Backend; b != nil && len(b.Accounts) > 0 && comp.State != StateOK {
+		// D78: the lines of the accounts name the cause and the next step.
+		comp.Detail = detailOr(b.Reason, comp.Detail)
+		next = "follow the next step of each account below"
+	}
+	return append(component(c.Name(), comp, next), accountResults(st.Status.Backend)...)
+}
+
+// accountResults returns one line for each account of the backend (D78).
+// A locked or unreachable account is a finding for this account only.
+func accountResults(b *protocol.BackendStatus) []Result {
+	if b == nil {
+		return nil
+	}
+	var out []Result
+	const name = "1password account"
+	for _, a := range b.Accounts {
+		acc := fmt.Sprintf("account %q", a.Name)
+		switch a.State {
+		case protocol.BackendOK:
+			if a.VaultsVisible < a.VaultsConfigured {
+				out = append(out, note(name, "%s: %d of %d vaults visible; the service account cannot see each vault of the account, and references to the other vaults end with not_found", acc, a.VaultsVisible, a.VaultsConfigured))
+				continue
+			}
+			out = append(out, ok(name, "%s: %d of %d vaults visible", acc, a.VaultsVisible, a.VaultsConfigured))
+		case protocol.BackendLocked:
+			out = append(out, finding(name, acc+" is locked; each request for its vaults ends with backend_locked",
+				detailOr(a.Reason, "locked"),
+				"if 1Password rejects the token, create a new token for the service account of the account; store it with a38 config onepassword-token set --account "+a.Name+" --replace (or in the token file of the account with token_source: file) and restart the daemon"))
+		default:
+			out = append(out, finding(name, acc+" does not answer; each request for its vaults ends with backend_unavailable",
+				detailOr(a.Reason, "no answer"),
+				"check the network connection; the daemon tries again by itself; the other accounts are not affected"))
+		}
+	}
+	return out
 }
 
 // uiCheck reports the approval UI state as far as it is known.

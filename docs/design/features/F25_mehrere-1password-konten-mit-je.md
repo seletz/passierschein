@@ -4,13 +4,13 @@ id: 'F25'
 titel: 'Mehrere 1Password-Konten mit je einem Token im Daemon, in den Befehlen und in a38 doctor'
 bereich: 'Backends'
 lauf: '2.0'
-stand: '2026-11-15'
+stand: '2026-11-16'
 order: 3
 headless: true
 status: aktiv
 stufe: 3
 umsetzung: vorhanden
-implementiert: [D70, D71, D72, D73, D75]
+implementiert: [D70, D71, D72, D73, D75, D78, D79]
 use_cases: [UC11, UC1]
 ---
 # F25 — Mehrere 1Password-Konten mit je einem Token im Daemon, in den Befehlen und in a38 doctor

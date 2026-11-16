@@ -417,6 +417,59 @@ func TestBackendCheckOnePassword(t *testing.T) {
 	}
 }
 
+func TestBackendCheckEachAccount(t *testing.T) {
+	// T49: a38 doctor shows one line for each 1Password account. A locked
+	// account is a finding with the next step for this account; the
+	// healthy account stays ok (D78, G45).
+	st := &State{Status: &protocol.StatusResult{Backend: &protocol.BackendStatus{Kind: "1password", State: protocol.BackendOK,
+		Accounts: []protocol.AccountStatus{
+			{Name: "privat", State: protocol.BackendOK, VaultsConfigured: 2, VaultsVisible: 2},
+			{Name: "firma", State: protocol.BackendLocked, Reason: "1password backend: list vaults: unauthorized (authentication)", VaultsConfigured: 1},
+			{Name: "labor", State: protocol.BackendUnreachable, Reason: "the account gave no answer within 3s", VaultsConfigured: 1},
+			{Name: "test", State: protocol.BackendOK, VaultsConfigured: 2, VaultsVisible: 1},
+		}}}}
+	res := backendCheck{SystemEnv{}}.Run(context.Background(), st)
+	if len(res) != 5 {
+		t.Fatalf("results = %+v, want the backend and one line for each account", res)
+	}
+	tests := []struct {
+		check string
+		ok    bool
+		want  []string
+	}{
+		{"backend", true, nil},
+		{"1password account", true, []string{`account "privat": 2 of 2 vaults visible`}},
+		{"1password account", false, []string{`account "firma" is locked`, "unauthorized", "--account firma --replace", "restart the daemon"}},
+		{"1password account", false, []string{`account "labor" does not answer`, "no answer within 3s", "network"}},
+		{"1password account", true, []string{`account "test": 1 of 2 vaults visible`, "not_found"}},
+	}
+	for i, tt := range tests {
+		r := res[i]
+		if r.Check != tt.check || r.OK != tt.ok {
+			t.Errorf("result %d = %+v, want check %q ok %v", i, r, tt.check, tt.ok)
+			continue
+		}
+		text := r.Detail + " " + r.Finding + " " + r.Cause + " " + r.NextStep
+		for _, w := range tt.want {
+			if !strings.Contains(text, w) {
+				t.Errorf("%s: %q lacks %q", tt.check, text, w)
+			}
+		}
+	}
+}
+
+func TestBackendCheckNoAccountAnswers(t *testing.T) {
+	// T49: if no account answers, the line of the backend points to the
+	// lines of the accounts (D78).
+	st := &State{Status: &protocol.StatusResult{Backend: &protocol.BackendStatus{Kind: "1password", State: protocol.BackendLocked,
+		Reason:   "No account of the backend answers, and at least one account is locked. The accounts name the cause.",
+		Accounts: []protocol.AccountStatus{{Name: "firma", State: protocol.BackendLocked, Reason: "no token", VaultsConfigured: 1}}}}}
+	res := backendCheck{SystemEnv{}}.Run(context.Background(), st)
+	if len(res) != 2 || res[0].OK || !strings.Contains(res[0].Cause, "No account") || !strings.Contains(res[0].NextStep, "each account below") {
+		t.Errorf("results = %+v", res)
+	}
+}
+
 func writeFile(t *testing.T, path, content string, mode os.FileMode) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {

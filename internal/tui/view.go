@@ -390,6 +390,7 @@ func (m *Model) overviewLines(w int) []string {
 			th.BadText.Render(" "+cut("The figures may be wrong. a38 audit verify shows the same finding.", w-2)))
 	}
 	lines = append(lines, " "+th.Label.Render("Range")+" "+m.rangeText()+th.Muted.Render("  (t changes it)"))
+	lines = append(lines, m.accountLines(w)...)
 	if st.Entries == 0 {
 		lines = append(lines, "", th.Muted.Render(" No entries in this range."), th.Muted.Render(" Press t for a longer range, or c to clear the filter."))
 		return lines
@@ -419,6 +420,39 @@ func (m *Model) overviewLines(w int) []string {
 	}
 	lines = append(lines, m.rankTables(st, w)...)
 	return lines
+}
+
+// accountLines renders the state of each 1Password account from the
+// status of the daemon (D78): one line with all accounts and one line for
+// each account that does not work. Each text from the daemon is cleaned.
+func (m *Model) accountLines(w int) []string {
+	if m.opts.Source.Accounts == nil || !m.accLoaded {
+		return nil
+	}
+	th := m.th
+	head := " " + th.Label.Render("1PASSWORD") + " "
+	if m.accErr != nil {
+		return []string{head + th.Muted.Render(cut("the daemon does not answer: "+auditstats.Clean(m.accErr.Error()), max(w-12, 10)))}
+	}
+	if len(m.accStates) == 0 {
+		// Another backend or an old daemon: no line.
+		return nil
+	}
+	var parts, notes []string
+	for _, a := range m.accStates {
+		name := auditstats.Clean(a.Name)
+		switch a.State {
+		case "ok":
+			parts = append(parts, th.GoodText.Render(fmt.Sprintf("%s ok (%d of %d vaults)", name, a.Visible, a.Configured)))
+			continue
+		case "locked":
+			parts = append(parts, th.BadText.Render(name+" LOCKED"))
+		default:
+			parts = append(parts, th.CautionText.Render(name+" UNREACHABLE"))
+		}
+		notes = append(notes, th.Muted.Render("   "+cut(name+": "+auditstats.Clean(a.Reason), max(w-4, 10))))
+	}
+	return append([]string{ansi.Truncate(head+strings.Join(parts, " · "), max(w-1, 10), "…")}, notes...)
 }
 
 func formatMedian(v float64) string {

@@ -10,6 +10,7 @@ package backend
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/seletz/passierschein/internal/protocol"
 )
@@ -89,4 +90,28 @@ func Code(err error) protocol.Code {
 	default:
 		return protocol.CodeBackendUnavailable
 	}
+}
+
+// AccountState is the state of one account of a backend with more than
+// one account (D78). It never holds a value.
+type AccountState struct {
+	// Name is the name of the account in the configuration.
+	Name string
+	// Configured is the number of vaults of the account.
+	Configured int
+	// Visible is the number of these vaults that the account can see;
+	// zero if Err is set.
+	Visible int
+	// Err is the failure of the account; nil if it works. [Code] gives
+	// its state: backend_locked or backend_unavailable.
+	Err error
+}
+
+// AccountChecker is a backend with more than one account (D78). The
+// daemon uses it for the status of each account.
+type AccountChecker interface {
+	// Check asks each account for its vaults, side by side, each with
+	// the time limit limit. It reads no item and no value. The result has
+	// one entry for each account, in the order of the configuration.
+	Check(ctx context.Context, limit time.Duration) []AccountState
 }

@@ -3,9 +3,10 @@
 // of the entries with filters and a detail pane, and the sessions with
 // their grants.
 //
-// The view only reads. It gets the entries and the check of the hash chain
-// from a [Source]. It never writes into the audit log and never talks to a
-// socket of the daemon.
+// The view only reads. It gets the entries, the check of the hash chain
+// and the state of the 1Password accounts (D78) from a [Source]. It never
+// writes into the audit log and never talks to a socket of the daemon
+// itself; the caller gives the status of the daemon through the source.
 //
 // Each string from the audit log is untrusted: the session name and the
 // claims come from the agent. The view cleans each string with
@@ -35,6 +36,24 @@ type Source struct {
 	Load func(ctx context.Context) ([]audit.Entry, error)
 	// Verify checks the hash chain.
 	Verify func(ctx context.Context) (audit.Verification, error)
+	// Accounts returns the state of each 1Password account from the
+	// status of the daemon (D78). nil means: the view shows no accounts.
+	Accounts func(ctx context.Context) ([]AccountState, error)
+}
+
+// AccountState is the state of one 1Password account in the overview
+// (D78). It never holds a value or a token.
+type AccountState struct {
+	// Name is the name of the account in the configuration.
+	Name string
+	// State is "ok", "locked" or "unreachable".
+	State string
+	// Reason is the finding in one sentence; empty if State is ok.
+	Reason string
+	// Configured is the number of vaults of the account.
+	Configured int
+	// Visible is the number of these vaults that the account can see.
+	Visible int
 }
 
 // Options configure the view.
@@ -201,6 +220,10 @@ type (
 		v   audit.Verification
 		err error
 	}
+	accountsMsg struct {
+		states []AccountState
+		err    error
+	}
 	tickMsg struct{}
 )
 
@@ -218,6 +241,10 @@ type Model struct {
 	verified bool
 	verify   audit.Verification
 	verErr   error
+
+	accLoaded bool
+	accStates []AccountState
+	accErr    error
 
 	view    view
 	overlay overlay
@@ -267,7 +294,19 @@ func New(o Options) *Model {
 // and asks the terminal for its background colour. The view uses the dark
 // theme until the answer comes.
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(m.load(), m.check(), m.tick(), tea.RequestBackgroundColor)
+	return tea.Batch(m.load(), m.check(), m.accounts(), m.tick(), tea.RequestBackgroundColor)
+}
+
+// accounts asks for the state of the 1Password accounts. It returns nil
+// without the source.
+func (m *Model) accounts() tea.Cmd {
+	if m.opts.Source.Accounts == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		states, err := m.opts.Source.Accounts(context.Background())
+		return accountsMsg{states, err}
+	}
 }
 
 func (m *Model) load() tea.Cmd {
@@ -314,8 +353,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.recompute()
 	case verifiedMsg:
 		m.verified, m.verify, m.verErr = true, msg.v, msg.err
+	case accountsMsg:
+		m.accLoaded, m.accStates, m.accErr = true, msg.states, msg.err
 	case tickMsg:
-		return m, tea.Batch(m.load(), m.tick())
+		return m, tea.Batch(m.load(), m.accounts(), m.tick())
 	case tea.BackgroundColorMsg:
 		m.th = newTheme(msg.IsDark())
 	case tea.KeyPressMsg:
@@ -391,7 +432,7 @@ func (m *Model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.overlay, m.paneTop = overlayNone, 0
 	case key.Matches(k, km.Reload):
 		m.message = "Reading the audit log again."
-		return m, tea.Batch(m.load(), m.check())
+		return m, tea.Batch(m.load(), m.check(), m.accounts())
 	case m.overlay != overlayNone:
 		m.paneKey(k)
 	case key.Matches(k, km.Range):

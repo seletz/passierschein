@@ -4,12 +4,18 @@ id: 'G45'
 titel: 'Der Status des Daemons nennt den Zustand des 1Password-Backends nicht je Konto'
 bereich: 'Backends'
 lauf: '2.0'
-stand: '2026-11-15'
+stand: '2026-11-16'
 order: 5
 headless: true
 type: Gap
 kind: design
-status: offen
+status: geschlossen
+beleg:
+  datum: '2026-11-16'
+  durch: [D78]
+  quelle: ['#119']
+  notiz: D78 wartet auf die Bestätigung durch Stefan
+  annahme: true
 register:
   owner: Stefan
 ---

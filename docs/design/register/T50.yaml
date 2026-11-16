@@ -1,0 +1,9 @@
+id: T50
+zustand: eingeloest
+titel: Der Daemon liest die Tokens der Konten nebeneinander und wartet höchstens eine Frist
+bezug: '#119'
+schluessel: '#119/schluesselbund-nebeneinander-test'
+lauf: '2.0'
+branch: feat/119-status-je-konto
+reserviert_am: '2026-11-16'
+eingeloest_am: '2026-11-16'
