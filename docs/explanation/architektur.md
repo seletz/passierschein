@@ -415,6 +415,8 @@ Nur `protocol.Encode` schreibt den Wert, und nur in die Nachrichten `credentials
 Das Paket `internal/approval` beschreibt die Grenze zwischen Daemon und Freigabe-UI ({{ ref("D6") }}).
 
 - `Request` ist die Freigabeanfrage. Sie trägt die geprüften Fakten (`verified`), die Angaben des Agents (`claims`), die Einträge, die vorgeschlagene Laufzeit und bei einer Abweichung den bestehenden Grant.
+  Beim exec-Weg trägt sie zusätzlich das Objekt `exec`: Umgebung, Programm, Argumente, Arbeitsverzeichnis, Variablen und die Art der Freigabe ({{ ref("D65") }}).
+  `Request.Validate` prüft die Regeln des exec-Wegs; `appui` startet die App für eine ungültige Anfrage nicht.
 - `Decision` ist die Entscheidung: Ergebnis, ausgewählte Einträge, gewählte Laufzeit.
 - `Notice` ist die Meldung an den Menschen bei einer Störung des Daemons ({{ ref("D48") }}, {{ ref("D36") }}) und bei der fehlerhaften Konfiguration eines Projekts ({{ ref("D28") }}). Sie informiert nur.
 - `UI` hat zwei Methoden: `Approve` und `Notify`.

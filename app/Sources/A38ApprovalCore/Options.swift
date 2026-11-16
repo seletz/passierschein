@@ -18,8 +18,16 @@ public enum TestSwitches {
     /// error message only.
     public static let names: Set<String> = [
         "--request", "--skip-auth", "--fake-auth", "--auto-close", "--no-window",
-        "--demo-select", "--demo-scroll-end", "--demo-lifetime-open", "--demo-arm-delay", "--demo-confirm", "--debug-window",
+        "--demo-select", "--demo-scroll-end", "--demo-arm-delay", "--demo-confirm", "--debug-window",
+        "--demo-appearance",
     ]
+}
+
+/// The appearance of the window for a screenshot (test switch
+/// --demo-appearance).
+public enum DemoAppearance: String, Equatable, Sendable {
+    case light
+    case dark
 }
 
 public struct Options: Equatable, Sendable {
@@ -42,14 +50,15 @@ public struct Options: Equatable, Sendable {
     public var demoSelect: [String] = []
     /// Scroll a long list to its end at the start.
     public var demoScrollEnd = false
-    /// Open the choice of the lifetime at the start.
-    public var demoLifetimeOpen = false
     /// Use another delay before the confirm action becomes active.
     public var demoArmDelay: TimeInterval?
     /// Click the confirm action once it is active (with --no-window).
     public var demoConfirm = false
     /// Write the window attributes to the standard error.
     public var debugWindow = false
+    /// Show the window in this appearance, not in the appearance of the
+    /// system. For screenshots only.
+    public var demoAppearance: DemoAppearance?
 
     public init() {}
 }
@@ -82,10 +91,10 @@ Test switches (debug build only):
   --no-window               Run without a window.
   --demo-select <ids|all>   Select these entries at the start (comma list).
   --demo-scroll-end         Scroll a long list to its end at the start.
-  --demo-lifetime-open      Open the choice of the lifetime at the start.
   --demo-arm-delay <s>      Use another delay before the confirm action.
   --demo-confirm            Click the confirm action once it is active.
   --debug-window            Write the window attributes to the standard error.
+  --demo-appearance <a>     Show the window light or dark.
 """
 #else
 let usageTestSwitches = ""
@@ -158,14 +167,17 @@ private func parseTestSwitch(_ flag: String, into options: inout Options,
         options.demoSelect = try value(flag).split(separator: ",").map(String.init)
     case "--demo-scroll-end":
         options.demoScrollEnd = true
-    case "--demo-lifetime-open":
-        options.demoLifetimeOpen = true
     case "--demo-arm-delay":
         options.demoArmDelay = try seconds(flag)
     case "--demo-confirm":
         options.demoConfirm = true
     case "--debug-window":
         options.debugWindow = true
+    case "--demo-appearance":
+        guard let appearance = DemoAppearance(rawValue: try value(flag)) else {
+            throw UsageError(message: "the value of --demo-appearance must be light or dark")
+        }
+        options.demoAppearance = appearance
     default:
         throw UsageError(message: "the option \(flag) is not known")
     }

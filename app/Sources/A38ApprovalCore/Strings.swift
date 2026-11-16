@@ -20,6 +20,21 @@ public enum UIText {
     public static let bannerDeviationTitle = "Deviation from active grant"
     public static let bannerDeviationDetail = "This request goes beyond the active grant of this session."
 
+    // MARK: Banner of a command (exec way, D65)
+
+    public static let bannerCommandTitle = "Run a command with credentials"
+    public static func bannerCommandDetail(_ environment: ExecEnvironment) -> String {
+        switch environment {
+        case .dev: return "Environment dev."
+        case .test: return "Environment TEST. The command gets credentials of test."
+        case .prod: return "Environment PROD. You approve only this one command."
+        }
+    }
+    /// The mark of the environment in the banner and in the facts.
+    public static func environmentBadge(_ environment: ExecEnvironment) -> String {
+        environment.rawValue.uppercased()
+    }
+
     // MARK: Verified facts
 
     public static let verifiedHeading = "Verified by the daemon"
@@ -31,6 +46,7 @@ public enum UIText {
     public static let factProcess = "Process"
     public static let factDirectory = "Directory"
     public static let factActiveGrant = "Active grant"
+    public static let factEnvironment = "Environment"
 
     public static func processLine(path: String?, pid: Int?, uid: Int) -> String {
         var details: [String] = []
@@ -73,12 +89,36 @@ public enum UIText {
     public static let deviationNewItem = "NEW ITEM"
     public static let deviationNewVault = "NEW VAULT"
 
+    // MARK: Command and variables (exec way, D65)
+
+    public static let commandHeading = "Command"
+    public static let commandNote = "a38 mcp starts exactly this program with these arguments."
+    public static let commandProgram = "Program"
+    public static let commandArguments = "Arguments"
+    public static let commandDirectory = "Directory"
+    public static let commandNoArguments = "(none)"
+    /// The hint below a command that scrolls.
+    public static func commandScrolls(arguments: Int, characters: Int) -> String {
+        "Scroll to read the whole command: \(arguments) argument\(arguments == 1 ? "" : "s"), \(characters) characters."
+    }
+    public static let variablesHeading = "Variables"
+    public static func variablesCount(_ selected: Int, of total: Int) -> String {
+        "\(selected) of \(total) selected"
+    }
+
+    // MARK: Kind of approval of a command (D63, D65)
+
+    public static let approvalOnce = "Only this command, one time"
+    public static let approvalOnceLabel = "Approval"
+    public static let approvalOnceDetail = "No lifetime and no grant. The next command needs a new approval."
+    public static let bindingNone = "Applies to: these credentials, with any command and as MCP answer."
+    public static let bindingProgram = "Applies to: this program with any arguments."
+    public static let bindingCommand = "Applies to: only this exact command (program, arguments, directory)."
+
     // MARK: Grant and lifetime
 
     public static let lifetimeLabel = "Valid for"
     public static let lifetimeProposed = "proposed"
-    public static let lifetimeShorter = "Shorter…"
-    public static let lifetimeKeep = "Done"
     public static func lifetimeChoice(_ text: String, proposed: Bool) -> String {
         proposed ? "\(text) (\(lifetimeProposed))" : text
     }
@@ -98,6 +138,8 @@ public enum UIText {
     public static let confirmSelect = "Select credentials"
     public static let confirmInProgress = "Touch ID…"
     public static func confirm(_ count: Int) -> String { "Approve \(count) with Touch ID" }
+    public static let confirmSelectAll = "Select every variable"
+    public static let confirmCommand = "Run with Touch ID"
 
     // MARK: Touch ID
 
@@ -115,6 +157,17 @@ public enum UIText {
             return "\(count) \(count == 1 ? "Zugangsdatum" : "Zugangsdaten") für das Projekt \(project) freigeben"
         case .english:
             return "approve \(count) credential\(count == 1 ? "" : "s") for project \(project)"
+        }
+    }
+    /// The reason for a command (D65). It names verified facts only: the
+    /// number of credentials, the environment and the project.
+    public static func authReasonCommand(count: Int, environment: ExecEnvironment, project: String,
+                                         language: SystemLanguage = .current) -> String {
+        switch language {
+        case .german:
+            return "Kommando mit \(count) \(count == 1 ? "Zugangsdatum" : "Zugangsdaten") aus \(environment.rawValue) für das Projekt \(project) freigeben"
+        case .english:
+            return "run a command with \(count) credential\(count == 1 ? "" : "s") of \(environment.rawValue) for project \(project)"
         }
     }
     public static func authCancelTitle(language: SystemLanguage = .current) -> String {

@@ -15,8 +15,8 @@ set -euo pipefail
 
 switches=(
   "--request /dev/null" "--skip-auth" "--fake-auth success" "--auto-close 1" "--no-window"
-  "--demo-select all" "--demo-scroll-end" "--demo-lifetime-open" "--demo-arm-delay 0"
-  "--demo-confirm" "--debug-window"
+  "--demo-select all" "--demo-scroll-end" "--demo-arm-delay 0"
+  "--demo-confirm" "--debug-window" "--demo-appearance dark"
 )
 status=0
 fail() { echo "app-release-check: $*" >&2; status=1; }

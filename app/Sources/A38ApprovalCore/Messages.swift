@@ -1,7 +1,7 @@
 // The messages between the daemon and the approval app (boundary B2).
 //
 // The types follow the Go package internal/approval: Request, Credential,
-// GrantProposal, ExistingGrant, Decision, AuthResult, Notice. The field
+// GrantProposal, ExistingGrant, ExecCommand, Decision, AuthResult, Notice. The field
 // names are snake_case. No message contains a secret value: a credential
 // has an ID, the vault, the item title and the field label only.
 import Foundation
@@ -124,6 +124,86 @@ public struct ExistingGrant: Sendable, Equatable {
     }
 }
 
+/// The environment of a vault (D47). Prod is the strictest (D62).
+public enum ExecEnvironment: String, Sendable, Equatable, Comparable {
+    case dev
+    case test
+    case prod
+
+    var rank: Int {
+        switch self {
+        case .dev: return 1
+        case .test: return 2
+        case .prod: return 3
+        }
+    }
+
+    public static func < (a: ExecEnvironment, b: ExecEnvironment) -> Bool { a.rank < b.rank }
+}
+
+/// The kind of approval for a command (D65, D63).
+public enum ExecApprovalKind: String, Sendable, Equatable {
+    /// A grant with a lifetime and a binding (dev, test).
+    case grant
+    /// Only this command, one time (prod). No choice of the lifetime.
+    case once
+}
+
+/// For which commands a grant is valid (D63).
+public enum GrantBinding: String, Sendable, Equatable {
+    case none
+    case program
+    case command
+}
+
+/// One environment variable of a command. It points to one entry of the
+/// request; the entry holds the names of the backend.
+public struct ExecVariable: Sendable, Equatable {
+    public var name: String
+    public var credentialID: String
+
+    public init(name: String, credentialID: String) {
+        self.name = name
+        self.credentialID = credentialID
+    }
+}
+
+/// The kind of approval of a command.
+public struct ExecApproval: Sendable, Equatable {
+    public var kind: ExecApprovalKind
+    public var binding: GrantBinding
+    /// The lifetimes that the human can select, in descending order. The
+    /// first value is the configured lifetime. Empty for "once".
+    public var lifetimeChoices: [Int64]
+
+    public init(kind: ExecApprovalKind, binding: GrantBinding, lifetimeChoices: [Int64]) {
+        self.kind = kind
+        self.binding = binding
+        self.lifetimeChoices = lifetimeChoices
+    }
+}
+
+/// The command of a request of the exec way (object "exec", D65).
+public struct ExecCommand: Sendable, Equatable {
+    /// The strictest environment of the credentials.
+    public var environment: ExecEnvironment
+    public var program: String
+    public var args: [String]
+    public var cwd: String
+    public var env: [ExecVariable]
+    public var approval: ExecApproval
+
+    public init(environment: ExecEnvironment, program: String, args: [String], cwd: String,
+                env: [ExecVariable], approval: ExecApproval) {
+        self.environment = environment
+        self.program = program
+        self.args = args
+        self.cwd = cwd
+        self.env = env
+        self.approval = approval
+    }
+}
+
 /// One approval request.
 public struct ApprovalRequest: Sendable, Equatable {
     public var requestID: String
@@ -133,9 +213,12 @@ public struct ApprovalRequest: Sendable, Equatable {
     public var credentials: [Credential]
     public var grant: GrantProposal
     public var existingGrant: ExistingGrant?
+    /// The command of a request of the exec way. Nil for a plain request.
+    public var exec: ExecCommand?
 
     public init(requestID: String, timeoutSeconds: Int, verified: Facts, claims: Claims,
-                credentials: [Credential], grant: GrantProposal, existingGrant: ExistingGrant? = nil) {
+                credentials: [Credential], grant: GrantProposal, existingGrant: ExistingGrant? = nil,
+                exec: ExecCommand? = nil) {
         self.requestID = requestID
         self.timeoutSeconds = timeoutSeconds
         self.verified = verified
@@ -143,6 +226,7 @@ public struct ApprovalRequest: Sendable, Equatable {
         self.credentials = credentials
         self.grant = grant
         self.existingGrant = existingGrant
+        self.exec = exec
     }
 }
 
