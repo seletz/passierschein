@@ -12,6 +12,8 @@ use_cases: [UC11]
 beleg:
   wer: Stefan
   datum: '2026-11-16'
+redaktion:
+  - {datum: '2026-11-16', issue: '#88'}
 ---
 # D75 — Eine Konfiguration mit einem Token lädt nicht mehr, und die Meldung nennt den Umbau
 
@@ -22,12 +24,13 @@ beleg:
 **Was nicht mehr lädt:**
 
 - ein Schlüssel `backend.onepassword.token_source` oder `backend.onepassword.token_file` direkt unter `onepassword`,
-- ein Vault ohne `account` ({{ ref("D70") }}).
+- ein Vault ohne `account` ({{ ref("D70") }}). Nennt die Datei kein Konto, ist sie im Format mit einem Token, auch ohne den Schlüssel `token_source`. Die Meldung nennt dann einmal den nächsten Schritt.
 
 **Die Meldungen** (Code und Meldungen auf Englisch):
 
 ```text
-backend.onepassword.token_source: this key is from the configuration with one token and is no longer valid; each account names its own token source. Next step: move the key into an account under backend.onepassword.accounts (for example "accounts: [{name: privat, token_source: keychain}]"), add "account: privat" to each vault, store the token with "a38 config onepassword-token set --account privat" and restart the daemon (how-to: Mehrere 1Password-Konten einrichten)
+backend.onepassword.token_source: this key is from the configuration with one token and is no longer valid; each account names its own token source. Next step: add an account under backend.onepassword.accounts (for example "accounts: [{name: privat, token_source: keychain}]") and move a token_source: file and its token_file into it; add "account: privat" to each vault; check the file with "a38 config validate"; store the token again with "a38 config onepassword-token set --account privat" (the old keychain item is not taken over); restart the daemon and check it with "a38 doctor" (how-to: Mehrere 1Password-Konten einrichten)
+backend.onepassword.accounts: the configuration names no 1Password account; it is in the format with one token. Next step: add an account under backend.onepassword.accounts (for example "accounts: [{name: privat, token_source: keychain}]") and move a token_source: file and its token_file into it; add "account: privat" to each vault; check the file with "a38 config validate"; store the token again with "a38 config onepassword-token set --account privat" (the old keychain item is not taken over); restart the daemon and check it with "a38 doctor" (how-to: Mehrere 1Password-Konten einrichten)
 vault "beispiel.app.k8s-dev": the account is missing; each vault names its 1Password account (account: NAME), and NAME must be in backend.onepassword.accounts
 vault "beispiel.app.k8s-dev": the account "privat" is not in backend.onepassword.accounts; add it there or correct the name
 ```

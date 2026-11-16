@@ -58,7 +58,7 @@ type rawAccount struct {
 
 // migrateHint is the next step for a file in the format with one token
 // (D75).
-const migrateHint = `move the key into an account under backend.onepassword.accounts (for example "accounts: [{name: privat, token_source: keychain}]"), add "account: privat" to each vault, store the token with "a38 config onepassword-token set --account privat" and restart the daemon (how-to: Mehrere 1Password-Konten einrichten)`
+const migrateHint = `add an account under backend.onepassword.accounts (for example "accounts: [{name: privat, token_source: keychain}]") and move a token_source: file and its token_file into it; add "account: privat" to each vault; check the file with "a38 config validate"; store the token again with "a38 config onepassword-token set --account privat" (the old keychain item is not taken over); restart the daemon and check it with "a38 doctor" (how-to: Mehrere 1Password-Konten einrichten)`
 
 // parseAccounts checks backend.onepassword. The keys of the format with
 // one token are an error with the next step (D75).
@@ -102,8 +102,20 @@ func parseAccounts(raw rawOnePassword, fail func(string, ...any)) []Account {
 }
 
 // checkVaultAccounts checks that each vault names an account of the list
-// (D70). There is no default account.
-func checkVaultAccounts(cfg *Config, fail func(string, ...any)) {
+// (D70). There is no default account. A file without accounts and with a
+// vault without account is in the format with one token, also without the
+// key token_source (the keychain was the default); the error then names
+// the next step once (D75). oldKeys says that parseAccounts named it
+// already.
+func checkVaultAccounts(cfg *Config, oldKeys bool, fail func(string, ...any)) {
+	if !oldKeys && len(cfg.Backend.OnePassword.Accounts) == 0 {
+		for _, v := range cfg.Vaults {
+			if v.Account == "" {
+				fail("backend.onepassword.accounts: the configuration names no 1Password account; it is in the format with one token. Next step: %s", migrateHint)
+				break
+			}
+		}
+	}
 	for _, v := range cfg.Vaults {
 		switch _, ok := cfg.Account(v.Account); {
 		case v.Account == "":

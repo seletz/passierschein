@@ -61,6 +61,15 @@ func TestAccounts(t *testing.T) {
 	}
 
 	next := `a38 config onepassword-token set --account`
+	// T43: steps 1 to 5 of D75 in the message, so that the human knows
+	// that the token must be stored again for the account.
+	steps := []string{
+		"backend.onepassword.accounts",
+		`add "account: privat" to each vault`,
+		`check the file with "a38 config validate"`,
+		`store the token again with "a38 config onepassword-token set --account privat" (the old keychain item is not taken over)`,
+		`restart the daemon and check it with "a38 doctor"`,
+	}
 	rejects := []struct {
 		name string
 		yaml string
@@ -71,7 +80,11 @@ func TestAccounts(t *testing.T) {
 		{"unknown account", "version: 1\nvaults:\n  - name: beispiel.app.k8s-dev\n    environment: dev\n    account: privat\n",
 			[]string{`the account "privat" is not in backend.onepassword.accounts`}},
 		{"old token_source", "version: 1\nbackend:\n  onepassword:\n    token_source: keychain\n",
-			[]string{"backend.onepassword.token_source: this key is from the configuration with one token", "backend.onepassword.accounts", next}},
+			append([]string{"backend.onepassword.token_source: this key is from the configuration with one token", next}, steps...)},
+		// A typical old file has no token_source key: the keychain was the
+		// default. The vaults have no account, and the list is empty.
+		{"old file without token_source", "version: 1\nvaults:\n  - name: beispiel.app.k8s-dev\n    environment: dev\n",
+			append([]string{`vault "beispiel.app.k8s-dev": the account is missing`, "the configuration names no 1Password account; it is in the format with one token"}, steps...)},
 		{"old token_file", "version: 1\nbackend:\n  onepassword:\n    token_file: ~/a38/token\n",
 			[]string{"backend.onepassword.token_file: this key is from the configuration with one token", next}},
 		{"name twice", accountsYAML("- name: privat", "- name: privat"), []string{`account "privat": the name is in the list more than once`}},

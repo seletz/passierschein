@@ -112,7 +112,8 @@ func Parse(data []byte) (*Config, error) {
 	cfg := &Config{}
 	cfg.Vaults = parseVaults(raw.Vaults, fail)
 	cfg.Backend.OnePassword.Accounts = parseAccounts(raw.Backend.OnePassword, fail)
-	checkVaultAccounts(cfg, fail)
+	op := raw.Backend.OnePassword
+	checkVaultAccounts(cfg, op.TokenSource.Kind != 0 || op.TokenFile.Kind != 0, fail)
 	cfg.Projects = parseProjects(raw.Projects, cfg, fail)
 
 	var err error

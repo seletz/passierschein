@@ -137,10 +137,11 @@ Die Zeile `1password token` erscheint je Konto, mit seinen Vaults und seiner Que
 
 Eine Konfiguration mit `token_source` oder `token_file` direkt unter `backend.onepassword` lädt nicht mehr ({{ ref("D75") }}).
 Ein Vault ohne `account` lädt ebenfalls nicht.
+Nennt die Datei kein Konto, gilt sie als Format mit einem Token, auch ohne den Schlüssel `token_source`.
 Der Daemon startet dann nicht, und `a38 config validate` nennt den Befund:
 
 ```text
-backend.onepassword.token_source: this key is from the configuration with one token and is no longer valid; each account names its own token source. Next step: move the key into an account under backend.onepassword.accounts ...
+backend.onepassword.token_source: this key is from the configuration with one token and is no longer valid; each account names its own token source. Next step: add an account under backend.onepassword.accounts ...
 vault "beispiel.app.k8s-dev": the account is missing; each vault names its 1Password account (account: NAME), and NAME must be in backend.onepassword.accounts
 ```
 
