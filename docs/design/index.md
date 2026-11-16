@@ -68,6 +68,10 @@ Eine Entscheidung hat eine von zwei Herkünften:
   mit dem [Pull Request 94](https://github.com/seletz/passierschein/pull/94)
   bestätigt. Sie ersetzen {{ ref("D10") }}, {{ ref("D24") }}, {{ ref("D32") }}
   und {{ ref("D41") }}.
+- **In Lauf 2 bestätigt:** {{ ref("D69") }} (App-Icon: stilisierter
+  Reisepass). Stefan hat den Entwurf am 2026-11-15 im
+  [Pull Request 109](https://github.com/seletz/passierschein/pull/109)
+  gewählt.
 - **In Lauf 2 für mehrere 1Password-Konten:** {{ ref("D70") }} hat Stefan am
   2026-11-15 entschieden: Jeder Vault nennt sein Konto. {{ ref("D71") }} bis
   {{ ref("D75") }} kommen aus

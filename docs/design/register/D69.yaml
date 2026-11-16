@@ -1,0 +1,9 @@
+id: D69
+zustand: eingeloest
+titel: Das App-Icon zeigt eine stilisierte Ausweiskarte
+bezug: '#104'
+schluessel: '#104/app-icon-motiv'
+lauf: '2.0'
+branch: feat/104-app-icon
+reserviert_am: '2026-11-15'
+eingeloest_am: '2026-11-15'
