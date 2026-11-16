@@ -175,7 +175,9 @@ func (b *syncBuffer) String() string {
 
 // harness is one broker with all fakes.
 type harness struct {
-	t         *testing.T
+	t *testing.T
+	// execIDs counts the requests of harness.exec without an ID.
+	execIDs   int
 	cfg       *config.Config
 	clk       *clock.Fake
 	be        *fake.Backend

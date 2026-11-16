@@ -1,6 +1,7 @@
 package grant
 
 import (
+	"maps"
 	"testing"
 	"time"
 
@@ -104,18 +105,19 @@ func TestAddCopies(t *testing.T) {
 // grant with the binding program covers the same program and variable
 // names; a grant with the binding command covers only the same command.
 func TestCoverCommand(t *testing.T) {
-	psql := Command{Program: "/opt/homebrew/bin/psql", Args: []string{"-c", "select 1"}, Cwd: "/work/beispielprojekt", EnvNames: []string{"PGPASSWORD"}}
+	psql := Command{Program: "/opt/homebrew/bin/psql", Args: []string{"-c", "select 1"}, Cwd: "/work/beispielprojekt",
+		Env: map[string]protocol.Reference{"PGPASSWORD": r("password")}}
 	other := func(mut func(*Command)) Command {
 		c := psql
 		c.Args = append([]string(nil), psql.Args...)
-		c.EnvNames = append([]string(nil), psql.EnvNames...)
+		c.Env = maps.Clone(psql.Env)
 		mut(&c)
 		return c
 	}
 	otherArgs := other(func(c *Command) { c.Args = []string{"-c", "select 2"} })
 	otherProgram := other(func(c *Command) { c.Program = "/usr/bin/env" })
 	otherCwd := other(func(c *Command) { c.Cwd = "/work/beispielprojekt/sub" })
-	otherNames := other(func(c *Command) { c.EnvNames = []string{"DB_PASSWORD"} })
+	otherNames := other(func(c *Command) { c.Env = map[string]protocol.Reference{"DB_PASSWORD": r("password")} })
 	noArgs := other(func(c *Command) { c.Args = nil })
 	tests := []struct {
 		name    string
@@ -125,6 +127,7 @@ func TestCoverCommand(t *testing.T) {
 	}{
 		{"none, same", config.BindingNone, psql, true},
 		{"none, other program", config.BindingNone, otherProgram, true},
+		{"none, other names", config.BindingNone, otherNames, true},
 		{"program, same", config.BindingProgram, psql, true},
 		{"program, other arguments", config.BindingProgram, otherArgs, true},
 		{"program, other directory", config.BindingProgram, otherCwd, true},
@@ -157,13 +160,51 @@ func TestCoverCommand(t *testing.T) {
 	if _, ok := s.CoverCommand("s-a", r("password"), psql, t0); !ok {
 		t.Error("a grant of the MCP way does not cover a command in dev")
 	}
-	// The order of the variable names does not matter.
-	two := other(func(c *Command) { c.EnvNames = []string{"PGUSER", "PGPASSWORD"} })
-	gr := g("g2", "s-b", time.Hour, "password")
-	gr.Binding, gr.Command = config.BindingCommand, two
-	s.Add(gr)
-	swapped := other(func(c *Command) { c.EnvNames = []string{"PGPASSWORD", "PGUSER"} })
-	if _, ok := s.CoverCommand("s-b", r("password"), swapped, t0); !ok {
-		t.Error("the order of the variable names changes the cover")
+}
+
+// T36 (D63, review of pull request 115): the binding program or command
+// covers only the approved mapping of each variable name to its
+// reference. The binding none covers the references with each command
+// and each mapping (D63: "mit jedem Weg und jedem Kommando").
+func TestCoverCommandMapping(t *testing.T) {
+	approved := map[string]protocol.Reference{"PGUSER": r("username"), "PGPASSWORD": r("password")}
+	cmd := func(env map[string]protocol.Reference) Command {
+		return Command{Program: "/opt/homebrew/bin/psql", Cwd: "/work/beispielprojekt", Env: env}
+	}
+	tests := []struct {
+		name string
+		env  map[string]protocol.Reference
+		want map[config.Binding]bool
+	}{
+		{"same mapping", approved, map[config.Binding]bool{config.BindingNone: true, config.BindingProgram: true, config.BindingCommand: true}},
+		{"same mapping, other order", map[string]protocol.Reference{"PGPASSWORD": r("password"), "PGUSER": r("username")},
+			map[config.Binding]bool{config.BindingNone: true, config.BindingProgram: true, config.BindingCommand: true}},
+		{"password under the user name", map[string]protocol.Reference{"PGUSER": r("password")},
+			map[config.Binding]bool{config.BindingNone: true, config.BindingProgram: false, config.BindingCommand: false}},
+		{"swapped names", map[string]protocol.Reference{"PGUSER": r("password"), "PGPASSWORD": r("username")},
+			map[config.Binding]bool{config.BindingNone: true, config.BindingProgram: false, config.BindingCommand: false}},
+		{"subset", map[string]protocol.Reference{"PGPASSWORD": r("password")},
+			map[config.Binding]bool{config.BindingNone: true, config.BindingProgram: false, config.BindingCommand: false}},
+		{"one reference under two names", map[string]protocol.Reference{"PGUSER": r("username"), "PGPASSWORD": r("password"), "PGPASS2": r("password")},
+			map[config.Binding]bool{config.BindingNone: true, config.BindingProgram: false, config.BindingCommand: false}},
+	}
+	for _, tt := range tests {
+		for _, b := range []config.Binding{config.BindingNone, config.BindingProgram, config.BindingCommand} {
+			t.Run(tt.name+", "+string(b), func(t *testing.T) {
+				s := NewStore()
+				gr := g("g1", "s-a", time.Hour, "username", "password")
+				gr.Binding, gr.Command = b, cmd(approved)
+				s.Add(gr)
+				ok := true
+				for _, ref := range tt.env {
+					if _, c := s.CoverCommand("s-a", ref, cmd(tt.env), t0); !c {
+						ok = false
+					}
+				}
+				if ok != tt.want[b] {
+					t.Errorf("covered = %v, want %v", ok, tt.want[b])
+				}
+			})
+		}
 	}
 }

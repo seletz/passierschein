@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -63,11 +64,12 @@ func (r execResult) value(name string) string {
 }
 
 // execReq returns a request_exec for the program in the project directory.
-// env alternates the name and the reference of each variable.
+// env alternates the name and the reference of each variable. The request
+// has no ID; harness.exec gives it the next ID x1, x2 ... of the harness.
 func execReq(t *testing.T, program string, args []string, env ...string) *protocol.RequestExec {
 	t.Helper()
 	req := &protocol.RequestExec{
-		ID: "x1", Program: program, Args: args, Cwd: projectDir,
+		Program: program, Args: args, Cwd: projectDir,
 		Task: "Check the number of orders", Reason: "Verify migration 42",
 	}
 	for i := 0; i+1 < len(env); i += 2 {
@@ -79,6 +81,10 @@ func execReq(t *testing.T, program string, args []string, env ...string) *protoc
 // exec runs one request_exec. It does not wait for a bundle window.
 func (h *harness) exec(s session.Session, req *protocol.RequestExec) execResult {
 	h.t.Helper()
+	if req.ID == "" {
+		h.execIDs++
+		req.ID = "x" + strconv.Itoa(h.execIDs)
+	}
 	ch := make(chan execResult, 1)
 	go func() {
 		c, e := h.b.RequestExec(context.Background(), s, req)
@@ -685,4 +691,172 @@ func TestExecOnceInDevAndTest(t *testing.T) {
 			t.Errorf("approvals %d, resolves %d; want 0", h.approvals(), h.be.Resolves())
 		}
 	})
+}
+
+// T36 (D63, review of pull request 115): a grant with the binding program
+// covers only the approved mapping of names to references. The agent
+// cannot move the password to another variable name without a new
+// approval.
+func TestExecGrantMapping(t *testing.T) {
+	s := sess("s-1", "beispielprojekt")
+	h := newHarness(t, withLifetime(""), withConfig("environments:\n  dev:\n    binding: program\n"))
+	h.rec.Enqueue(fakeui.ReplyApproveAll())
+	if r := h.exec(s, execReq(t, "/usr/bin/true", nil, "PGUSER", refUser, "PGPASSWORD", refPass)); r.err != nil {
+		t.Fatal(r.err)
+	}
+	if r := h.exec(s, execReq(t, "/usr/bin/true", []string{"-x"}, "PGPASSWORD", refPass, "PGUSER", refUser)); r.err != nil || h.approvals() != 1 {
+		t.Fatalf("same mapping: %v, approvals %d; want 1", r.err, h.approvals())
+	}
+	h.rec.Enqueue(fakeui.ReplyApproveAll())
+	r := h.exec(s, execReq(t, "/usr/bin/true", nil, "PGUSER", refPass))
+	if r.err != nil || h.approvals() != 2 {
+		t.Errorf("password under PGUSER: %v, approvals %d; want a new approval", r.err, h.approvals())
+	}
+}
+
+// T36 (D63, review of pull request 115): the broker resolves the symbolic
+// links of the program. The list of programs without a statement uses the
+// resolved base name, case-folded and without a version suffix. The
+// approval request, the audit log and the grant use the resolved path. A
+// program that does not resolve ends with not_allowed.
+func TestExecProgramResolved(t *testing.T) {
+	s := sess("s-1", "beispielprojekt")
+	links := map[string]string{
+		projectDir + "/psql":   "/bin/sh",
+		"/usr/bin/python3.12":  "/usr/bin/python3.12",
+		"/usr/bin/perl5.34":    "/usr/bin/perl5.34",
+		"/bin/SH":              "/bin/SH",
+		"/opt/homebrew/bin/pg": "/opt/homebrew/Cellar/libpq/17/bin/psql",
+	}
+	resolve := func(p string) (string, error) {
+		if r, ok := links[p]; ok {
+			return r, nil
+		}
+		if strings.HasPrefix(p, projectDir) {
+			return p, nil
+		}
+		return "", os.ErrNotExist
+	}
+	tests := []struct {
+		program  string
+		resolved string
+		binding  approval.Binding
+	}{
+		{projectDir + "/psql", "/bin/sh", approval.BindingCommand},
+		{"/bin/SH", "/bin/SH", approval.BindingCommand},
+		{"/usr/bin/python3.12", "/usr/bin/python3.12", approval.BindingCommand},
+		{"/usr/bin/perl5.34", "/usr/bin/perl5.34", approval.BindingCommand},
+		{"/opt/homebrew/bin/pg", "/opt/homebrew/Cellar/libpq/17/bin/psql", approval.BindingProgram},
+	}
+	for _, tt := range tests {
+		t.Run(tt.program, func(t *testing.T) {
+			h := newHarness(t)
+			h.b.realPath = resolve
+			h.rec.Enqueue(fakeui.ReplyApproveAll())
+			if r := h.exec(s, execReq(t, tt.program, []string{"-c", "select 1"}, "DB_PASSWORD", refTest)); r.err != nil {
+				t.Fatal(r.err)
+			}
+			a := h.lastApproval().Exec
+			if a.Program != tt.resolved || a.Approval.Binding != tt.binding {
+				t.Errorf("approval: program %q, binding %s; want %q, %s", a.Program, a.Approval.Binding, tt.resolved, tt.binding)
+			}
+			for _, typ := range []audit.EventType{audit.EventDecision, audit.EventGrant, audit.EventDelivery} {
+				for _, e := range h.eventsOf(typ) {
+					if e.Command == nil || e.Command.Program != tt.resolved {
+						t.Errorf("%s: command = %+v; want the resolved program", typ, e.Command)
+					}
+				}
+			}
+			// A grant binds the resolved path: another link to the same
+			// program is the same program.
+			if tt.binding == approval.BindingProgram {
+				links[projectDir+"/pg2"] = tt.resolved
+				if r := h.exec(s, execReq(t, projectDir+"/pg2", nil, "DB_PASSWORD", refTest)); r.err != nil || h.approvals() != 1 {
+					t.Errorf("other link: %v, approvals %d; want 1", r.err, h.approvals())
+				}
+			}
+		})
+	}
+	t.Run("not resolvable", func(t *testing.T) {
+		h := newHarness(t)
+		h.b.realPath = resolve
+		r := h.exec(s, execReq(t, "/usr/bin/fehlt", nil, "DB_PASSWORD", refTest))
+		if r.code() != protocol.CodeNotAllowed || h.approvals() != 0 || h.be.Resolves() != 0 {
+			t.Errorf("result %v, approvals %d, resolves %d; want not_allowed", r.err, h.approvals(), h.be.Resolves())
+		}
+	})
+}
+
+// T39 (review of pull request 115): the check for a value also covers the
+// program, the task and the reason. The answer and the denial name the
+// reason, never the value.
+func TestExecValueInProgramOrClaims(t *testing.T) {
+	s := sess("s-1", "beispielprojekt")
+	tests := []struct {
+		name string
+		mut  func(*protocol.RequestExec)
+	}{
+		{"program", func(r *protocol.RequestExec) { r.Program = projectDir + "/" + valueTest }},
+		{"task", func(r *protocol.RequestExec) { r.Task = "Log in with " + valueTest }},
+		{"reason", func(r *protocol.RequestExec) { r.Reason = "The value is " + valueTest }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newHarness(t, withMode(approval.ModeAutoApprove), withUI(func(*fakeui.Recorder, *clock.Fake) approval.UI {
+				return fakeui.AutoApprove{}
+			}))
+			req := execReq(t, "/usr/bin/true", nil, "DB_PASSWORD", refTest)
+			tt.mut(req)
+			r := h.exec(s, req)
+			if r.code() != protocol.CodeInvalidRequest || r.creds != nil {
+				t.Fatalf("result = %v, %v; want invalid_request", r.creds, r.err)
+			}
+			if strings.Contains(r.err.Message, valueTest) {
+				t.Error("the error names the value")
+			}
+			d := h.eventsOf(audit.EventDenial)
+			if len(d) != 1 || d[0].Result.Detail != audit.DetailValueInCommand || strings.Contains(mustJSON(t, d[0]), valueTest) {
+				t.Fatalf("denial events = %+v", d)
+			}
+			if len(h.eventsOf(audit.EventDelivery)) != 0 {
+				t.Error("the audit log has a delivery")
+			}
+		})
+	}
+}
+
+// T38 (review of pull request 115): exec_result finds its delivery by the
+// ID that the client selects. A request_exec with the ID of a delivery
+// that waits for its exec_result ends with invalid_request.
+func TestExecDuplicateID(t *testing.T) {
+	s := sess("s-1", "beispielprojekt")
+	dup := func() *protocol.RequestExec {
+		r := execReq(t, "/usr/bin/true", nil, "DB_PASSWORD", refTest)
+		r.ID = "dup"
+		return r
+	}
+	h := newHarness(t)
+	h.rec.Enqueue(fakeui.ReplyApproveAll())
+	if r := h.exec(s, dup()); r.err != nil {
+		t.Fatal(r.err)
+	}
+	r := h.exec(s, dup())
+	if r.code() != protocol.CodeInvalidRequest || r.creds != nil {
+		t.Fatalf("same ID: %v, %v; want invalid_request", r.creds, r.err)
+	}
+	if n := len(h.eventsOf(audit.EventDelivery)); n != 1 {
+		t.Errorf("deliveries = %d, want 1", n)
+	}
+	// Another session can use the same ID.
+	h.rec.Enqueue(fakeui.ReplyApproveAll())
+	if r := h.exec(sess("s-2", "beispielprojekt"), dup()); r.err != nil {
+		t.Errorf("other session: %v", r.err)
+	}
+	// After the exec_result the ID is free again.
+	if _, e := h.b.ExecResult(context.Background(), s, &protocol.ExecResult{ID: "r1", RequestID: "dup"}); e != nil {
+		t.Fatal(e)
+	}
+	if r := h.exec(s, dup()); r.err != nil {
+		t.Errorf("after the result: %v", r.err)
+	}
 }

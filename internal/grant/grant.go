@@ -14,6 +14,7 @@
 package grant
 
 import (
+	"maps"
 	"slices"
 	"time"
 
@@ -55,36 +56,32 @@ type Command struct {
 	Args []string
 	// Cwd is the working directory.
 	Cwd string
-	// EnvNames are the names of the environment variables. Their order
-	// does not matter.
-	EnvNames []string
+	// Env maps each name of an environment variable to the reference
+	// whose value it gets, with the names of the backend. The bindings
+	// program and command compare the whole mapping: the same names with
+	// the same references (D63).
+	Env map[string]protocol.Reference
 }
 
 // unbound reports whether the grant covers each way and each command.
 func (g Grant) unbound() bool { return g.Binding == "" || g.Binding == config.BindingNone }
 
 // CoversCommand reports whether the binding of the grant allows cmd. It
-// does not check the references.
+// does not check the references. The binding none allows each command and
+// each mapping of names to references (D63). The bindings program and
+// command allow only the approved mapping.
 func (g Grant) CoversCommand(cmd Command) bool {
 	switch {
 	case g.unbound():
 		return true
 	case g.Binding == config.BindingProgram:
-		return g.Command.Program == cmd.Program && sameNames(g.Command.EnvNames, cmd.EnvNames)
+		return g.Command.Program == cmd.Program && maps.Equal(g.Command.Env, cmd.Env)
 	case g.Binding == config.BindingCommand:
 		return g.Command.Program == cmd.Program && g.Command.Cwd == cmd.Cwd &&
-			slices.Equal(g.Command.Args, cmd.Args) && sameNames(g.Command.EnvNames, cmd.EnvNames)
+			slices.Equal(g.Command.Args, cmd.Args) && maps.Equal(g.Command.Env, cmd.Env)
 	}
 	// Fail closed: an unknown binding covers nothing.
 	return false
-}
-
-// sameNames reports whether a and b hold the same names in any order.
-func sameNames(a, b []string) bool {
-	x, y := slices.Clone(a), slices.Clone(b)
-	slices.Sort(x)
-	slices.Sort(y)
-	return slices.Equal(x, y)
 }
 
 // Live reports whether the grant is live at now.
@@ -105,7 +102,7 @@ func NewStore() *Store { return &Store{} }
 func (s *Store) Add(g Grant) {
 	g.Refs = slices.Clone(g.Refs)
 	g.Command.Args = slices.Clone(g.Command.Args)
-	g.Command.EnvNames = slices.Clone(g.Command.EnvNames)
+	g.Command.Env = maps.Clone(g.Command.Env)
 	s.grants = append(s.grants, g)
 }
 

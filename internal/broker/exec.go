@@ -26,13 +26,16 @@ import (
 //     exec.max_timeout (invalid_request).
 //  4. The policy allows each reference for the exec way (D62). The
 //     working directory is in the project of the session, after the
-//     symbolic links are resolved (D64); else not_allowed.
+//     symbolic links are resolved (D64), and the path of the program
+//     resolves (D63); else not_allowed. The ID is not the ID of a
+//     delivery that waits for its exec_result; else invalid_request.
 //  5. The backend resolves the names. It reads no value.
 //  6. A live grant whose binding allows the command covers each
 //     reference (D63), or the human approves the command. The request is
 //     a bundle of its own and does not wait for a window (D61).
-//  7. The broker reads the values. If an argument or the working directory
-//     contains a value, it delivers nothing (invalid_request, D65). Else
+//  7. The broker reads the values. If the program, an argument, the working
+//     directory, the task or the reason contains a value, it delivers
+//     nothing (invalid_request, D65). Else
 //     it writes the audit event "delivery" and answers. A grant with the
 //     lifetime 0 ends with this delivery (D63).
 //  8. "a38 mcp" reports the result with exec_result. The broker writes the
@@ -45,7 +48,8 @@ import (
 // programsWithoutStatement are the programs whose path says nothing about
 // the command: shells, interpreters and starters (D63). For them the
 // binding program is the binding command. The comparison uses the last
-// part of the path.
+// part of the resolved path (withoutStatement). A list cannot find a copy
+// of a shell under another name or a program that it does not name (G48).
 var programsWithoutStatement = map[string]bool{
 	"sh": true, "bash": true, "zsh": true, "dash": true, "fish": true,
 	"env": true, "sudo": true, "xargs": true, "nohup": true, "time": true,
@@ -55,12 +59,12 @@ var programsWithoutStatement = map[string]bool{
 }
 
 // maxPendingExecs is the maximum number of deliveries of one session that
-// wait for their exec_result. A further delivery drops the oldest.
+// wait for their exec_result. A further delivery drops the oldest (G49).
 const maxPendingExecs = 64
 
 // valueInCommandMessage is the answer to a command that contains a value.
 // It never names the value.
-const valueInCommandMessage = "an argument or the working directory contains a value of a credential; nothing is delivered"
+const valueInCommandMessage = "the command, the task or the reason contains a value of a credential; nothing is delivered"
 
 // execCall holds the terms of one request of the exec way.
 type execCall struct {
@@ -159,23 +163,68 @@ func (b *Broker) admitExec(c *call, req *protocol.RequestExec) (*execCall, *prot
 		return nil, b.reject(c, audit.EventDenial, c.refs, protocol.Errorf(protocol.CodeNotAllowed,
 			"the working directory is not in the project of the session"))
 	}
+	program, ok := b.realProgram(req.Program)
+	if !ok {
+		return nil, b.reject(c, audit.EventDenial, c.refs, protocol.Errorf(protocol.CodeNotAllowed,
+			"the path of the program cannot be resolved"))
+	}
+	if b.execPending(c.s.Facts.SessionID, req.ID) {
+		return nil, b.reject(c, audit.EventDenial, c.refs, protocol.Errorf(protocol.CodeInvalidRequest,
+			"a delivery of the session with this ID waits for its exec_result"))
+	}
 	x := &execCall{
 		req: req,
-		cmd: grant.Command{Program: req.Program, Args: req.Args, Cwd: req.Cwd},
-	}
-	for _, v := range req.Env {
-		x.cmd.EnvNames = append(x.cmd.EnvNames, v.Name)
+		cmd: grant.Command{Program: program, Args: req.Args, Cwd: req.Cwd},
 	}
 	x.timeout = req.TimeoutSeconds
 	if x.timeout == 0 {
 		x.timeout = int(b.cfg.Exec.DefaultTimeout / time.Second)
 	}
-	x.env, x.binding, x.ttl = b.execTerms(c.refs, req.Program)
-	// The events from here on name the time limit and the binding.
+	x.env, x.binding, x.ttl = b.execTerms(c.refs, program)
+	// The events from here on name the resolved program, the time limit
+	// and the binding.
 	cmd := *c.command
-	cmd.TimeoutSeconds, cmd.Binding = x.timeout, string(x.binding)
+	cmd.Program, cmd.TimeoutSeconds, cmd.Binding = program, x.timeout, string(x.binding)
 	c.command = &cmd
 	return x, nil
+}
+
+// realProgram resolves the symbolic links of the program. The list of
+// programs without a statement, the approval request, the audit events
+// and the binding of a grant use the resolved path (D63). A path that
+// cannot be resolved fails closed.
+func (b *Broker) realProgram(program string) (string, bool) {
+	real, err := b.realPath(program)
+	if err != nil || !path.IsAbs(real) {
+		return "", false
+	}
+	return path.Clean(real), true
+}
+
+// withoutStatement reports whether the program is on the list of programs
+// without a statement (D63). The comparison uses the last part of the
+// resolved path, in lower case and without a version suffix such as
+// "3.12" in python3.12: a file system without case can start /bin/SH.
+func withoutStatement(program string) bool {
+	name := strings.TrimRight(strings.ToLower(path.Base(program)), "0123456789.")
+	return programsWithoutStatement[name]
+}
+
+// execPending reports whether a delivery of the session with the ID waits
+// for its exec_result.
+func (b *Broker) execPending(sid session.ID, id string) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.execPendingLocked(sid, id)
+}
+
+func (b *Broker) execPendingLocked(sid session.ID, id string) bool {
+	for _, r := range b.execs[sid] {
+		if r.requestID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // inProject reports whether the working directory belongs to the project
@@ -214,7 +263,7 @@ func (b *Broker) execTerms(refs []protocol.Reference, program string) (config.En
 	if env == config.EnvProd || ttl <= 0 {
 		ttl, binding = 0, config.BindingCommand
 	}
-	if binding == config.BindingProgram && programsWithoutStatement[path.Base(program)] {
+	if binding == config.BindingProgram && withoutStatement(program) {
 		binding = config.BindingCommand
 	}
 	return env, binding, ttl
@@ -240,6 +289,12 @@ func (b *Broker) runExec(ctx context.Context, c *call, x *execCall) (*protocol.E
 		return nil, b.requestEnded(c, canon)
 	}
 	defer cancel()
+	// The bindings program and command compare the mapping of each name
+	// to its reference with the names of the backend (D63).
+	x.cmd.Env = make(map[string]protocol.Reference, len(x.req.Env))
+	for _, v := range x.req.Env {
+		x.cmd.Env[v.Name] = c.canon[v.Reference]
+	}
 	var once *grant.Grant
 	if !b.coveredExec(c, x, canon) {
 		g, e := b.approveExec(ctx, c, x, canon)
@@ -408,7 +463,7 @@ func (b *Broker) execApprovalRequest(c *call, x *execCall, canon []protocol.Refe
 	req.Grant.Scope = approval.GrantScope{Project: c.s.Facts.Project, Vaults: vaults}
 	cmd := &approval.ExecCommand{
 		Environment: x.env,
-		Program:     x.req.Program,
+		Program:     x.cmd.Program,
 		Args:        append([]string(nil), x.req.Args...),
 		Cwd:         x.req.Cwd,
 	}
@@ -443,10 +498,12 @@ func (b *Broker) deliverExec(ctx context.Context, c *call, x *execCall, canon []
 	}
 	if commandContainsValue(x.req, values) {
 		// RI14: the event names the reason, never the value. The events
-		// after the check do not repeat the command: it contains a value.
+		// after the check do not repeat the command and the claims: they
+		// contain a value.
 		clear(values)
 		bare := *c
 		bare.command = nil
+		bare.claims = c.s.Claims("", "")
 		ae := b.record(b.event(&bare, audit.EventDenial, canon, audit.Result{
 			Code: protocol.CodeInvalidRequest, Detail: audit.DetailValueInCommand,
 		}))
@@ -456,12 +513,10 @@ func (b *Broker) deliverExec(ctx context.Context, c *call, x *execCall, canon []
 		}
 		return nil, protocol.Errorf(protocol.CodeInvalidRequest, "%s", valueInCommandMessage)
 	}
-	grantID, e := b.authorizeExec(ctx, c, x, canon, once, true)
-	if e != nil {
+	if _, e := b.authorizeExec(ctx, c, x, canon, once, true); e != nil {
 		clear(values)
 		return nil, e
 	}
-	b.keepExec(c, x, canon, grantID)
 	out := &protocol.ExecCredentials{
 		ID:             x.req.ID,
 		TimeoutSeconds: x.timeout,
@@ -510,6 +565,11 @@ func (b *Broker) authorizeExec(ctx context.Context, c *call, x *execCall, canon 
 	if !write {
 		return order[0], nil
 	}
+	if b.execPendingLocked(c.s.Facts.SessionID, x.req.ID) {
+		// A parallel request with the same ID delivered first.
+		return "", b.reject(c, audit.EventDenial, canon, protocol.Errorf(protocol.CodeInvalidRequest,
+			"a delivery of the session with this ID waits for its exec_result"))
+	}
 	for _, id := range order {
 		if e := b.record(b.event(c, audit.EventDelivery, groups[id], audit.Result{GrantID: id})); e != nil {
 			return "", e
@@ -520,6 +580,7 @@ func (b *Broker) authorizeExec(ctx context.Context, c *call, x *execCall, canon 
 			return "", e
 		}
 	}
+	b.keepExecLocked(c, x, canon, order[0])
 	return order[0], nil
 }
 
@@ -532,17 +593,20 @@ func (b *Broker) endOnce(c *call, canon []protocol.Reference, once *grant.Grant,
 	_ = b.record(b.event(c, audit.EventExpiry, canon, audit.Result{GrantID: once.ID, Detail: detail}))
 }
 
-// commandContainsValue reports whether an argument or the working
-// directory contains one of the values (D65). An empty value is never
-// found.
+// commandContainsValue reports whether the program, an argument, the
+// working directory, the task or the reason contains one of the values
+// (D65). An empty value is never found. A value split over two arguments
+// is not found (G46).
 func commandContainsValue(req *protocol.RequestExec, values map[protocol.Reference]protocol.Secret) bool {
 	for _, v := range values {
 		s := v.Reveal()
 		if s == "" {
 			continue
 		}
-		if strings.Contains(req.Cwd, s) {
-			return true
+		for _, t := range []string{req.Program, req.Cwd, req.Task, req.Reason} {
+			if strings.Contains(t, s) {
+				return true
+			}
 		}
 		for _, a := range req.Args {
 			if strings.Contains(a, s) {
@@ -553,10 +617,9 @@ func commandContainsValue(req *protocol.RequestExec, values map[protocol.Referen
 	return false
 }
 
-// keepExec keeps a delivery until its exec_result arrives.
-func (b *Broker) keepExec(c *call, x *execCall, canon []protocol.Reference, grantID string) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+// keepExecLocked keeps a delivery until its exec_result arrives. The
+// caller holds mu.
+func (b *Broker) keepExecLocked(c *call, x *execCall, canon []protocol.Reference, grantID string) {
 	sid := c.s.Facts.SessionID
 	if _, ended := b.ended[sid]; ended {
 		return
