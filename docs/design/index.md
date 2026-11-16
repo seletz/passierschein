@@ -41,7 +41,7 @@ neue Entscheidung. Die alte Entscheidung erhält den Status „ersetzt“.
 | UC | {{ ref("UC1") }}–{{ ref("UC16") }} |
 | D | {{ ref("D1") }}–{{ ref("D77") }} |
 | F | {{ ref("F1") }}–{{ ref("F24") }} |
-| T | {{ ref("T1") }}–{{ ref("T41") }} |
+| T | {{ ref("T1") }}–{{ ref("T42") }} |
 | G | {{ ref("G1") }}–{{ ref("G49") }} |
 | RI | {{ ref("RI1") }}–{{ ref("RI14") }} |
 
@@ -68,6 +68,10 @@ Eine Entscheidung hat eine von zwei Herkünften:
   mit dem [Pull Request 94](https://github.com/seletz/passierschein/pull/94)
   bestätigt. Sie ersetzen {{ ref("D10") }}, {{ ref("D24") }}, {{ ref("D32") }}
   und {{ ref("D41") }}.
+- **In Lauf 2 bestätigt:** {{ ref("D69") }} (App-Icon: stilisierter
+  Reisepass). Stefan hat den Entwurf am 2026-11-15 im
+  [Pull Request 109](https://github.com/seletz/passierschein/pull/109)
+  gewählt.
 - **Aus der Umsetzung des exec-Wegs, bestätigt:** {{ ref("D76") }} (Laufzeit
   0 in jeder Umgebung) und {{ ref("D77") }} (drei Auslegungen im Daemon).
   Stefan hat sie am 2026-11-16 zum

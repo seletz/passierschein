@@ -39,6 +39,7 @@ Die Einzelheiten stehen in der [Referenz der Freigabe-App](85-freigabe-app.md).
 | Task | Zweck |
 |---|---|
 | `app:build` | Baut die Freigabe-App „Passierschein“ als Debug und Release, legt das App-Bundle `app/.build/bundle/Passierschein.app` an und prüft, dass der Release-Build die Testschalter ablehnt. |
+| `app:icon` | Zeichnet die drei Entwürfe des App-Icons aus `app/Icon/render-icon.swift` und baut `app/.build/icon/AppIcon.icns`. Scheitert, wenn zwei Läufe verschiedene Dateien liefern. |
 | `app:test` | Führt die Tests der Freigabe-App aus, ohne Fenster und ohne Touch ID. |
 | `app:run:sample` | Zeigt ein Beispiel aus `app/Samples` im Debug-Build mit gefälschter Authentifizierung. |
 | `app:e2e` | Baut den Debug-Build und startet `a38 serve --ui app` mit der App über echte Prozesse. Es öffnen sich zwei Fenster für je etwa zwei Sekunden. Touch ID erscheint nie. |

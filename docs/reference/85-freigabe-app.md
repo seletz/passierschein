@@ -315,6 +315,7 @@ Das Skript `scripts/app-swift-check.sh` prüft macOS, SDK und Version.
 | Task | Wirkung |
 |---|---|
 | `mise run app:build` | baut Debug und Release, legt `app/.build/bundle/Passierschein.app` an und prüft den Release-Build |
+| `mise run app:icon` | zeichnet die drei Entwürfe des App-Icons und baut `app/.build/icon/AppIcon.icns` (siehe [App-Icon](#app-icon)) |
 | `mise run app:test` | führt `swift test` aus |
 | `mise run app:run:sample -- <beispiel>` | zeigt ein Beispiel im Debug-Build mit gefälschter Authentifizierung |
 | `mise run app:e2e` | baut den Debug-Build und startet `a38 serve --ui app` mit der App über echte Prozesse (siehe unten) |
@@ -328,13 +329,15 @@ Passierschein.app/
     MacOS/
       Passierschein   die Freigabe-App
       a38             nur im Release-Bundle
+    Resources/
+      AppIcon.icns    das App-Icon
 ```
 
 `app:build` ist der Entwicklungsbau und kopiert `a38` nicht in das Bundle.
 Das Release-Bundle mit `a38` baut `mise run release:app` aus den darwin-Archiven von goreleaser ([Release](50-release.md#app-im-release)).
 Der Daemon sucht die App als `Passierschein.app/Contents/MacOS/Passierschein` oder als `Passierschein` neben `a38`, im Bundle neben `Contents/MacOS/a38` und in `/Applications` und `~/Applications`.
 
-Die `Info.plist` enthält die Bundle-ID `io.github.seletz.passierschein`, den Namen „Passierschein“ (`CFBundleName`, `CFBundleDisplayName`) und `LSUIElement`.
+Die `Info.plist` enthält die Bundle-ID `io.github.seletz.passierschein`, den Namen „Passierschein“ (`CFBundleName`, `CFBundleDisplayName`), das Icon (`CFBundleIconFile` = `AppIcon`) und `LSUIElement`.
 Der Dialog von Touch ID nennt diesen Namen.
 Das Bundle trägt eine Ad-hoc-Signatur mit Hardened Runtime.
 Danach prüft `scripts/app-release-check.sh` den Release-Build und das Bundle:
@@ -345,6 +348,37 @@ Danach prüft `scripts/app-release-check.sh` den Release-Build und das Bundle:
 
 Die Tasks der App gehören nicht zu `mise run check`.
 Der Workflow `macos.yml` führt sie auf einem macOS-Runner aus ([CI](55-ci.md)).
+
+### App-Icon
+
+Das App-Icon zeigt einen stilisierten Reisepass ({{ ref("D69") }}).
+Die Quelle ist das Swift-Programm `app/Icon/render-icon.swift`.
+Es zeichnet drei Entwürfe mit Core Graphics:
+
+| Entwurf | Motiv |
+|---|---|
+| 1 | Ausweiskarte mit Fotofeld und Textzeilen |
+| 2 | Reisepass mit einem Siegel aus Ring und Schlüsselloch (im Bundle) |
+| 3 | Passierschein mit Eselsohr und Stempel mit Haken |
+
+`mise run app:icon` übersetzt das Programm mit der festgelegten Swift-Version.
+Der Task zeichnet jeden Entwurf in zehn PNG-Dateien von 16 bis 1024 Pixel.
+`iconutil` fügt die Dateien zu `AppIcon.icns` zusammen.
+Jede Größe hat ein eigenes Pixelraster.
+Unter 64 Pixel entfallen feine Linien.
+Die Variable `APP_ICON_DRAFT` wählt den Entwurf des Bundles, Vorgabe 2.
+Die Entwürfe 1 und 3 bleiben in der Quelle als verworfene Varianten.
+Der Task zeichnet den gewählten Entwurf zweimal und vergleicht die beiden Dateien ({{ ref("T42") }}).
+
+`app:build` und `release:app` rufen `scripts/app-icon.sh` auf.
+Kein Schritt ist von Hand.
+`scripts/app-icon-check.sh` prüft das Bundle: `CFBundleIconFile`, die Datei `Contents/Resources/AppIcon.icns` und die zehn Größen.
+`app:build` und `release:app:check` führen die Prüfung aus.
+
+Das Icon erscheint im Finder, im Launchpad, im Dialog „Informationen“ und im Dialog von Touch ID.
+Die App hat kein Dock-Icon und kein Menü (`LSUIElement`).
+Das Popup und die Meldung zeigen das App-Icon nicht.
+Die App sendet keine Mitteilungen über die Mitteilungszentrale.
 
 ## Signatur der App
 

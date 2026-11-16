@@ -11,7 +11,8 @@
 #    that the release binary rejects the test switches (T14).
 # 3. Put both into $RELEASE_APP_OUT/Passierschein.app with an Info.plist:
 #    bundle ID io.github.seletz.passierschein, version from the tag,
-#    minimum macOS 15 (the platform of the Swift package).
+#    minimum macOS 15 (the platform of the Swift package), and the app
+#    icon of scripts/app-icon.sh in Contents/Resources (D69, T42).
 set -euo pipefail
 . "$(dirname "$0")/release-app-lib.sh"
 
@@ -67,6 +68,7 @@ swift build -c release --arch arm64 --arch x86_64
 APP_BIN="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/Passierschein"
 [ "$(lipo -archs "$APP_BIN")" = "x86_64 arm64" ] || die "the approval app is not universal: $(lipo -archs "$APP_BIN")"
 bash "$ROOT/scripts/app-release-check.sh" "$APP_BIN"
+bash "$ROOT/scripts/app-icon.sh"
 
 # 3. The bundle. CFBundleShortVersionString takes X.Y.Z of the tag (no
 # pre-release part: macOS allows only numbers there); CFBundleVersion is
@@ -74,9 +76,10 @@ bash "$ROOT/scripts/app-release-check.sh" "$APP_BIN"
 short=$(echo "$VERSION" | sed -nE 's/^([0-9]+\.[0-9]+\.[0-9]+).*/\1/p')
 [ -n "$short" ] || die "the tag $TAG has no version X.Y.Z"
 build=$(git -C "$ROOT" rev-list --count HEAD 2>/dev/null || echo 1)
-mkdir -p "$BUNDLE/Contents/MacOS"
+mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources"
 install -m 0755 "$APP_BIN" "$BUNDLE/Contents/MacOS/Passierschein"
 install -m 0755 "$WORK/a38" "$BUNDLE/Contents/MacOS/a38"
+install -m 0644 "$ROOT/app/.build/icon/AppIcon.icns" "$BUNDLE/Contents/Resources/AppIcon.icns"
 cat > "$BUNDLE/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -92,6 +95,8 @@ cat > "$BUNDLE/Contents/Info.plist" <<PLIST
   <string>Passierschein</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleShortVersionString</key>

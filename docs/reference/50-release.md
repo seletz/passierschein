@@ -71,12 +71,15 @@ Passierschein.app/
     MacOS/
       Passierschein   Freigabe-App, Universal-Binary (arm64, x86_64)
       a38             Go-Programm, Universal-Binary (arm64, x86_64)
+    Resources/
+      AppIcon.icns    App-Icon aus app/Icon/render-icon.swift
     _CodeSignature/
       CodeResources
     CodeResources     angeheftetes Ticket
 ```
 
-- `Info.plist`: Bundle-ID `io.github.seletz.passierschein`, Version `X.Y.Z` aus dem Tag, Build-Nummer aus der Zahl der Commits, `LSUIElement`, mindestens macOS 15.
+- `Info.plist`: Bundle-ID `io.github.seletz.passierschein`, Version `X.Y.Z` aus dem Tag, Build-Nummer aus der Zahl der Commits, Icon `AppIcon`, `LSUIElement`, mindestens macOS 15.
+- `AppIcon.icns` entsteht mit `scripts/app-icon.sh` aus der Quelle im Repo ([App-Icon](85-freigabe-app.md#app-icon)). Die Signatur des Bundles schließt die Datei ein. `release:app:check` prüft das Icon ({{ ref("T42") }}).
 - `Passierschein` entsteht mit `swift build -c release --arch arm64 --arch x86_64`. Die tar-Archive liefern `a38` für beide Architekturen; ein Bundle für beide passt zu jedem Mac.
 - `a38` entsteht mit `lipo -create` aus den beiden darwin-Binaries desselben goreleaser-Laufs. Der Task prüft die Prüfsummen der Archive, die Version und den Commit beider Binaries.
 - Der Task `release:app:check` prüft auch, dass `Contents/MacOS` nur diese zwei Dateien enthält.
