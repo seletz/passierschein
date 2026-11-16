@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/seletz/passierschein/internal/config"
 	"github.com/seletz/passierschein/internal/token"
+	"github.com/seletz/passierschein/internal/tokenfile"
 )
 
 // mapSource is a token source in memory for one account.
@@ -56,6 +56,9 @@ func TestOpenAccounts(t *testing.T) {
 	// once at its start. An account without token locks only its vaults;
 	// without any token the start fails (D73).
 	value := tokenMarker
+	// The error of a real file source: openAccounts names the account
+	// once (review of PR 114).
+	_, fileErr := fileSource{f: tokenfile.File{Path: "/tmp/a38-missing/onepassword-token-privat"}}.Token()
 	missing := fmt.Errorf("the keychain has no item a38.onepassword/firma; store the token with \"a38 config onepassword-token set --account firma\": %w", token.ErrNotFound)
 	tests := []struct {
 		name       string
@@ -68,8 +71,8 @@ func TestOpenAccounts(t *testing.T) {
 		{"firma without token", map[string]error{"firma": missing}, nil,
 			map[string]string{"firma": "a38 config onepassword-token set --account firma"},
 			[]string{"account=firma", "backend_locked"}},
-		{"no token", map[string]error{"privat": errors.New("token file /x: mode 0644"), "firma": missing},
-			[]string{`account "privat"`, "mode 0644", `account "firma"`, "--account firma", "no account has a token"}, nil, nil},
+		{"no token", map[string]error{"privat": fileErr, "firma": missing},
+			[]string{`account "privat"`, "onepassword-token-privat", `account "firma"`, "--account firma", "no account has a token"}, nil, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -89,6 +92,11 @@ func TestOpenAccounts(t *testing.T) {
 				for _, w := range tt.wantErr {
 					if !strings.Contains(err.Error(), w) {
 						t.Errorf("error %q lacks %q", err, w)
+					}
+				}
+				for _, name := range []string{"privat", "firma"} {
+					if n := strings.Count(err.Error(), fmt.Sprintf("account %q", name)); n != 1 {
+						t.Errorf("error names the account %s %d times, want once: %q", name, n, err)
 					}
 				}
 				noToken(t, err.Error(), logs.String())
@@ -135,7 +143,8 @@ func TestTokenSourceForAccount(t *testing.T) {
 	if got := fmt.Sprintf("%T", src); got != "main.fileSource" {
 		t.Errorf("firma: %s", got)
 	}
-	if _, err := src.Token(); err == nil || !strings.Contains(err.Error(), `account "firma"`) || !strings.Contains(err.Error(), "token_source: file") {
+	// openAccounts names the account; the source names the file and the keys.
+	if _, err := src.Token(); err == nil || strings.Contains(err.Error(), `account "firma"`) || !strings.Contains(err.Error(), "onepassword-token-firma") || !strings.Contains(err.Error(), "token_source: file") {
 		t.Errorf("file source: %v", err)
 	}
 }

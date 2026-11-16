@@ -107,10 +107,9 @@ func newAccounts(opts AccountsOptions, connect func(account string) connectFunc)
 			st.backend, st.locked = b, ""
 		case acc.Locked == "":
 			return nil, fmt.Errorf("1password backend: the account %q has no token and no reason", acc.Name)
-		default:
-			a.log.Warn("the 1password account has no token; each request for its vaults ends with backend_locked",
-				"account", acc.Name, "reason", acc.Locked)
 		}
+		// A locked account is logged once, by the start of the daemon
+		// (openAccounts); each request names it in its error.
 		a.byName[acc.Name] = st
 		a.order = append(a.order, acc.Name)
 	}

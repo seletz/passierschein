@@ -84,6 +84,11 @@ func TestAccountsRouteByVault(t *testing.T) {
 
 	t.Run("an account without token locks only its vaults", func(t *testing.T) {
 		b, apis, logs := accountsWorld(t, token.Token{}, "the keychain has no item a38.onepassword/firma")
+		// The daemon logs the locked account at its start (openAccounts);
+		// the backend does not log it a second time.
+		if strings.Contains(logs.String(), "has no token") {
+			t.Errorf("the backend logs the locked account again: %s", logs)
+		}
 		_, err := b.Resolve(ctx, protocol.Reference{Vault: firmaVault, Item: "postgres", Field: "password"})
 		if backend.Code(err) != protocol.CodeBackendLocked {
 			t.Fatalf("Resolve(firma) = %v, want backend_locked", err)
@@ -100,9 +105,6 @@ func TestAccountsRouteByVault(t *testing.T) {
 		vaults, err := b.Vaults(ctx)
 		if err != nil || !reflect.DeepEqual(vaults, []string{devVault}) {
 			t.Errorf("Vaults = %v, %v; want only the vault of privat", vaults, err)
-		}
-		if !strings.Contains(logs.String(), "account=firma") {
-			t.Errorf("log does not name the account: %s", logs)
 		}
 	})
 

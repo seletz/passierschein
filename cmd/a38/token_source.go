@@ -74,22 +74,21 @@ func openAccounts(cfg *config.Config, sourceFor func(config.Account) token.Sourc
 // or its token file (fallback for development and CI).
 func tokenSourceFor(a config.Account) token.Source {
 	if a.TokenSource == config.TokenSourceFile {
-		return fileSource{account: a.Name, f: tokenfile.File{Path: a.TokenFile}}
+		return fileSource{f: tokenfile.File{Path: a.TokenFile}}
 	}
 	return keychainSource{account: a.Name, newStore: newTokenStore, timeout: keychainReadTimeout}
 }
 
-// fileSource names the account and the configuration key in each error of
-// the token file.
+// fileSource names the file and the configuration keys in each error of
+// the token file. openAccounts adds the name of the account.
 type fileSource struct {
-	account string
-	f       tokenfile.File
+	f tokenfile.File
 }
 
 func (s fileSource) Token() (token.Token, error) {
 	tok, err := s.f.Token()
 	if err != nil {
-		return token.Token{}, fmt.Errorf("account %q: token file %s: %w (token_source: file, token_file)", s.account, s.f.Path, err)
+		return token.Token{}, fmt.Errorf("token file %s: %w (token_source: file, token_file)", s.f.Path, err)
 	}
 	return tok, nil
 }
