@@ -41,10 +41,13 @@ func writeExecConfig(t *testing.T) (path, socketDir, fakeFile string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	text := strings.Replace(string(data), "  - {name: beispiel.app.k8s-dev, environment: dev}\n",
-		"  - {name: beispiel.app.k8s-dev, environment: dev}\n"+
-			"  - {name: beispiel.app.k8s-test, environment: test}\n"+
-			"  - {name: beispiel.app.k8s-prod, environment: prod}\n", 1)
+	const devVault = "  - {name: beispiel.app.k8s-dev, environment: dev, account: privat}\n"
+	if !strings.Contains(string(data), devVault) || !strings.Contains(string(data), "vaults: [beispiel.app.k8s-dev]") {
+		t.Fatalf("the configuration of writeConfig changed:\n%s", data)
+	}
+	text := strings.Replace(string(data), devVault, devVault+
+		"  - {name: beispiel.app.k8s-test, environment: test, account: privat}\n"+
+		"  - {name: beispiel.app.k8s-prod, environment: prod, account: privat}\n", 1)
 	text = strings.Replace(text, "vaults: [beispiel.app.k8s-dev]",
 		"vaults: [beispiel.app.k8s-dev, beispiel.app.k8s-test, beispiel.app.k8s-prod]", 1)
 	text += "environments:\n  prod:\n    delivery: [exec]\n"
