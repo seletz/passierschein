@@ -143,6 +143,12 @@ func runTokenSet(args []string, stdout, stderr io.Writer, deps tokenDeps) int {
 		_, _ = fmt.Fprintf(stderr, "%s set: %s\n", tokenCmd, errNoAccount)
 		return exitUsage
 	}
+	// Check the name before any output names it: a human can paste the
+	// token after --account by mistake. Never echo a name that fails.
+	if err := config.ValidAccountName(account); err != nil {
+		_, _ = fmt.Fprintf(stderr, "%s set: the account name %v; nothing read\n", tokenCmd, err)
+		return exitUsage
+	}
 	if !deps.terminal {
 		// Read nothing: the token comes only from the terminal (decision
 		// of Stefan, 2026-11-12), never from a pipe or a file.
@@ -158,7 +164,7 @@ func runTokenSet(args []string, stdout, stderr io.Writer, deps tokenDeps) int {
 	}
 	acc, ok := cfg.Account(account)
 	if !ok {
-		_, _ = fmt.Fprintf(stderr, "%s set: the account %q is not in backend.onepassword.accounts; add it first with \"a38 config account add %s\"; nothing read\n", tokenCmd, account, account)
+		_, _ = fmt.Fprintf(stderr, "%s set: the account %q is not in backend.onepassword.accounts; add it first with \"a38 config account add NAME\"; nothing read\n", tokenCmd, account)
 		return exitFailure
 	}
 	store, err := deps.newStore(account)

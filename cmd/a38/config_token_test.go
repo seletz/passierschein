@@ -525,6 +525,23 @@ func TestTokenAccounts(t *testing.T) {
 			t.Error("the command touched a store")
 		}
 	})
+	t.Run("set never echoes an invalid account name", func(t *testing.T) {
+		// T44: a human can paste the token after --account by mistake.
+		// The command checks the name first and never shows a value
+		// that fails the check.
+		e := newEnv(t)
+		e.typed = tokenMarker
+		code, out, errOut := e.run("set", "--account", tokenMarker)
+		if code != 2 || e.prompts != 0 || !strings.Contains(errOut, "the account name") {
+			t.Errorf("code %d, prompts %d, stderr %q", code, e.prompts, errOut)
+		}
+		if strings.Contains(out+errOut, tokenMarker) || strings.Contains(out+errOut, "ops_") {
+			t.Errorf("the output shows the value of --account: stdout %q, stderr %q", out, errOut)
+		}
+		if e.store.value != nil {
+			t.Error("the command stored a value")
+		}
+	})
 	t.Run("set stores the item of the account", func(t *testing.T) {
 		e := newEnv(t)
 		e.typed = tokenMarker
