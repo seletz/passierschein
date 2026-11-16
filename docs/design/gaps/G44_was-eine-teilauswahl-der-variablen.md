@@ -4,12 +4,16 @@ id: 'G44'
 titel: 'Was eine Teilauswahl der Variablen bei einem Kommando bedeutet'
 bereich: 'Freigabe'
 lauf: '2.0'
-stand: '2026-11-15'
+stand: '2026-11-16'
 order: 7
 headless: true
 type: Gap
 kind: design
-status: offen
+status: geschlossen
+beleg:
+  wer: Stefan
+  datum: '2026-11-16'
+  quelle: ['#112']
 register:
   owner: Stefan
 ---
