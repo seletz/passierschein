@@ -7,7 +7,7 @@
 # Same version as the go directive in go.mod (tools:check).
 go = "1.27.4"
 # Runs the docs toolchain (Zensical, pinned in pyproject.toml and uv.lock).
-uv = "0.13.7"
+uv = "0.13.9"
 # Builds the release archives, checksums and SBOMs (.goreleaser.yml).
 goreleaser = "2.20.0"
 # Built with the pinned Go, so the linter is never older than go.mod.
