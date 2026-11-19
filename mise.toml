@@ -13,7 +13,7 @@ goreleaser = "2.20.2"
 # Built with the pinned Go, so the linter is never older than go.mod.
 "go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = "2.15.0"
 # Finds known vulnerabilities in the modules that the code calls.
-"go:golang.org/x/vuln/cmd/govulncheck" = "1.9.0"
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.10.0"
 # Finds secrets in the git history and in staged changes.
 gitleaks = "8.30.1"
 
