@@ -178,6 +178,23 @@ Voraussetzung: GitHub Pages ist im Repo aktiviert, mit der Quelle „GitHub
 Actions“. Eine Site auf GitHub Pages ist öffentlich, auch wenn das Repo
 privat ist.
 
+## Abhängigkeiten aktualisieren (Renovate)
+
+[Renovate](https://docs.renovatebot.com/) hält Go-Module, GitHub Actions und die Werkzeuge in `mise.toml` aktuell.
+Er öffnet dafür Pull Requests gegen `develop`.
+Er läuft selbst gehostet im Workflow `renovate.yml`.
+Die Regeln stehen in `.github/renovate.json5`.
+
+- **Takt:** alle 8 Stunden (cron `17 */8 * * *`) und von Hand über *Actions → Renovate → Run workflow*. Zwei Läufe überschneiden sich nie (`concurrency: renovate`). Es gibt keine Zeitfenster. Sicherheits-Updates (GitHub-Advisories und OSV) warten nie und zählen nicht gegen die Limits.
+- **Limits:** höchstens 2 neue PRs pro Stunde und 5 offene PRs gleichzeitig.
+- **Gruppen:** Die Charm-Module (`charm.land/*`, `github.com/charmbracelet/*`) kommen in einem gemeinsamen PR. Go in `go.mod` und in `mise.toml` kommt ebenfalls in einem PR (`tools:check` verlangt dieselbe Version).
+- **Major-Updates:** Renovate öffnet sie erst, wenn sie im Dependency-Dashboard (einem Issue im Repository) angehakt sind. Das gilt auch für eine neue Go-Minor-Version.
+- **Commits und Label:** Commits heißen `chore(deps): …`, die PRs tragen das Label `dependencies`.
+- **Was Renovate liest:** `go.mod`, die GitHub Actions in `.github/workflows/` (Renovate hält den Commit-Hash und den Versionskommentar `# vX.Y.Z` zusammen), `[tools]` in `mise.toml`, die Zeile `# renovate: …` über einem `tools = { … }` in den Tasks und die Pins `uvx --with playwright==…` und `pyte==…`. Von einer Tabelle `tools = { … }` liest er nur das erste Werkzeug. Das Swift-Paket unter `app/` hat keine Abhängigkeiten; Renovate hat dort nichts zu tun. Die Swift-Version steht in `mise.toml`.
+- **Trockenlauf:** Beim manuellen Start `dry_run` setzen (bei Bedarf `log_level` auf `debug`). Renovate protokolliert dann, was er täte, und legt keine Branches oder PRs an. Der erste Lauf nach dem Merge ist ein solcher Trockenlauf.
+- **Secret `RENOVATE_TOKEN`:** ein fein granulares Personal Access Token mit Lese- und Schreibrecht auf *Contents*, *Pull requests*, *Issues* und *Workflows*. Mit dem `GITHUB_TOKEN` ginge es nicht: PRs, die damit entstehen, lösen keine weiteren Workflows aus (die CI liefe auf den Update-PRs nie), und er darf keine Dateien unter `.github/workflows` ändern. Läuft das Token ab, schlägt der Workflow fehl. Dann ein neues Token anlegen und das Secret ersetzen.
+- **Lokal prüfen:** `mise x npm:renovate@44.239.1 -- renovate-config-validator .github/renovate.json5` prüft die Konfiguration.
+
 ## Installation
 
 Die App installierst du aus dem ZIP nach `/Applications`.
