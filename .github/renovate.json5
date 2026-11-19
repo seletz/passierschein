@@ -1,3 +1,4 @@
+// Renovate configuration. Run by .github/workflows/renovate.yml every 8 hours.
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: [
@@ -7,22 +8,82 @@
     "helpers:pinGitHubActionDigests",
     ":semanticCommits",
   ],
-  // Tool pins at mise tasks (`tools = { ... }`): the mise manager reads only
-  // [tools]. A comment line above the pin names the data source.
+
+  // Development happens on develop; PRs go there.
+  // (Renovate 44 renamed baseBranches to baseBranchPatterns.)
+  baseBranchPatterns: ["develop"],
+
+  labels: ["dependencies"],
+
+  // Commits in the repo style: "chore(deps): update module x to v1.2".
+  semanticCommits: "enabled",
+  semanticCommitType: "chore",
+  semanticCommitScope: "deps",
+
+  // Run `go mod tidy` after every Go update so go.mod and go.sum stay
+  // consistent.
+  postUpdateOptions: ["gomodTidy"],
+
+  // No "schedule": the workflow runs every 8 hours, and security updates must
+  // never wait for a time window.
+
+  // Throttle regular PRs.
+  prHourlyLimit: 2,
+  prConcurrentLimit: 5,
+
+  // Security fixes: open PRs for GitHub advisories and OSV data. These ignore
+  // the limits above and any approval gate.
+  vulnerabilityAlerts: {
+    enabled: true,
+    labels: ["dependencies", "security"],
+    prHourlyLimit: 0,
+    prConcurrentLimit: 0,
+    dependencyDashboardApproval: false,
+  },
+  osvVulnerabilityAlerts: true,
+
   customManagers: [
     {
+      // Tool pins at mise tasks (`tools = { ... }`): the mise manager reads
+      // only [tools]. A comment line above the pin names the data source.
+      // Only the first tool of a `tools = { ... }` table is read.
       customType: "regex",
       managerFilePatterns: ["/^mise\\.toml$/"],
       matchStrings: [
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\ntools = \\{ \"[^\"]+\" = (?:\\{ version = )?\"(?<currentValue>[^\"]+)\"",
       ],
     },
+    {
+      // Python packages of the screenshot tasks: `uvx --with name==X.Y.Z`.
+      customType: "regex",
+      managerFilePatterns: ["/^mise\\.toml$/"],
+      matchStrings: [
+        "--with (?<depName>playwright|pyte)==(?<currentValue>\\d+\\.\\d+\\.\\d+)",
+      ],
+      datasourceTemplate: "pypi",
+    },
   ],
+
   packageRules: [
     {
       // go.mod and mise.toml must name the same Go version (tools:check).
       matchPackageNames: ["go", "golang"],
       groupName: "go toolchain",
+    },
+    {
+      // One PR for the Charm TUI stack: the modules are released together and
+      // break when their versions drift apart.
+      description: "Group the Charm modules",
+      matchManagers: ["gomod"],
+      matchPackageNames: ["charm.land/**", "github.com/charmbracelet/**"],
+      groupName: "charm modules",
+    },
+    {
+      // Major updates are breaking; they wait until someone ticks them in the
+      // Dependency Dashboard issue.
+      description: "Majors need approval in the dependency dashboard",
+      matchUpdateTypes: ["major"],
+      dependencyDashboardApproval: true,
     },
     {
       // A new Go minor version needs a tick in the Dependency Dashboard.
