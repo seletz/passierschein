@@ -4,7 +4,7 @@ go 1.27.4
 
 require (
 	github.com/1password/onepassword-sdk-go v0.4.1
-	github.com/tetratelabs/wazero v1.11.0
+	github.com/tetratelabs/wazero v1.12.0
 )
 
 require (
@@ -14,6 +14,6 @@ require (
 	github.com/ianlancetaylor/demangle v0.0.0-20251118225945-96ee0021ea0f // indirect
 	github.com/tetratelabs/wabin v0.0.0-20230304001439-f6f874872834 // indirect
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/sys v0.44.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
