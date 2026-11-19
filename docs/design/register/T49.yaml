@@ -1,0 +1,9 @@
+id: T49
+zustand: eingeloest
+titel: Ein hängendes und ein gesperrtes Konto stören den Status eines gesunden Kontos nicht
+bezug: '#119'
+schluessel: '#119/status-je-konto-test'
+lauf: '2.0'
+branch: feat/119-status-je-konto
+reserviert_am: '2026-11-16'
+eingeloest_am: '2026-11-16'

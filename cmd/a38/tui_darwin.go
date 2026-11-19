@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -15,15 +16,19 @@ import (
 
 	"github.com/seletz/passierschein/internal/audit/sqlite"
 	"github.com/seletz/passierschein/internal/auditstats"
+	"github.com/seletz/passierschein/internal/client"
 	"github.com/seletz/passierschein/internal/clock"
+	"github.com/seletz/passierschein/internal/config"
+	"github.com/seletz/passierschein/internal/protocol"
 	"github.com/seletz/passierschein/internal/tui"
 )
 
 const tuiUsage = `Usage:
   a38 tui [--config FILE] [--file AUDIT] [--range R] [--refresh DURATION]
 
-The view reads the audit log only. It never writes and never talks to the
-daemon. R is today, 7d (default), 30d or all. --refresh reads the audit log
+The view reads the audit log only. It never writes. With 1Password
+accounts in the configuration it asks the daemon for its status and shows
+the state of each account. R is today, 7d (default), 30d or all. --refresh reads the audit log
 again after the interval, for example 30s; 0 (default) reads it only on
 the key "r".
 `
@@ -79,7 +84,7 @@ func runTUI(args []string, stdout, stderr io.Writer) int {
 	}
 	r := auditReader{path: path}
 	m := tui.New(tui.Options{
-		Source:   tui.Source{Name: displayPath(path), Load: r.Load, Verify: r.Verify},
+		Source:   tui.Source{Name: displayPath(path), Load: r.Load, Verify: r.Verify, Accounts: af.accountsSource()},
 		Clock:    clock.System{},
 		Location: time.Local,
 		Range:    rng,
@@ -96,4 +101,54 @@ func runTUI(args []string, stdout, stderr io.Writer) int {
 		return exitFailure
 	}
 	return exitOK
+}
+
+// accountsSource returns the source of the account states for a38 tui
+// (D78). It is nil if the configuration does not load or names no
+// 1Password account.
+func (a *auditFlags) accountsSource() func(context.Context) ([]tui.AccountState, error) {
+	cfgPath := a.configPath
+	if cfgPath == "" {
+		var err error
+		if cfgPath, err = config.DefaultPath(); err != nil {
+			return nil
+		}
+	}
+	cfg, err := config.Load(cfgPath)
+	if err != nil || len(cfg.Backend.OnePassword.Accounts) == 0 {
+		return nil
+	}
+	return tuiAccounts(cfg.AdminSocket())
+}
+
+// tuiAccounts asks the daemon at the admin socket for its status and
+// returns the state of each 1Password account. It only reads.
+func tuiAccounts(socket string) func(context.Context) ([]tui.AccountState, error) {
+	return func(ctx context.Context) ([]tui.AccountState, error) {
+		ctx, cancel := context.WithTimeout(ctx, adminTimeout)
+		defer cancel()
+		c, err := client.DialAdmin(ctx, socket)
+		if err != nil {
+			return nil, err
+		}
+		defer func() { _ = c.Close() }()
+		st, err := c.Status(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return accountStatesOf(st), nil
+	}
+}
+
+// accountStatesOf returns the state of each account in the status. It is
+// empty for another backend and for an old daemon.
+func accountStatesOf(st *protocol.StatusResult) []tui.AccountState {
+	if st == nil || st.Backend == nil {
+		return nil
+	}
+	var out []tui.AccountState
+	for _, a := range st.Backend.Accounts {
+		out = append(out, tui.AccountState{Name: a.Name, State: a.State, Reason: a.Reason, Configured: a.VaultsConfigured, Visible: a.VaultsVisible})
+	}
+	return out
 }

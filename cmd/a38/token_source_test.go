@@ -4,24 +4,49 @@ import (
 	"bytes"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/seletz/passierschein/internal/config"
 	"github.com/seletz/passierschein/internal/token"
 	"github.com/seletz/passierschein/internal/tokenfile"
 )
 
+// readLog records the sources that openAccounts reads. The sources run
+// side by side (D79).
+type readLog struct {
+	mu    sync.Mutex
+	names []string
+}
+
+func (r *readLog) add(name string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.names = append(r.names, name)
+}
+
+// sorted returns the names in sorted order.
+func (r *readLog) sorted() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	n := slices.Clone(r.names)
+	slices.Sort(n)
+	return strings.Join(n, ",")
+}
+
 // mapSource is a token source in memory for one account.
 type mapSource struct {
 	tok  *string
 	err  error
-	read *[]string
+	read *readLog
 	name string
 }
 
 func (s mapSource) Token() (token.Token, error) {
-	*s.read = append(*s.read, s.name)
+	s.read.add(s.name)
 	if s.err != nil {
 		return token.Token{}, s.err
 	}
@@ -77,13 +102,13 @@ func TestOpenAccounts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := accountsConfig(t)
-			var read []string
+			var read readLog
 			var logs bytes.Buffer
 			got, err := openAccounts(cfg, func(a config.Account) token.Source {
 				return mapSource{tok: &value, err: tt.errs[a.Name], read: &read, name: a.Name}
 			}, slog.New(slog.NewTextHandler(&logs, nil)))
-			if strings.Join(read, ",") != "privat,firma" {
-				t.Errorf("read the sources %v, want privat,firma (not reserve)", read)
+			if got := read.sorted(); got != "firma,privat" {
+				t.Errorf("read the sources %v, want privat and firma (not reserve)", got)
 			}
 			if tt.wantErr != nil {
 				if err == nil {
@@ -128,6 +153,76 @@ func TestOpenAccounts(t *testing.T) {
 			noToken(t, logs.String(), fmt.Sprintf("%+v", got))
 		})
 	}
+}
+
+// barrierSource gives its token only after each source of the barrier
+// has started. Sources that run one after the other wait until the time
+// limit of the test.
+type barrierSource struct {
+	started *sync.WaitGroup
+	all     chan struct{}
+}
+
+func (s barrierSource) Token() (token.Token, error) {
+	s.started.Done()
+	select {
+	case <-s.all:
+		return token.New(tokenMarker), nil
+	case <-time.After(2 * time.Second):
+		return token.Token{}, fmt.Errorf("the other sources did not start: %w", token.ErrNotFound)
+	}
+}
+
+func TestOpenAccountsSideBySide(t *testing.T) {
+	// T50: the daemon reads the tokens of the accounts side by side. Two
+	// keychain dialogs cost one wait, not two. The result and the log keep
+	// the order of the configuration (D79).
+	t.Run("the sources run at the same time", func(t *testing.T) {
+		cfg := accountsConfig(t)
+		var started sync.WaitGroup
+		started.Add(2)
+		all := make(chan struct{})
+		go func() { started.Wait(); close(all) }()
+		got, err := openAccounts(cfg, func(config.Account) token.Source { return barrierSource{started: &started, all: all} },
+			slog.New(slog.DiscardHandler))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got) != 2 || got[0].Name != "privat" || got[1].Name != "firma" {
+			t.Fatalf("accounts = %+v, want privat, firma", got)
+		}
+		for _, a := range got {
+			if a.Locked != "" {
+				t.Errorf("account %s is locked: %s; the sources ran one after the other", a.Name, a.Locked)
+			}
+		}
+	})
+
+	t.Run("two dialogs wait one time limit", func(t *testing.T) {
+		cfg := accountsConfig(t)
+		const limit = 300 * time.Millisecond
+		var stores []*fakeStore
+		var mu sync.Mutex
+		start := time.Now()
+		_, err := openAccounts(cfg, func(a config.Account) token.Source {
+			s := newFakeStore()
+			s.block = make(chan struct{})
+			mu.Lock()
+			stores = append(stores, s)
+			mu.Unlock()
+			return keychainSource{account: a.Name, newStore: func(string) (token.Store, error) { return s, nil }, timeout: limit}
+		}, slog.New(slog.DiscardHandler))
+		elapsed := time.Since(start)
+		for _, s := range stores {
+			close(s.block)
+		}
+		if err == nil || strings.Count(err.Error(), "gave no token within") != 2 {
+			t.Fatalf("error = %v, want both accounts with the time limit", err)
+		}
+		if elapsed > limit+limit/2 {
+			t.Errorf("openAccounts took %s, want about one time limit (%s), not one for each account", elapsed, limit)
+		}
+	})
 }
 
 func TestTokenSourceForAccount(t *testing.T) {

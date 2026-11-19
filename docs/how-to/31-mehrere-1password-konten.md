@@ -124,13 +124,29 @@ Er liest jedes Token einmal beim Start.
 - Fehlen alle Tokens, startet der Daemon nicht. Die Meldung nennt jedes Konto.
 
 Das Log meldet kurz nach dem Start je Konto `the 1password account works` mit `account=<name>`.
+Der Daemon prüft die Konten nebeneinander, jedes mit eigener Frist ({{ ref("D78") }}).
+Ein hängendes Konto verzögert die Meldung der anderen Konten nicht.
 
 Prüfe mit `a38 doctor`.
 Die Zeile `1password token` erscheint je Konto, mit seinen Vaults und seiner Quelle.
+Läuft der Daemon, zeigt die Zeile `1password account` je Konto den Zustand bei 1Password:
+
+```text
+OK       backend            ok
+OK       1password account  account "privat": 2 of 2 vaults visible
+FINDING  1password account  account "firma" is locked; each request for its vaults ends with backend_locked
+```
+
+Ein gesperrtes oder nicht erreichbares Konto ist ein Befund mit dem nächsten Schritt für dieses Konto.
+Das Backend bleibt `ok`, solange ein Konto antwortet.
+`a38 tui` zeigt dieselben Zustände in der Übersicht, in der Zeile `1PASSWORD`.
 
 !!! note "Dialoge nach einem neuen Build"
     Ohne Signatur mit Developer ID braucht jeder neue Build von `a38` einen Dialog von macOS ({{ ref("G5") }}).
     Mit zwei Konten kommen zwei Dialoge, einer je Eintrag.
+    Der Daemon liest die Einträge nebeneinander; beide Dialoge können gleichzeitig erscheinen ({{ ref("D79") }}).
+    Jeder Dialog nennt seinen Eintrag `a38.onepassword/<konto>`.
+    Der Start wartet höchstens einmal 2 Minuten.
     Lege die Tokens stattdessen neu ab: `a38 config onepassword-token set --account <name> --replace`.
 
 ## Von einem Token auf Konten umstellen

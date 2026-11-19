@@ -1,0 +1,9 @@
+id: D79
+zustand: eingeloest
+titel: Der Daemon liest die Tokens der Konten beim Start nebeneinander aus dem Schlüsselbund
+bezug: '#119'
+schluessel: '#119/schluesselbund-nebeneinander'
+lauf: '2.0'
+branch: feat/119-status-je-konto
+reserviert_am: '2026-11-16'
+eingeloest_am: '2026-11-16'

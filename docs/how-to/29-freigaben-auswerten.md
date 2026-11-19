@@ -9,8 +9,11 @@ tags:
 
 Diese Anleitung zeigt, wie du mit `a38 tui` auswertest, welche Agents welche Zugangsdaten erhalten haben ({{ ref("UC6") }}).
 Die Ansicht liest das Audit-Log nur lesend.
-Sie schreibt nie und spricht nicht mit dem Daemon.
+Sie schreibt nie.
 Der Daemon muss nicht laufen.
+Nennt die Konfiguration 1Password-Konten, fragt die Ansicht den Daemon nur lesend nach seinem Status.
+Die Übersicht zeigt dann in der Zeile `1PASSWORD` den Zustand jedes Kontos ({{ ref("D78") }}).
+Läuft der Daemon nicht, sagt die Zeile das.
 Das Audit-Log enthält keinen Secret-Wert, also zeigt auch die Ansicht keinen.
 
 `a38 tui` gibt es nur unter macOS, denn das Audit-Log liegt beim Daemon auf dem Mac ({{ ref("D57") }}).

@@ -14,8 +14,8 @@ import (
 	"github.com/seletz/passierschein/internal/version"
 )
 
-// startCheckTimeout is the time limit of the first state check of the
-// 1Password backend.
+// startCheckTimeout is the time limit of the first state check of each
+// 1Password account (D78).
 const startCheckTimeout = 30 * time.Second
 
 // newOnePassword builds the 1Password backend with one client for each
@@ -28,7 +28,8 @@ const startCheckTimeout = 30 * time.Second
 // A bad token or a missing network does not stop the start: the daemon
 // runs, each request ends with backend_locked or backend_unavailable, and
 // a38 doctor shows the state. A check in the background logs the first
-// state of each account; it reads no value.
+// state of each account; it asks the accounts side by side, each with its
+// own time limit (D78), and reads no value.
 func newOnePassword(cfg *config.Config, log *slog.Logger) (backend.Backend, error) {
 	tokens, err := openAccounts(cfg, tokenSourceFor, log)
 	if err != nil {
@@ -42,20 +43,6 @@ func newOnePassword(cfg *config.Config, log *slog.Logger) (backend.Backend, erro
 	if err != nil {
 		return nil, err
 	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), startCheckTimeout)
-		defer cancel()
-		for _, st := range be.Check(ctx) {
-			if st.Err != nil {
-				log.Warn("the 1password account does not work yet; each request for its vaults ends with this code until it works",
-					"account", st.Name, "code", string(backend.Code(st.Err)))
-				continue
-			}
-			log.Info("the 1password account works", "account", st.Name, "vaults_configured", st.Configured, "vaults_visible", st.Visible)
-			if st.Visible < st.Configured {
-				log.Warn("the service account of the account cannot see each of its vaults of the configuration; references to the other vaults end with not_found", "account", st.Name)
-			}
-		}
-	}()
+	go logStartCheck(context.Background(), be, startCheckTimeout, log)
 	return be, nil
 }

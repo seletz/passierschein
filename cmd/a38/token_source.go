@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/seletz/passierschein/internal/config"
@@ -14,7 +15,9 @@ import (
 
 // keychainReadTimeout limits the read of a keychain item at the start of
 // the daemon. A read by a new build of a38 waits for a dialog of macOS
-// (spike in issue 53, V4); the daemon does not wait for ever.
+// (spike in issue 53, V4); the daemon does not wait for ever. The reads of
+// the accounts run side by side, so the start waits this time at most
+// once (D79).
 var keychainReadTimeout = 2 * time.Minute
 
 // accountToken is the result of the start for one account (D73): the
@@ -30,38 +33,51 @@ type accountToken struct {
 	Locked string
 }
 
-// openAccounts reads the token of each account that a vault names, once,
-// in the order of the configuration (D73). It does not read the source of
-// an account without vault, so that no dialog comes for it. An account
-// whose source fails is locked: the log names it and the next step. If no
-// account has a token, openAccounts fails and names each account.
+// openAccounts reads the token of each account that a vault names, once
+// (D73). It reads the sources side by side (D79): two keychain dialogs of
+// macOS cost one wait of keychainReadTimeout, not one for each account.
+// The result and the log keep the order of the configuration. It does not
+// read the source of an account without vault, so that no dialog comes
+// for it. An account whose source fails is locked: the log names it and
+// the next step. If no account has a token, openAccounts fails and names
+// each account.
 func openAccounts(cfg *config.Config, sourceFor func(config.Account) token.Source, log *slog.Logger) ([]accountToken, error) {
 	var out []accountToken
-	var failures []string
+	var sources []token.Source
 	for _, a := range cfg.Backend.OnePassword.Accounts {
 		vaults := cfg.VaultsOf(a.Name)
 		if len(vaults) == 0 {
 			continue
 		}
-		at := accountToken{Name: a.Name, Vaults: vaults}
-		tok, err := sourceFor(a).Token()
-		switch {
-		case err != nil:
-			at.Locked = err.Error()
-		case tok.Empty():
-			at.Locked = "the token is empty"
-		default:
-			at.Token = tok
-		}
-		if at.Locked != "" {
-			failures = append(failures, fmt.Sprintf("account %q: %s", a.Name, at.Locked))
-			log.Warn("the 1password account has no token; the daemon starts, and each request for its vaults ends with backend_locked",
-				"account", a.Name, "reason", at.Locked)
-		}
-		out = append(out, at)
+		out = append(out, accountToken{Name: a.Name, Vaults: vaults})
+		sources = append(sources, sourceFor(a))
 	}
 	if len(out) == 0 {
 		return nil, errors.New("the configuration names no vault with a 1Password account; add an account (a38 config account add) and a vault (a38 config vault add --account)")
+	}
+	var wg sync.WaitGroup
+	for i := range out {
+		wg.Go(func() {
+			tok, err := sources[i].Token()
+			switch {
+			case err != nil:
+				out[i].Locked = err.Error()
+			case tok.Empty():
+				out[i].Locked = "the token is empty"
+			default:
+				out[i].Token = tok
+			}
+		})
+	}
+	wg.Wait()
+	var failures []string
+	for _, at := range out {
+		if at.Locked == "" {
+			continue
+		}
+		failures = append(failures, fmt.Sprintf("account %q: %s", at.Name, at.Locked))
+		log.Warn("the 1password account has no token; the daemon starts, and each request for its vaults ends with backend_locked",
+			"account", at.Name, "reason", at.Locked)
 	}
 	if len(failures) == len(out) {
 		return nil, fmt.Errorf("no account has a token, so the daemon does not start:\n%s", strings.Join(failures, "\n"))

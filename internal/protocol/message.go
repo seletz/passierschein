@@ -286,6 +286,28 @@ type BackendStatus struct {
 	State string `json:"state"`
 	// Reason is the finding in one sentence. It is empty if State is ok.
 	Reason string `json:"reason,omitempty"`
+	// Accounts lists the state of each account of a backend with more
+	// than one account (1Password, D78), in the order of the
+	// configuration. State is ok while one account answers. It is empty
+	// for each other backend and for an old daemon. Admin socket only.
+	Accounts []AccountStatus `json:"accounts,omitempty"`
+}
+
+// AccountStatus is the state of one account of the backend for a38
+// doctor (D78). It never holds a value or a token.
+type AccountStatus struct {
+	// Name is the name of the account in the configuration.
+	Name string `json:"name"`
+	// State is [BackendOK], [BackendLocked] or [BackendUnreachable].
+	State string `json:"state"`
+	// Reason is the finding in one sentence. It is empty if State is ok.
+	Reason string `json:"reason,omitempty"`
+	// VaultsConfigured is the number of vaults of the account in the
+	// configuration.
+	VaultsConfigured int `json:"vaults_configured"`
+	// VaultsVisible is the number of these vaults that the service
+	// account can see; zero if State is not ok.
+	VaultsVisible int `json:"vaults_visible"`
 }
 
 // UIStatus is the state of the approval UI for a38 doctor.

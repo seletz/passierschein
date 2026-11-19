@@ -1,0 +1,9 @@
+id: D78
+zustand: eingeloest
+titel: Der Status nennt jedes 1Password-Konto mit eigenem Zustand, und die Konten antworten nebeneinander mit eigener Frist
+bezug: '#119'
+schluessel: '#119/status-je-konto'
+lauf: '2.0'
+branch: feat/119-status-je-konto
+reserviert_am: '2026-11-16'
+eingeloest_am: '2026-11-16'

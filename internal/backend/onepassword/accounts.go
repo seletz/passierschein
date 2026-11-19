@@ -137,37 +137,83 @@ func (a *Accounts) route(op string, vault string) (*accountState, error) {
 
 // Vaults returns the vaults of the configuration that the service
 // accounts can see, account by account in the order of the configuration.
-// An account that fails adds no vault. Only if no account gives an answer,
-// Vaults returns the error of the first account.
+// It asks the accounts side by side, so that a slow account does not use
+// up the time of the others (D78). An account that fails or does not
+// answer before ctx ends adds no vault. Only if no account gives an
+// answer, Vaults returns the error of ctx or of the first account.
 func (a *Accounts) Vaults(ctx context.Context) ([]string, error) {
+	results := a.askAll(ctx, func(context.Context) context.Context { return ctx })
 	out := []string{}
 	var first error
 	answered := false
-	for _, name := range a.order {
-		st := a.byName[name]
-		if st.backend == nil {
+	for _, r := range results {
+		if r.err != nil {
 			if first == nil {
-				first = st.lockedErr("list vaults")
-			}
-			continue
-		}
-		vs, err := st.backend.Vaults(ctx)
-		if err != nil {
-			if ctx.Err() != nil {
-				return nil, ctx.Err()
-			}
-			if first == nil {
-				first = err
+				first = r.err
 			}
 			continue
 		}
 		answered = true
-		out = append(out, vs...)
+		out = append(out, r.vaults...)
 	}
 	if !answered {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		return nil, first
 	}
 	return out, nil
+}
+
+// askResult is the answer of one account to askAll.
+type askResult struct {
+	vaults []string
+	err    error
+	late   bool // the account gave no answer before its context ended
+}
+
+// askAll asks each account for its vaults, side by side. ctxFor gives the
+// context of each account. The result has the order of the configuration.
+// askAll returns when each account has answered or its context has
+// ended, also if a call does not obey its context.
+func (a *Accounts) askAll(ctx context.Context, ctxFor func(context.Context) context.Context) []askResult {
+	out := make([]askResult, len(a.order))
+	done := make(chan struct{}, len(a.order))
+	for i, name := range a.order {
+		st := a.byName[name]
+		if st.backend == nil {
+			out[i] = askResult{err: st.lockedErr("list vaults")}
+			done <- struct{}{}
+			continue
+		}
+		go func() {
+			out[i] = ask(ctxFor(ctx), st.backend)
+			done <- struct{}{}
+		}()
+	}
+	for range a.order {
+		<-done
+	}
+	return out
+}
+
+// ask asks one account for its vaults. It returns when the context ends,
+// also if the call waits longer, for example for the lock of the client.
+func ask(ctx context.Context, b *Backend) askResult {
+	ch := make(chan askResult, 1)
+	go func() {
+		vs, err := b.Vaults(ctx)
+		ch <- askResult{vaults: vs, err: err}
+	}()
+	select {
+	case r := <-ch:
+		if r.err != nil && ctx.Err() != nil {
+			return askResult{err: ctx.Err(), late: true}
+		}
+		return r
+	case <-ctx.Done():
+		return askResult{err: ctx.Err(), late: true}
+	}
 }
 
 // Resolve sends the request to the account of the vault.
@@ -194,32 +240,41 @@ func (a *Accounts) Read(ctx context.Context, ref protocol.Reference) (protocol.S
 	return st.backend.Read(ctx, ref)
 }
 
-// AccountState is the state of one account for the log after the start.
-type AccountState struct {
-	// Name is the name of the account.
-	Name string
-	// Configured is the number of vaults of the account.
-	Configured int
-	// Visible is the number of these vaults that the service account can
-	// see; zero if Err is set.
-	Visible int
-	// Err is the failure of the account; nil if it works.
-	Err error
-}
+// AccountState is the state of one account; see [backend.AccountState].
+type AccountState = backend.AccountState
 
-// Check asks each account for its vaults. It reads no item. The daemon
-// logs the result after its start (D73).
-func (a *Accounts) Check(ctx context.Context) []AccountState {
+var _ backend.AccountChecker = (*Accounts)(nil)
+
+// Check asks each account for its vaults, side by side, each with its own
+// time limit limit (D78). It reads no item. A hanging or locked account
+// does not change the state of the other accounts. An account that gives
+// no answer within limit has the state backend_unavailable; the error
+// names the limit. The daemon logs the result after its start and shows
+// it in its status.
+func (a *Accounts) Check(ctx context.Context, limit time.Duration) []AccountState {
+	cancels := make(chan context.CancelFunc, len(a.order))
+	results := a.askAll(ctx, func(ctx context.Context) context.Context {
+		c, cancel := context.WithTimeout(ctx, limit)
+		cancels <- cancel
+		return c
+	})
+	close(cancels)
+	for cancel := range cancels {
+		cancel()
+	}
 	out := make([]AccountState, 0, len(a.order))
-	for _, name := range a.order {
+	for i, name := range a.order {
 		st := a.byName[name]
 		s := AccountState{Name: name, Configured: len(st.vaults)}
-		if st.backend == nil {
-			s.Err = st.lockedErr("list vaults")
-		} else if vs, err := st.backend.Vaults(ctx); err != nil {
-			s.Err = err
-		} else {
-			s.Visible = len(vs)
+		r := results[i]
+		switch {
+		case r.late && ctx.Err() == nil:
+			s.Err = &Error{Op: "list vaults", Class: classTimeout, Kind: backend.ErrUnavailable,
+				Text: fmt.Sprintf("the account %q gave no answer within %s", name, limit)}
+		case r.err != nil:
+			s.Err = r.err
+		default:
+			s.Visible = len(r.vaults)
 		}
 		out = append(out, s)
 	}
