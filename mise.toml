@@ -142,12 +142,12 @@ run = "bash scripts/app-e2e.sh"
 [tasks."pr:screenshot"]
 description = "Render the output of a command as a PNG for a pull request: mise run pr:screenshot -- out.png -- <command>"
 # renovate: datasource=pypi depName=playwright
-run = "uvx --with playwright==1.65.0 python scripts/term_screenshot.py"
+run = "uvx --with playwright==1.65.2 python scripts/term_screenshot.py"
 
 [tasks."pr:screenshot:tui"]
 description = "Screenshot of a running terminal view in a pseudo terminal, with colours: mise run pr:screenshot:tui -- out.png --size 80x24 --keys \"2 enter\" -- <command>"
 # renovate: datasource=pypi depName=pyte
-run = "uvx --with playwright==1.65.0 --with pyte==0.8.2 python scripts/tui_screenshot.py"
+run = "uvx --with playwright==1.65.2 --with pyte==0.8.2 python scripts/tui_screenshot.py"
 
 [tasks."pr:screenshots:upload"]
 description = "Put screenshots on the branch review-assets and print the Markdown lines: mise run pr:screenshots:upload -- <pr> <file.png>..."
