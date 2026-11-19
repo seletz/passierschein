@@ -9,7 +9,7 @@ dependencies = []
 
 [dependency-groups]
 dev = [
-    "zensical==0.1.0",
+    "zensical==0.1.2",
     "pyyaml==6.0.3",
 ]
 
