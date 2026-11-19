@@ -236,19 +236,19 @@ run = "bash scripts/release-app-package.sh"
 [tasks."release:app:upload"]
 description = "CI only (release workflow): add the app zip, its SBOM and the extended checksum file to the draft release of GITHUB_REF_NAME"
 # renovate: datasource=github-releases depName=cli/cli extractVersion=^v(?<version>.+)$
-tools = { gh = "2.103.3" }
+tools = { gh = "2.105.0" }
 run = "bash scripts/release-app-upload.sh"
 
 [tasks."release:assets:check"]
 description = "CI only (release workflow): check that the draft release has every archive, SBOM, the app zip and a complete checksum file; saves the checksum file to dist/"
 # renovate: datasource=github-releases depName=cli/cli extractVersion=^v(?<version>.+)$
-tools = { gh = "2.103.3" }
+tools = { gh = "2.105.0" }
 run = "bash scripts/release-finalize.sh check"
 
 [tasks."release:finalize"]
 description = "CI only (release workflow): publish the draft release of GITHUB_REF_NAME after release:assets:check"
 # renovate: datasource=github-releases depName=cli/cli extractVersion=^v(?<version>.+)$
-tools = { gh = "2.103.3" }
+tools = { gh = "2.105.0" }
 run = "bash scripts/release-finalize.sh publish"
 
 # Demo kit (examples/demo/, docs/how-to/50-demo-vorfuehren.md). macOS only,
