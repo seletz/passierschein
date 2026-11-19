@@ -4,14 +4,14 @@ id: 'D79'
 titel: 'Der Daemon liest die Tokens der Konten beim Start nebeneinander aus dem Schlüsselbund'
 bereich: 'Backends'
 lauf: '2.0'
-stand: '2026-11-16'
+stand: '2026-11-19'
 order: 13
 headless: true
 status: gueltig
 use_cases: [UC11]
 beleg:
-  notiz: zu bestätigen durch Stefan (Issue 119)
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-19'
 ---
 # D79 — Der Daemon liest die Tokens der Konten beim Start nebeneinander aus dem Schlüsselbund
 

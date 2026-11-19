@@ -4,14 +4,14 @@ id: 'D78'
 titel: 'Der Status nennt jedes 1Password-Konto mit eigenem Zustand, und die Konten antworten nebeneinander mit eigener Frist'
 bereich: 'Backends'
 lauf: '2.0'
-stand: '2026-11-16'
+stand: '2026-11-19'
 order: 12
 headless: true
 status: gueltig
 use_cases: [UC11, UC6]
 beleg:
-  notiz: zu bestätigen durch Stefan (Issue 119)
-  annahme: true
+  wer: Stefan
+  datum: '2026-11-19'
 ---
 # D78 — Der Status nennt jedes 1Password-Konto mit eigenem Zustand, und die Konten antworten nebeneinander mit eigener Frist
 
