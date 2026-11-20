@@ -9,7 +9,7 @@ go = "1.27.4"
 # Runs the docs toolchain (Zensical, pinned in pyproject.toml and uv.lock).
 uv = "0.13.9"
 # Builds the release archives, checksums and SBOMs (.goreleaser.yml).
-goreleaser = "2.20.2"
+goreleaser = "2.20.3"
 # Built with the pinned Go, so the linter is never older than go.mod.
 "go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = "2.15.0"
 # Finds known vulnerabilities in the modules that the code calls.
