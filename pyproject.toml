@@ -10,7 +10,7 @@ dependencies = []
 [dependency-groups]
 dev = [
     "zensical==0.1.3",
-    "pyyaml==6.0.3",
+    "pyyaml==6.0.4",
 ]
 
 # The repository root is not a package: only the docs toolchain lives here.
