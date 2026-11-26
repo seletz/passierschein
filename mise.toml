@@ -109,19 +109,19 @@ run = "dg-register check"
 [tasks."app:build"]
 description = "macOS only: build the approval app (debug and release), assemble app/.build/bundle/Passierschein.app (ad-hoc signed), check that the release rejects the test switches"
 # renovate: datasource=github-releases depName=swiftlang/swift extractVersion=^swift-(?<version>.+)-RELEASE$
-tools = { "swift" = "6.4.2" }
+tools = { "swift" = "6.4.3" }
 run = "bash scripts/app-build.sh"
 
 [tasks."app:icon"]
 description = "macOS only: draw the three icon drafts of app/Icon/render-icon.swift and build app/.build/icon/AppIcon.icns (draft of APP_ICON_DRAFT, default 2); fails if two runs differ (T42)"
 # renovate: datasource=github-releases depName=swiftlang/swift extractVersion=^swift-(?<version>.+)-RELEASE$
-tools = { "swift" = "6.4.2" }
+tools = { "swift" = "6.4.3" }
 run = "bash scripts/app-icon.sh"
 
 [tasks."app:test"]
 description = "macOS only: run the tests of the approval app (swift test, headless, fake authenticator, no Touch ID)"
 # renovate: datasource=github-releases depName=swiftlang/swift extractVersion=^swift-(?<version>.+)-RELEASE$
-tools = { "swift" = "6.4.2" }
+tools = { "swift" = "6.4.3" }
 run = """
 bash scripts/app-swift-check.sh
 cd app && swift test
@@ -130,13 +130,13 @@ cd app && swift test
 [tasks."app:run:sample"]
 description = "macOS only: show a sample of app/Samples in the debug build with the fake authenticator: mise run app:run:sample -- <sample> [test switches]"
 # renovate: datasource=github-releases depName=swiftlang/swift extractVersion=^swift-(?<version>.+)-RELEASE$
-tools = { "swift" = "6.4.2" }
+tools = { "swift" = "6.4.3" }
 run = "bash scripts/app-run-sample.sh"
 
 [tasks."app:e2e"]
 description = "macOS only: run a38 serve --ui app with the real debug app over real processes (fake authentication, no Touch ID; two short windows open); not part of check"
 # renovate: datasource=github-releases depName=swiftlang/swift extractVersion=^swift-(?<version>.+)-RELEASE$
-tools = { "swift" = "6.4.2" }
+tools = { "swift" = "6.4.3" }
 run = "bash scripts/app-e2e.sh"
 
 [tasks."pr:screenshot"]
@@ -210,7 +210,7 @@ run = "bash scripts/signatures-check.sh"
 [tasks."release:app"]
 description = "macOS only: assemble the release bundle build/release-app/Passierschein.app from the universal Swift release build and the darwin a38 of dist/ (checksums, same version and commit); not signed"
 # renovate: datasource=github-releases depName=swiftlang/swift extractVersion=^swift-(?<version>.+)-RELEASE$
-tools = { "swift" = "6.4.2" }
+tools = { "swift" = "6.4.3" }
 run = "bash scripts/release-app-bundle.sh"
 
 [tasks."release:app:sign"]
