@@ -12,7 +12,7 @@ require (
 	github.com/charmbracelet/x/term v0.2.2
 	github.com/ebitengine/purego v0.11.3
 	github.com/modelcontextprotocol/go-sdk v1.8.0
-	go.yaml.in/yaml/v3 v3.0.6
+	go.yaml.in/yaml/v4 v4.0.0
 	go.yaml.in/yaml/v4 v4.0.0
 	golang.org/x/sys v0.50.0
 	modernc.org/sqlite v1.62.0
